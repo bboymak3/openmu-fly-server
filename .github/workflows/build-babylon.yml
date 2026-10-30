@@ -47,6 +47,8 @@ jobs:
           mkdir -p out/proxy
           cp -r client-src/package.json client-src/bun.lock client-src/tsconfig.json \
                 client-src/proxy client-src/src client-src/versions out/proxy/
+          mkdir -p out/proxy/tools
+          cp client-src/tools/sqliteMigrate.ts out/proxy/tools/
           (cd out/proxy && bun install --production --frozen-lockfile --ignore-scripts)
           curl -fsSL -o bun.zip https://github.com/oven-sh/bun/releases/download/bun-v1.4.2/bun-linux-aarch64.zip
           unzip -q bun.zip
