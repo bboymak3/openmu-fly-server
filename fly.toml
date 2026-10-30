@@ -57,11 +57,6 @@ primary_region = "scl"
   restart_limit = 3
   timeout = "2s"
 
-# Volumen persistente
-[mounts[]
-  source = "openmu_data"
-  destination = "/app/data"
-
 [vm]
   size = "shared-cpu-1x"
   memory = "512mb"
