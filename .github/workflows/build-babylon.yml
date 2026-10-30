@@ -1,0 +1,85 @@
+name: Compilar cliente Babylon para ARM64 (tablet Android)
+
+# Compila el cliente web Ignies/OpenMu-Client-Babylon y su proxy para
+# linux-arm64 (Ubuntu dentro de Termux) y lo publica en Releases con el
+# tag "babylon-arm64", partido en trozos de menos de 2 GB.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/build-babylon.yml
+      - babylon/**
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Descargar codigo del cliente Babylon
+        run: git clone --depth 1 https://github.com/Ignies/OpenMu-Client-Babylon.git client-src
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Instalar dependencias
+        working-directory: client-src
+        run: bun install --frozen-lockfile
+
+      - name: Compilar cliente web
+        working-directory: client-src
+        run: bun run build
+
+      - name: Compilar proxy y servidor web para linux-arm64
+        run: |
+          mkdir -p out
+          (cd client-src && bun build proxy/main.ts --compile --target=bun-linux-arm64 --outfile ../out/mu-proxy)
+          bun build babylon/servir.ts --compile --target=bun-linux-arm64 --outfile out/mu-servir
+
+      - name: Armar paquete
+        run: |
+          mv client-src/dist out/client
+          cp babylon/iniciar-cliente.sh out/
+          chmod +x out/iniciar-cliente.sh out/mu-proxy out/mu-servir
+          git -C client-src rev-parse --short HEAD > out/VERSION
+          rm -rf client-src
+          du -sh out
+
+      - name: Partir en trozos
+        run: |
+          mkdir -p parts
+          tar -cf - -C out . | split -b 1900M -d - parts/babylon-arm64.tar.part-
+          rm -rf out
+          ls -lh parts
+
+      - name: Crear script de instalacion
+        run: |
+          {
+            echo '#!/bin/bash'
+            echo 'set -eo pipefail'
+            echo "BASE=https://github.com/${GITHUB_REPOSITORY}/releases/download/babylon-arm64"
+            echo 'mkdir -p ~/babylon && cd ~/babylon'
+            printf 'for p in'
+            for f in parts/*; do printf ' %s' "$(basename "$f")"; done
+            echo '; do'
+            echo '  wget -O- "$BASE/$p"'
+            echo 'done | tar -x'
+            echo 'echo "Listo. Para iniciar: cd ~/babylon && ./iniciar-cliente.sh"'
+          } > parts/instalar-babylon.sh
+          cat parts/instalar-babylon.sh
+
+      - name: Publicar en Releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete babylon-arm64 --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes || true
+          gh release create babylon-arm64 parts/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Cliente Babylon linux-arm64" \
+            --notes "Cliente web Ignies/OpenMu-Client-Babylon con proxy, para la tablet."
