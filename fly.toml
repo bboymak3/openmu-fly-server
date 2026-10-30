@@ -57,7 +57,7 @@ primary_region = "scl"
   restart_limit = 3
   timeout = "2s"
 
-[m[mounts]
+[m[m[mounts]
   source = "openmu_data"
   destination = "/app/data"
 
