@@ -23,6 +23,18 @@ jobs:
       - name: Descargar codigo del cliente Babylon
         run: git clone --depth 1 https://github.com/Ignies/OpenMu-Client-Babylon.git client-src
 
+      - name: Personalizar BarrioMU
+        run: |
+          B=babylon/branding
+          C=client-src
+          cp $B/logo.webp $B/logo_glow.webp $C/public/ui/world_select/
+          cp $B/icon-192.png $B/icon-512.png $B/icon-maskable-512.png $B/apple-touch-icon.png $C/public/icons/
+          cp $B/banner.webp $B/serverlist.md $C/public/
+          sed -i 's/OpenMUCB/BarrioMU/g' $C/index.html $C/public/manifest.webmanifest $C/src/modules/servers/pageTitle.ts
+          sed -i 's/JS implementation of MU Online/BarrioMU - MU Online en el navegador/' $C/index.html
+          sed -i 's/alt="OpenMU Babylon"/alt="BarrioMU"/' $C/versions/shared/ui/pages/preloader/logoLight.tsx
+          grep -c BarrioMU $C/index.html $C/public/manifest.webmanifest $C/src/modules/servers/pageTitle.ts
+
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.2
@@ -33,6 +45,8 @@ jobs:
 
       - name: Compilar cliente web
         working-directory: client-src
+        env:
+          VITE_SERVER_LIST_URL: /serverlist.md
         run: bun run build
 
       - name: Compilar servidor web para linux-arm64
