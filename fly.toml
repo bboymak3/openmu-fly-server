@@ -1,6 +1,4 @@
-# ============================================================
 # fly.toml - OpenMU Server en Fly.io
-# ============================================================
 
 app = "openmu-mu-online"
 primary_region = "scl"
@@ -10,7 +8,6 @@ primary_region = "scl"
   DOTNET_RUNNING_IN_CONTAINER = "true"
   TZ = "America/Santiago"
 
-# Servicio 1: Web Admin Panel (HTTP/HTTPS)
 [[services]]
   internal_port = 1234
   protocol = "tcp"
@@ -28,7 +25,6 @@ primary_region = "scl"
     port = 443
     handlers = ["tls", "http"]
 
-# Servicio 2: ConnectServer (TCP crudo)
 [[services]]
   internal_port = 44405
   protocol = "tcp"
@@ -42,7 +38,6 @@ primary_region = "scl"
     port = 44405
     handlers = []
 
-# Servicio 3: GameServer (TCP crudo)
 [[services]]
   internal_port = 55901
   protocol = "tcp"
@@ -56,19 +51,16 @@ primary_region = "scl"
     port = 55901
     handlers = []
 
-# Health checks
 [[services.tcp_checks]]
   grace_period = "30s"
   interval = "15s"
   restart_limit = 3
   timeout = "2s"
 
-# Volumen persistente
 [mounts]
   source = "openmu_data"
   destination = "/app/data"
 
-# Recursos VM
 [vm]
   size = "shared-cpu-1x"
   memory = "512mb"
