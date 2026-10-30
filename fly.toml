@@ -1,0 +1,77 @@
+# ============================================================
+# fly.toml - Configuracion de OpenMU Server en Fly.io
+# ============================================================
+
+app = "openmu-mu-online"
+primary_region = "scl"  # Santiago, Chile
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  ASPNETCORE_URLS = "http://+:1234"
+  DOTNET_RUNNING_IN_CONTAINER = "true"
+  TZ = "America/Santiago"
+
+# Servicio 1: Web Admin Panel (HTTP/HTTPS)
+[[services]]
+  internal_port = 1234
+  protocol = "tcp"
+  
+  [services.concurrency]
+    type = "requests"
+    hard_limit = 25
+    soft_limit = 20
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+  
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+# Servicio 2: ConnectServer (TCP crudo - sin handlers HTTP)
+[[services]]
+  internal_port = 44405
+  protocol = "tcp"
+
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 1000
+    soft_limit = 500
+
+  [[services.ports]]
+    port = 44405
+    handlers = []
+
+# Servicio 3: GameServer (TCP crudo - sin handlers HTTP)
+[[services]]
+  internal_port = 55901
+  protocol = "tcp"
+
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 1000
+    soft_limit = 500
+
+  [[services.ports]]
+    port = 55901
+    handlers = []
+
+# Asignar IPv4 dedicada para trafico TCP directo
+[[services.tcp_checks]]
+  grace_period = "30s"
+  interval = "15s"
+  restart_limit = 3
+  timeout = "2s"
+
+# Volumen persistente para datos del servidor
+[mounts]
+  source = "openmu_data"
+  destination = "/app/data"
+
+# Recursos de la VM
+[vm]
+  size = "shared-cpu-1x"
+  memory = "512mb"
