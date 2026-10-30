@@ -27,13 +27,20 @@ jobs:
         run: |
           B=babylon/branding
           C=client-src
-          cp $B/logo.webp $B/logo_glow.webp $C/public/ui/world_select/
+          P=$C/versions/shared/ui/pages/preloader
+          # Nombres nuevos para que los navegadores no usen el logo viejo guardado.
+          cp $B/logo.webp $C/public/ui/world_select/barriomu-logo.webp
+          cp $B/logo_glow.webp $C/public/ui/world_select/barriomu-glow.webp
+          sed -i 's#/ui/world_select/logo.webp#/ui/world_select/barriomu-logo.webp#; s#/ui/world_select/logo_glow.webp#/ui/world_select/barriomu-glow.webp#' $P/logoLight.tsx $P/directLoad.tsx
+          # El logo al 100%: sin las capas de luz que se mezclan encima.
+          printf '\n.ws-logo-glow, .ws-logo-bloom, .ws-logo-surge { display: none; }\n' >> $P/style.less
           cp $B/icon-192.png $B/icon-512.png $B/icon-maskable-512.png $B/apple-touch-icon.png $C/public/icons/
           cp $B/banner.webp $B/serverlist.md $C/public/
-          sed -i 's/OpenMUCB/BarrioMU/g' $C/index.html $C/public/manifest.webmanifest $C/src/modules/servers/pageTitle.ts
+          sed -i 's/OpenMUCB/BarrioMU/g' $C/index.html $C/public/manifest.webmanifest $C/src/modules/servers/pageTitle.ts $C/register/index.html
           sed -i 's/JS implementation of MU Online/BarrioMU - MU Online en el navegador/' $C/index.html
-          sed -i 's/alt="OpenMU Babylon"/alt="BarrioMU"/' $C/versions/shared/ui/pages/preloader/logoLight.tsx
-          grep -c BarrioMU $C/index.html $C/public/manifest.webmanifest $C/src/modules/servers/pageTitle.ts
+          sed -i 's/alt="OpenMU Babylon"/alt="BarrioMU"/' $P/logoLight.tsx
+          grep -c BarrioMU $C/index.html $C/public/manifest.webmanifest $C/src/modules/servers/pageTitle.ts $C/register/index.html
+          grep -c barriomu-logo $P/logoLight.tsx $P/directLoad.tsx
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -47,7 +54,15 @@ jobs:
         working-directory: client-src
         env:
           VITE_SERVER_LIST_URL: /serverlist.md
+          VITE_REGISTER_URL: https://mu-registro.makeseo.app
+          VITE_REGISTER_API: /api/register
         run: bun run build
+
+      - name: Compilar pagina de registro
+        working-directory: client-src
+        env:
+          VITE_REGISTER_API: /api/register
+        run: bun run build:register
 
       - name: Compilar servidor web para linux-arm64
         run: |
@@ -61,8 +76,9 @@ jobs:
           mkdir -p out/proxy
           cp -r client-src/package.json client-src/bun.lock client-src/tsconfig.json \
                 client-src/proxy client-src/src client-src/versions out/proxy/
-          mkdir -p out/proxy/tools
+          mkdir -p out/proxy/tools out/proxy/register
           cp client-src/tools/sqliteMigrate.ts out/proxy/tools/
+          cp -r client-src/register/server out/proxy/register/
           (cd out/proxy && bun install --production --frozen-lockfile --ignore-scripts)
           curl -fsSL -o bun.zip https://github.com/oven-sh/bun/releases/download/bun-v1.4.2/bun-linux-aarch64.zip
           unzip -q bun.zip
@@ -72,11 +88,12 @@ jobs:
       - name: Armar paquete
         run: |
           mv client-src/dist out/client
+          mv client-src/dist-register out/register
           cp babylon/iniciar-cliente.sh out/
           chmod +x out/iniciar-cliente.sh out/mu-servir out/proxy/bun
           git -C client-src rev-parse --short HEAD > out/VERSION
           rm -rf client-src
-          tar -czf babylon-proxy-arm64.tar.gz -C out proxy iniciar-cliente.sh
+          tar -czf babylon-proxy-arm64.tar.gz -C out proxy register mu-servir iniciar-cliente.sh
           du -sh out babylon-proxy-arm64.tar.gz
 
       - name: Partir en trozos
