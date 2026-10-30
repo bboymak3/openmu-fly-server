@@ -5,9 +5,6 @@
 app = "openmu-mu-online"
 primary_region = "scl"  # Santiago, Chile
 
-[build]
-  dockerfile = "Dockerfile"
-
 [env]
   ASPNETCORE_URLS = "http://+:1234"
   DOTNET_RUNNING_IN_CONTAINER = "true"
