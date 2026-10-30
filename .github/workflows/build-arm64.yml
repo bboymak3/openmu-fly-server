@@ -1,0 +1,66 @@
+name: Compilar OpenMU para ARM64 (tablet Android)
+
+# Compila OpenMU para linux-arm64 (Ubuntu dentro de Termux/proot-distro)
+# y publica el zip en Releases con el tag "openmu-arm64".
+# Es self-contained: en la tablet no hace falta instalar .NET.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/build-arm64.yml
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar codigo de OpenMU
+        run: git clone --depth 1 https://github.com/MUnique/OpenMU.git openmu
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Compilar para linux-arm64
+        working-directory: openmu
+        run: |
+          dotnet publish src/Startup/MUnique.OpenMU.Startup.csproj \
+            -c Release \
+            -r linux-arm64 \
+            --self-contained true \
+            -p:ci=true \
+            -o ../out
+
+      - name: Agregar script de inicio
+        run: |
+          cat > out/iniciar.sh <<'EOF'
+          #!/bin/bash
+          # Uso: ./iniciar.sh            -> modo demo (no guarda nada)
+          #      ./iniciar.sh -autostart -> con PostgreSQL
+          cd "$(dirname "$0")"
+          export ASPNETCORE_URLS="${ASPNETCORE_URLS:-http://+:8080}"
+          export DOTNET_GCHeapHardLimit="${DOTNET_GCHeapHardLimit:-1C0000000}"
+          if [ $# -eq 0 ]; then
+            set -- -demo -resolveIP:local
+          fi
+          exec ./MUnique.OpenMU.Startup "$@"
+          EOF
+          chmod +x out/iniciar.sh out/MUnique.OpenMU.Startup
+
+      - name: Crear zip
+        run: cd out && zip -qr ../openmu-linux-arm64.zip .
+
+      - name: Publicar en Releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          OPENMU_COMMIT=$(git -C openmu rev-parse --short HEAD)
+          gh release delete openmu-arm64 --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes || true
+          gh release create openmu-arm64 openmu-linux-arm64.zip \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "OpenMU linux-arm64" \
+            --notes "Compilado desde MUnique/OpenMU commit ${OPENMU_COMMIT}."
