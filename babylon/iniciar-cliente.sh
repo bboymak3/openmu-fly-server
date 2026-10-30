@@ -7,7 +7,7 @@ export TRACK_DB_PATH="${TRACK_DB_PATH:-memory}"
 export LOG_PACKETS="${LOG_PACKETS:-off}"
 export ALLOW_TARGETS="${ALLOW_TARGETS:-127.0.0.1,127.127.127.127}"
 
-./mu-proxy &
+(cd proxy && exec ./bun proxy/main.ts) &
 PROXY_PID=$!
 trap 'kill $PROXY_PID 2>/dev/null' EXIT
 

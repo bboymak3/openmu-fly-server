@@ -35,20 +35,33 @@ jobs:
         working-directory: client-src
         run: bun run build
 
-      - name: Compilar proxy y servidor web para linux-arm64
+      - name: Compilar servidor web para linux-arm64
         run: |
           mkdir -p out
-          (cd client-src && bun build proxy/main.ts --compile --target=bun-linux-arm64 --outfile ../out/mu-proxy)
           bun build babylon/servir.ts --compile --target=bun-linux-arm64 --outfile out/mu-servir
+
+      # El proxy lee archivos .ts del disco al arrancar, asi que no se puede
+      # empaquetar con --compile: va como codigo fuente junto a Bun arm64.
+      - name: Preparar proxy con Bun arm64
+        run: |
+          mkdir -p out/proxy
+          cp -r client-src/package.json client-src/bun.lock client-src/tsconfig.json \
+                client-src/proxy client-src/src client-src/versions out/proxy/
+          (cd out/proxy && bun install --production --frozen-lockfile --ignore-scripts)
+          curl -fsSL -o bun.zip https://github.com/oven-sh/bun/releases/download/bun-v1.4.2/bun-linux-aarch64.zip
+          unzip -q bun.zip
+          mv bun-linux-aarch64/bun out/proxy/bun
+          rm -rf bun.zip bun-linux-aarch64
 
       - name: Armar paquete
         run: |
           mv client-src/dist out/client
           cp babylon/iniciar-cliente.sh out/
-          chmod +x out/iniciar-cliente.sh out/mu-proxy out/mu-servir
+          chmod +x out/iniciar-cliente.sh out/mu-servir out/proxy/bun
           git -C client-src rev-parse --short HEAD > out/VERSION
           rm -rf client-src
-          du -sh out
+          tar -czf babylon-proxy-arm64.tar.gz -C out proxy iniciar-cliente.sh
+          du -sh out babylon-proxy-arm64.tar.gz
 
       - name: Partir en trozos
         run: |
@@ -71,7 +84,7 @@ jobs:
             echo 'done | tar -x'
             echo 'echo "Listo. Para iniciar: cd ~/babylon && ./iniciar-cliente.sh"'
           } > instalar-babylon.sh
-          mv instalar-babylon.sh parts/
+          mv instalar-babylon.sh babylon-proxy-arm64.tar.gz parts/
           cat parts/instalar-babylon.sh
 
       - name: Publicar en Releases
