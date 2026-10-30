@@ -64,7 +64,7 @@ primary_region = "scl"  # Santiago, Chile
   timeout = "2s"
 
 # Volumen persistente para datos del servidor
-[mounts]
+[m[mounts]
   source = "openmu_data"
   destination = "/app/data"
 
