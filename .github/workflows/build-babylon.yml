@@ -70,7 +70,8 @@ jobs:
             echo '  wget -O- "$BASE/$p"'
             echo 'done | tar -x'
             echo 'echo "Listo. Para iniciar: cd ~/babylon && ./iniciar-cliente.sh"'
-          } > parts/instalar-babylon.sh
+          } > instalar-babylon.sh
+          mv instalar-babylon.sh parts/
           cat parts/instalar-babylon.sh
 
       - name: Publicar en Releases
