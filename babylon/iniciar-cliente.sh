@@ -4,6 +4,7 @@
 #   - servicio de registro    puerto 3100 (solo dentro de la tablet)
 #   - pagina del juego        puerto 8081
 #   - pagina de registro      puerto 8082
+#   - API de la landing       puerto 3400 (solo dentro de la tablet)
 # OpenMU y PostgreSQL tienen que estar corriendo en la misma tablet.
 cd "$(dirname "$0")"
 BASE="$PWD"
@@ -43,6 +44,12 @@ if [ -d register ]; then
 
   ROOT="$BASE/register" FALLBACK_ROOT="$BASE/client" PORT=8082 \
     API_TARGET=http://127.0.0.1:3100 ./mu-servir &
+  PIDS+=($!)
+fi
+
+# API de solo lectura para la landing (estado, rankings, eventos): puerto 3400
+if [ -f proxy/api/main.ts ]; then
+  (cd proxy && CORS_ORIGIN="${API_CORS_ORIGIN:-https://barriomu.makeseo.app}" exec ./bun api/main.ts) &
   PIDS+=($!)
 fi
 

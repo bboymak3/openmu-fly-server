@@ -115,6 +115,8 @@ jobs:
           mkdir -p out/proxy/tools out/proxy/register
           cp client-src/tools/sqliteMigrate.ts out/proxy/tools/
           cp -r client-src/register/server out/proxy/register/
+          # API de BarrioMU para la landing (usa el paquete postgres del proxy)
+          cp -r babylon/api out/proxy/api
           (cd out/proxy && bun install --production --frozen-lockfile --ignore-scripts)
           curl -fsSL -o bun.zip https://github.com/oven-sh/bun/releases/download/bun-v1.4.2/bun-linux-aarch64.zip
           unzip -q bun.zip

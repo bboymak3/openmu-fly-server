@@ -143,7 +143,7 @@ apagar() {
   echo "Apagando..."
   stop_watchdog
   pkill -f "cloudflared tunnel run"
-  pkill -f proxy/main.ts; pkill -f register/server/main.ts; pkill -f mu-servir
+  pkill -f proxy/main.ts; pkill -f register/server/main.ts; pkill -f api/main.ts; pkill -f mu-servir
   stop_openmu
   pg_ctl -D "$PGDATA" -w stop >/dev/null 2>&1
   termux-wake-unlock 2>/dev/null
@@ -159,6 +159,7 @@ estado() {
   show 3000 "Proxy del juego   (3000)"
   show 8081 "Pagina del juego  (8081)"
   show 8082 "Pagina registro   (8082)"
+  show 3400 "API de la landing (3400)"
   if pgrep -f "cloudflared tunnel run" >/dev/null; then echo "  [OK]  Tunel Cloudflare"
   else echo "  [--]  Tunel Cloudflare"; fi
   if watchdog_running; then echo "  [OK]  Vigilante"; else echo "  [--]  Vigilante"; fi
@@ -170,7 +171,7 @@ reset_db() {
   read -r -p "Escribe SI para continuar: " ok
   [ "$ok" = "SI" ] || { echo "Cancelado."; return 1; }
   stop_watchdog
-  pkill -f proxy/main.ts; pkill -f register/server/main.ts; pkill -f mu-servir
+  pkill -f proxy/main.ts; pkill -f register/server/main.ts; pkill -f api/main.ts; pkill -f mu-servir
   pkill -TERM -f MUnique.OpenMU.Startup; sleep 5; pkill -KILL -f MUnique.OpenMU.Startup 2>/dev/null
   pg_ctl -D "$PGDATA" status >/dev/null 2>&1 || pg_ctl -D "$PGDATA" -l "$PGDATA/log.txt" -w start >/dev/null
   echo "Creando la base de datos (en la tablet tarda varios minutos)..."

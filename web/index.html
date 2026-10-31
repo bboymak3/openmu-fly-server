@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>BarrioMU · MU Online Season 6 en el navegador</title>
+  <meta name="description" content="BarrioMU: servidor de MU Online Season 6 Episodio 3 que se juega desde el navegador, en celular o PC. Rankings, eventos y comunidad." />
+  <meta name="theme-color" content="#0b0a0f" />
+  <meta property="og:title" content="BarrioMU" />
+  <meta property="og:description" content="MU Online Season 6 Episodio 3, directo en el navegador." />
+  <meta property="og:image" content="assets/banner.webp" />
+  <link rel="icon" type="image/png" href="assets/favicon.png" />
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="config.js"></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="#inicio">
+      <img src="assets/logo.webp" alt="" width="40" height="40" />
+      <span>BARRIO<b>MU</b></span>
+    </a>
+    <button class="menu-toggle" aria-label="Menu" aria-expanded="false">☰</button>
+    <nav class="menu">
+      <a href="#servidor">Servidor</a>
+      <a href="#eventos">Eventos</a>
+      <a href="#rankings">Rankings</a>
+      <a href="#noticias">Noticias</a>
+      <a href="#reglas">Reglas</a>
+      <a class="btn btn-small btn-gold" data-link="play" href="#">Jugar</a>
+    </nav>
+  </header>
+
+  <main>
+    <!-- Portada -->
+    <section id="inicio" class="hero">
+      <div class="hero-glow" aria-hidden="true"></div>
+      <img class="hero-logo" src="assets/logo.webp" alt="BarrioMU Season 6 Episodio 3" width="320" height="320" />
+      <p class="hero-kicker">MU Online · Season 6 Episodio 3</p>
+      <h1>El MU del barrio,<br /><span>directo en tu navegador</span></h1>
+      <p class="hero-sub">Sin descargas. Entra desde el celular o la PC y juega en segundos.</p>
+      <div class="hero-actions">
+        <a class="btn btn-gold btn-big" data-link="play" href="#">▶ Jugar ahora</a>
+        <a class="btn btn-ghost btn-big" data-link="register" href="#">Crear cuenta</a>
+      </div>
+      <div class="status-pill" id="status-pill"><i></i><span>Consultando servidor…</span></div>
+    </section>
+
+    <!-- Estado del servidor -->
+    <section id="servidor" class="section">
+      <h2 class="title">Servidor en vivo</h2>
+      <div class="servers" id="servers"></div>
+      <div class="features" id="features"></div>
+    </section>
+
+    <!-- Eventos -->
+    <section id="eventos" class="section">
+      <h2 class="title">Próximos eventos</h2>
+      <p class="subtitle">Hora de tu dispositivo.</p>
+      <div class="events" id="events"></div>
+    </section>
+
+    <!-- Rankings -->
+    <section id="rankings" class="section">
+      <h2 class="title">Rankings</h2>
+      <div class="tabs" role="tablist">
+        <button class="tab is-active" data-ranking="level" role="tab">Top Nivel</button>
+        <button class="tab" data-ranking="pvp" role="tab">Top PvP</button>
+      </div>
+      <div class="podium" id="podium"></div>
+      <div class="table-wrap">
+        <table class="ranking">
+          <thead id="ranking-head"></thead>
+          <tbody id="ranking-body"></tbody>
+        </table>
+      </div>
+      <p class="note" id="ranking-note"></p>
+    </section>
+
+    <!-- Noticias -->
+    <section id="noticias" class="section">
+      <h2 class="title">Noticias</h2>
+      <div class="news" id="news"></div>
+    </section>
+
+    <!-- Reglas -->
+    <section id="reglas" class="section">
+      <h2 class="title">Reglas del barrio</h2>
+      <ol class="rules" id="rules"></ol>
+      <div class="requirements">
+        <h3>¿Qué necesito para jugar?</h3>
+        <ul>
+          <li>Un navegador actualizado: Chrome, Edge, Brave o Samsung Internet.</li>
+          <li>Celular con 3 GB de RAM o más, o cualquier PC.</li>
+          <li>La primera vez el juego descarga sus gráficos: mejor con WiFi.</li>
+          <li>Tip: en el menú del navegador, "Agregar a pantalla principal" lo deja como una app.</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <img src="assets/logo.webp" alt="" width="56" height="56" />
+    <p>BarrioMU es un servidor privado, sin fines de lucro, hecho por y para la comunidad.</p>
+    <p class="small">MU Online es una marca de Webzen Inc. BarrioMU no está afiliado a Webzen.</p>
+  </footer>
+
+  <div class="floating" id="floating"></div>
+</body>
+</html>
