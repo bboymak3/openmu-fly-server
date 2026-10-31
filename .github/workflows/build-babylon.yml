@@ -1,0 +1,149 @@
+name: Compilar cliente Babylon para ARM64 (tablet Android)
+
+# Compila el cliente web Ignies/OpenMu-Client-Babylon y su proxy para
+# linux-arm64 (Ubuntu dentro de Termux) y lo publica en Releases con el
+# tag "babylon-arm64", partido en trozos de menos de 2 GB.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/build-babylon.yml
+      - babylon/**
+
+permissions:
+  contents: write
+
+# Una compilacion a la vez: dos seguidas no deben pisarse el Release.
+concurrency:
+  group: babylon-release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Version fija del cliente: la que ya se probo con BarrioMU.
+      - name: Descargar codigo del cliente Babylon
+        env:
+          BABYLON_COMMIT: 26c0921c1bed65b1aab4762022f24021a5318130
+        run: |
+          git init -q client-src
+          git -C client-src fetch -q --depth 1 https://github.com/Ignies/OpenMu-Client-Babylon.git "$BABYLON_COMMIT"
+          git -C client-src checkout -q FETCH_HEAD
+
+      - name: Personalizar BarrioMU
+        run: |
+          B=babylon/branding
+          C=client-src
+          P=$C/versions/shared/ui/pages/preloader
+          # Nombres nuevos para que los navegadores no usen el logo viejo guardado.
+          cp $B/logo.webp $C/public/ui/world_select/barriomu-logo.webp
+          cp $B/logo_glow.webp $C/public/ui/world_select/barriomu-glow.webp
+          sed -i 's#/ui/world_select/logo.webp#/ui/world_select/barriomu-logo.webp#; s#/ui/world_select/logo_glow.webp#/ui/world_select/barriomu-glow.webp#' $P/logoLight.tsx $P/directLoad.tsx
+          # El logo al 100%: sin las capas de luz que se mezclan encima.
+          printf '\n.ws-logo-glow, .ws-logo-bloom, .ws-logo-surge { display: none; }\n' >> $P/style.less
+          cp $B/icon-192.png $B/icon-512.png $B/icon-maskable-512.png $B/apple-touch-icon.png $C/public/icons/
+          cp $B/banner.webp $B/serverlist.md $C/public/
+          sed -i 's/OpenMUCB/BarrioMU/g' $C/index.html $C/public/manifest.webmanifest $C/src/modules/servers/pageTitle.ts $C/register/index.html
+          sed -i 's/JS implementation of MU Online/BarrioMU - MU Online en el navegador/' $C/index.html
+          sed -i 's/alt="OpenMU Babylon"/alt="BarrioMU"/' $P/logoLight.tsx
+          grep -c BarrioMU $C/index.html $C/public/manifest.webmanifest $C/src/modules/servers/pageTitle.ts $C/register/index.html
+          grep -c barriomu-logo $P/logoLight.tsx $P/directLoad.tsx
+          # Boton de chat en el celular (no hay tecla Enter), debajo del de Move.
+          M=$C/versions/shared/ui/hud/mobile_controls
+          cp babylon/mobile/chatButton.tsx $M/
+          cat babylon/mobile/chatButton.less >> $M/style.less
+          sed -i "s#^import { MoveButton } from './moveButton';#&\nimport { ChatButton } from './chatButton';#; s#<MoveButton />#&\n      <ChatButton />#" $M/index.tsx
+          grep -c ChatButton $M/index.tsx
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Instalar dependencias
+        working-directory: client-src
+        run: bun install --frozen-lockfile
+
+      - name: Compilar cliente web
+        working-directory: client-src
+        env:
+          VITE_SERVER_LIST_URL: /serverlist.md
+          VITE_REGISTER_URL: https://mu-registro.makeseo.app
+          VITE_REGISTER_API: /api/register
+        run: bun run build
+
+      - name: Compilar pagina de registro
+        working-directory: client-src
+        env:
+          VITE_REGISTER_API: /api/register
+        run: bun run build:register
+
+      - name: Compilar servidor web para linux-arm64
+        run: |
+          mkdir -p out
+          bun build babylon/servir.ts --compile --target=bun-linux-arm64 --outfile out/mu-servir
+
+      # El proxy lee archivos .ts del disco al arrancar, asi que no se puede
+      # empaquetar con --compile: va como codigo fuente junto a Bun arm64.
+      - name: Preparar proxy con Bun arm64
+        run: |
+          mkdir -p out/proxy
+          cp -r client-src/package.json client-src/bun.lock client-src/tsconfig.json \
+                client-src/proxy client-src/src client-src/versions out/proxy/
+          mkdir -p out/proxy/tools out/proxy/register
+          cp client-src/tools/sqliteMigrate.ts out/proxy/tools/
+          cp -r client-src/register/server out/proxy/register/
+          (cd out/proxy && bun install --production --frozen-lockfile --ignore-scripts)
+          curl -fsSL -o bun.zip https://github.com/oven-sh/bun/releases/download/bun-v1.4.2/bun-linux-aarch64.zip
+          unzip -q bun.zip
+          mv bun-linux-aarch64/bun out/proxy/bun
+          rm -rf bun.zip bun-linux-aarch64
+
+      - name: Armar paquete
+        run: |
+          mv client-src/dist out/client
+          mv client-src/dist-register out/register
+          cp babylon/iniciar-cliente.sh out/
+          chmod +x out/iniciar-cliente.sh out/mu-servir out/proxy/bun
+          git -C client-src rev-parse --short HEAD > out/VERSION
+          rm -rf client-src
+          tar -czf babylon-proxy-arm64.tar.gz -C out proxy register mu-servir iniciar-cliente.sh
+          du -sh out babylon-proxy-arm64.tar.gz
+
+      - name: Partir en trozos
+        run: |
+          mkdir -p parts
+          tar -cf - -C out . | split -b 1900M -d - parts/babylon-arm64.tar.part-
+          rm -rf out
+          ls -lh parts
+
+      - name: Crear script de instalacion
+        run: |
+          {
+            echo '#!/bin/bash'
+            echo 'set -eo pipefail'
+            echo "BASE=https://github.com/${GITHUB_REPOSITORY}/releases/download/babylon-arm64"
+            echo 'mkdir -p ~/babylon && cd ~/babylon'
+            printf 'for p in'
+            for f in parts/*; do printf ' %s' "$(basename "$f")"; done
+            echo '; do'
+            echo '  wget -O- "$BASE/$p"'
+            echo 'done | tar -x'
+            echo 'echo "Listo. Para iniciar: cd ~/babylon && ./iniciar-cliente.sh"'
+          } > instalar-babylon.sh
+          mv instalar-babylon.sh babylon-proxy-arm64.tar.gz parts/
+          cat parts/instalar-babylon.sh
+
+      - name: Publicar en Releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete babylon-arm64 --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes || true
+          gh release create babylon-arm64 parts/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Cliente Babylon linux-arm64" \
+            --notes "Cliente web Ignies/OpenMu-Client-Babylon con proxy, para la tablet."

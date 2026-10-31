@@ -1,0 +1,53 @@
+diff --git a/src/GameLogic/DefaultDropGenerator.cs b/src/GameLogic/DefaultDropGenerator.cs
+index db537b6..ac123a6 100644
+--- a/src/GameLogic/DefaultDropGenerator.cs
++++ b/src/GameLogic/DefaultDropGenerator.cs
+@@ -40,6 +40,11 @@ public class DefaultDropGenerator : IDropGenerator
+     private readonly byte _maxItemOptionLevelDrop;
+     private readonly byte _excellentItemDropLevelDelta;
+ 
++    /// <summary>
++    /// Gets or sets the multiplier for the chance based drops of this game server (BarrioMU).
++    /// </summary>
++    public double DropRateMultiplier { get; set; } = 1.0;
++
+     /// <summary>
+     /// Initializes a new instance of the <see cref="DefaultDropGenerator" /> class.
+     /// </summary>
+@@ -566,11 +571,18 @@ public class DefaultDropGenerator : IDropGenerator
+ 
+     private DropItemGroup? SelectRandomGroup(IEnumerable<DropItemGroup> groups, double totalChance)
+     {
++        // BarrioMU: every chance is multiplied by DropRateMultiplier; dividing
++        // the random threshold by it is the same, until they add up past 1.
++        var multiplier = this.DropRateMultiplier;
+         var remainingThreshold = this._randomizer.NextDouble();
+-        if (totalChance > 1.0)
++        if (totalChance * multiplier > 1.0)
+         {
+             remainingThreshold *= totalChance;
+         }
++        else
++        {
++            remainingThreshold /= multiplier;
++        }
+ 
+         foreach (var group in groups)
+         {
+diff --git a/src/GameServer/GameServer.cs b/src/GameServer/GameServer.cs
+index c7b7acc..95323ff 100644
+--- a/src/GameServer/GameServer.cs
++++ b/src/GameServer/GameServer.cs
+@@ -82,7 +82,11 @@ public sealed partial class GameServer : IGameServer, IDisposable, IAsyncDisposa
+         try
+         {
+             var gameConfiguration = gameServerDefinition.GameConfiguration ?? throw Error.NotInitializedProperty(gameServerDefinition, nameof(gameServerDefinition.GameConfiguration));
+-            var dropGenerator = new DefaultDropGenerator(gameConfiguration, Rand.GetRandomizer());
++            var dropGenerator = new DefaultDropGenerator(gameConfiguration, Rand.GetRandomizer())
++            {
++                // BarrioMU: ALTOBARINAS (server 1) has double drop.
++                DropRateMultiplier = gameServerDefinition.ServerID == 1 ? 2.0 : 1.0,
++            };
+             var mapInitializer = new GameServerMapInitializer(gameServerDefinition, loggerFactory.CreateLogger<GameServerMapInitializer>(), dropGenerator, changeMediator);
+             this._gameContext = new GameServerContext(gameServerDefinition, guildServer, eventPublisher, loginServer, friendServer, persistenceContextProvider, mapInitializer, loggerFactory, plugInManager, dropGenerator, changeMediator, mapHostLocator);
+             this._gameContext.GameMapCreated += (_, _) => this.OnPropertyChanged(nameof(this.Context));
