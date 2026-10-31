@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Mi cuenta · BarrioMU</title>
+  <meta name="description" content="Panel de usuario de BarrioMU: reparte puntos, limpia PK, desbloquea personajes y cambia tu clave." />
+  <meta name="robots" content="noindex" />
+  <meta name="theme-color" content="#0b0a0f" />
+  <link rel="icon" type="image/png" href="assets/favicon.png" />
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="config.js"></script>
+  <script src="cuenta.js" defer></script>
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="index.html">
+      <img src="assets/logo.webp" alt="" width="40" height="40" />
+      <span>BARRIO<b>MU</b></span>
+    </a>
+    <nav class="menu-inline">
+      <a href="index.html">Inicio</a>
+      <a class="btn btn-small btn-gold" data-link="play" href="#">Jugar</a>
+    </nav>
+  </header>
+
+  <main class="section account">
+    <!-- Login -->
+    <section id="login-view" hidden>
+      <h1 class="title">Mi cuenta</h1>
+      <p class="subtitle">Entra con el mismo usuario y clave del juego.</p>
+      <form id="login-form" class="card form" autocomplete="on">
+        <label>Usuario
+          <input name="username" required minlength="4" maxlength="10" autocomplete="username" autocapitalize="off" spellcheck="false" />
+        </label>
+        <label>Clave
+          <input name="password" type="password" required minlength="4" maxlength="10" autocomplete="current-password" />
+        </label>
+        <button class="btn btn-gold" type="submit">Entrar</button>
+        <p class="form-msg" id="login-msg" role="alert"></p>
+        <p class="form-foot">¿No tienes cuenta? <a data-link="register" href="#">Créala aquí</a></p>
+      </form>
+    </section>
+
+    <!-- Panel -->
+    <section id="panel-view" hidden>
+      <div class="panel-head">
+        <div>
+          <p class="hero-kicker">Mi cuenta</p>
+          <h1 class="panel-title" id="account-name"></h1>
+        </div>
+        <button class="btn btn-ghost btn-small" id="logout">Salir</button>
+      </div>
+
+      <div class="notice" id="online-notice" hidden>
+        🎮 Estás conectado al juego. <strong>Sal del juego</strong> para usar el panel (espera un minuto después de salir).
+      </div>
+      <p class="toast" id="toast" role="status" hidden></p>
+
+      <div class="chars" id="chars"></div>
+
+      <section class="card form password">
+        <h3>Cambiar clave</h3>
+        <form id="password-form">
+          <label>Clave actual
+            <input name="current" type="password" required minlength="4" maxlength="10" autocomplete="current-password" />
+          </label>
+          <label>Clave nueva (4 a 10 caracteres)
+            <input name="next" type="password" required minlength="4" maxlength="10" autocomplete="new-password" />
+          </label>
+          <label>Repite la clave nueva
+            <input name="again" type="password" required minlength="4" maxlength="10" autocomplete="new-password" />
+          </label>
+          <button class="btn btn-gold" type="submit">Cambiar clave</button>
+        </form>
+      </section>
+    </section>
+  </main>
+
+  <!-- Repartir puntos -->
+  <dialog id="points-dialog" class="dialog">
+    <form method="dialog" id="points-form">
+      <h3>Repartir puntos · <span id="points-char"></span></h3>
+      <p class="muted">Puntos libres: <strong id="points-left"></strong></p>
+      <div class="points-grid" id="points-grid"></div>
+      <div class="dialog-actions">
+        <button class="btn btn-ghost" value="cancel" formnovalidate>Cancelar</button>
+        <button class="btn btn-gold" id="points-ok" value="ok">Repartir</button>
+      </div>
+    </form>
+  </dialog>
+
+  <footer class="footer">
+    <p class="small">BarrioMU nunca te pedirá tu clave por Discord ni WhatsApp.</p>
+  </footer>
+</body>
+</html>

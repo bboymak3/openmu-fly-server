@@ -1,9 +1,9 @@
-// BarrioMU API (solo lectura): estado del servidor, rankings y horarios de
-// eventos para la landing https://barriomu.makeseo.app.
+// BarrioMU API: estado del servidor, rankings y horarios de eventos para la
+// landing https://barriomu.makeseo.app, y el panel de usuario (panel.ts).
 //
 // Corre en la tablet con el Bun del proxy (usa su paquete `postgres`) y se
-// publica por el tunel en https://mu-api.makeseo.app. Nunca devuelve datos de
-// cuentas: solo nombres de personajes, clase, nivel, resets y PvP.
+// publica por el tunel en https://mu-api.makeseo.app. Las rutas publicas solo
+// devuelven nombres de personajes, clase, nivel, resets y PvP.
 //
 // Variables:
 //   PORT          puerto (por defecto 3400, solo dentro de la tablet)
@@ -13,6 +13,7 @@
 import postgres from "postgres";
 import { connect } from "node:net";
 import { readFileSync } from "node:fs";
+import { handlePanel } from "./panel";
 
 const PORT = Number(process.env.PORT || 3400);
 const DATABASE_URL = process.env.DATABASE_URL || "postgres://postgres:admin@127.0.0.1:5432/openmu";
@@ -206,7 +207,13 @@ async function events() {
 function corsHeaders(req: Request): Record<string, string> {
   const origin = req.headers.get("origin");
   if (!origin || !ORIGINS.has(origin)) return {};
-  return { "Access-Control-Allow-Origin": origin, Vary: "Origin", "Access-Control-Allow-Methods": "GET, OPTIONS" };
+  return {
+    "Access-Control-Allow-Origin": origin,
+    Vary: "Origin",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Authorization, Content-Type",
+    "Access-Control-Max-Age": "86400",
+  };
 }
 
 function limitOf(url: URL): number {
@@ -221,6 +228,9 @@ Bun.serve({
     const url = new URL(req.url);
     const cors = corsHeaders(req);
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
+
+    const panel = await handlePanel(req, url, cors, sql);
+    if (panel) return panel;
     if (req.method !== "GET") return new Response("Method not allowed", { status: 405, headers: cors });
 
     const reply = (body: string, seconds: number) =>
