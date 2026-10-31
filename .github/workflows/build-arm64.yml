@@ -91,14 +91,15 @@ jobs:
       - name: Crear zip
         run: cd out && zip -qr ../openmu-linux-arm64.zip .
 
+      # La etiqueta openmu-arm64 ya existe (la compilacion no puede crear etiquetas):
+      # se crea el Release si falta y se reemplazan sus archivos.
       - name: Publicar en Releases
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           OPENMU_COMMIT=$(git -C openmu rev-parse --short HEAD)
-          gh release delete openmu-arm64 --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes || true
-          gh release create openmu-arm64 openmu-linux-arm64.zip \
-            --repo "$GITHUB_REPOSITORY" \
-            --target "$GITHUB_SHA" \
-            --title "OpenMU linux-arm64" \
-            --notes "Compilado desde MUnique/OpenMU commit ${OPENMU_COMMIT}."
+          gh release view openmu-arm64 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create openmu-arm64 --repo "$GITHUB_REPOSITORY" --verify-tag \
+              --title "OpenMU linux-arm64" \
+              --notes "Compilado desde MUnique/OpenMU commit ${OPENMU_COMMIT}."
+          gh release upload openmu-arm64 openmu-linux-arm64.zip --repo "$GITHUB_REPOSITORY" --clobber

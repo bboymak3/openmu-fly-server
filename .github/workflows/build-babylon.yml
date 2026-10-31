@@ -156,13 +156,14 @@ jobs:
           mv instalar-babylon.sh babylon-proxy-arm64.tar.gz parts/
           cat parts/instalar-babylon.sh
 
+      # La etiqueta babylon-arm64 ya existe (la compilacion no puede crear etiquetas):
+      # se crea el Release si falta y se reemplazan sus archivos.
       - name: Publicar en Releases
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release delete babylon-arm64 --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes || true
-          gh release create babylon-arm64 parts/* \
-            --repo "$GITHUB_REPOSITORY" \
-            --target "$GITHUB_SHA" \
-            --title "Cliente Babylon linux-arm64" \
-            --notes "Cliente web Ignies/OpenMu-Client-Babylon con proxy, para la tablet."
+          gh release view babylon-arm64 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create babylon-arm64 --repo "$GITHUB_REPOSITORY" --verify-tag \
+              --title "Cliente Babylon linux-arm64" \
+              --notes "Cliente web Ignies/OpenMu-Client-Babylon con proxy, para la tablet."
+          gh release upload babylon-arm64 parts/* --repo "$GITHUB_REPOSITORY" --clobber
