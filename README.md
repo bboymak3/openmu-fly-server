@@ -37,6 +37,10 @@ tablet en `https://mu-api.makeseo.app` (`babylon/api/main.ts`, puerto 3400).
   compilacion, carpeta de salida `web`. Dominio propio `barriomu.makeseo.app`.
 - **Tunel**: ruta `mu-api.makeseo.app` -> `http://localhost:3400`.
 - Links, caracteristicas y reglas: `web/config.js`. Noticias: `web/news.json`.
+- **Mi cuenta** (`web/cuenta.html`, `babylon/api/panel.ts`): login con la cuenta
+  del juego, Add Points, PK Clear, desbloquear personaje y cambio de clave.
+  Solo con la cuenta desconectada (lo confirma el proxy) y un minuto despues
+  de salir del juego. Limite de intentos de login por IP y por cuenta.
 
 ## Manejo diario (Termux normal, `~ $`)
 
