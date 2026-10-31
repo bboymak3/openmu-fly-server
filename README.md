@@ -1,71 +1,73 @@
-# OpenMU Fly Server
+# BarrioMU
 
-Servidor de Mu Online Season 6 Episode 3 usando OpenMU desplegado en Fly.io.
+Servidor de MU Online Season 6 Episodio 3 que corre en una tablet Android y se
+juega desde el navegador en **https://mu.makeseo.app**.
 
-## Puertos
+- Servidor: [OpenMU](https://github.com/MUnique/OpenMU) con PostgreSQL, dentro de
+  Termux (Ubuntu con proot-distro).
+- Cliente: [OpenMu Client Babylon](https://github.com/Ignies/OpenMu-Client-Babylon)
+  con el logo y la lista de servidores de BarrioMU.
+- Internet: Cloudflare Tunnel, sin abrir puertos ni IP publica.
 
-| Puerto | Servicio | Protocolo |
-|--------|----------|-----------|
-| 80/443 | Web Admin Panel | HTTP/HTTPS |
-| 44405 | ConnectServer | TCP crudo |
-| 55901 | GameServer | TCP crudo |
+## Servidores
 
-## Guia de despliegue
+| Servidor | PvP | Drop |
+|---|---|---|
+| MIJAGUA | Si | Normal |
+| ALTOBARINAS | No | Doble |
 
-### 1. Instalar flyctl
+## Direcciones
+
+| Direccion | Que es | En la tablet |
+|---|---|---|
+| https://mu.makeseo.app | El juego | puerto 8081 |
+| wss://mu-ws.makeseo.app | Proxy del juego | puerto 3000 |
+| https://mu-registro.makeseo.app | Crear cuenta | puerto 8082 |
+| http://localhost:8080 | Panel de admin de OpenMU (solo en la tablet) | puerto 8080 |
+
+## Manejo diario (Termux normal, `~ $`)
+
 ```bash
-curl -L https://fly.io/install.sh | sh
-flyctl auth login
+bash ~/barriomu.sh prender     # prende todo y el vigilante
+bash ~/barriomu.sh apagar      # apaga todo
+bash ~/barriomu.sh estado      # que esta prendido
+bash ~/barriomu.sh logs        # lo que va pasando
+bash ~/barriomu.sh arranque    # prender solo al encender la tablet (Termux:Boot)
+bash ~/barriomu.sh reset-db    # BORRA la base y crea barrio01..barrio10
 ```
 
-### 2. Crear la app
+El script se descarga con:
+
 ```bash
-flyctl apps create openmu-mu-online
+wget -O ~/barriomu.sh https://raw.githubusercontent.com/bboymak3/openmu-fly-server/main/babylon/barriomu.sh
 ```
 
-### 3. Crear PostgreSQL
-```bash
-flyctl postgres create --name openmu-db --region scl
-flyctl postgres attach --postgres-app openmu-db --app openmu-mu-online
-```
+## Compilacion (GitHub Actions)
 
-### 4. Generar FLY_API_TOKEN para GitHub
-```bash
-flyctl tokens create deploy -a openmu-mu-online
-```
-Copiar el token y agregarlo en:
-https://github.com/bboymak3/openmu-fly-server/settings/secrets/actions
-- Name: `FLY_API_TOKEN`
-- Value: el token generado
+Las dos compilaciones usan versiones fijas, para que un cambio en los proyectos
+originales no rompa el servidor.
 
-### 5. Crear volumen y asignar IP
-```bash
-flyctl volumes create openmu_data --region scl --size 1
-flyctl ips allocate-v4 --app openmu-mu-online
-```
-Anotar la IP asignada para el cliente de Mu.
+| Workflow | Que compila | Release |
+|---|---|---|
+| `build-arm64.yml` | OpenMU para linux-arm64, con los cambios de `openmu-barrio/` | `openmu-arm64` |
+| `build-babylon.yml` | Cliente, proxy y registro, con el logo de `babylon/branding/` | `babylon-arm64` |
 
-### 6. Desplegar
-Push al repo (deploy automatico via GitHub Actions) o manual:
-```bash
-flyctl deploy --remote-only
-```
+Cambios sobre OpenMU (`openmu-barrio/`):
 
-### 7. Configurar cliente de Mu Online
-Editar `main.exe` con editor hex:
-- IP: la asignada por Fly.io
-- ConnectServer Port: 44405
-- GameServer Port: 55901
+- Cuentas `barrio01` a `barrio10` (clave igual al usuario), cada una con un
+  personaje nivel 400 de tercera clase, set +15 y alas de tercera. Se crean al
+  hacer `reset-db`.
+- Dos game servers: MIJAGUA (PvP) y ALTOBARINAS (sin PvP, doble drop).
+- Sin limite de conexiones por IP en el Connect Server: todos los jugadores
+  llegan por el proxy desde 127.0.0.1.
 
-Para Winlator (Android): copiar el cliente modificado al Winlator.
+## Archivos
 
-## Comandos utiles
-```bash
-flyctl status -a openmu-mu-online
-flyctl logs -a openmu-mu-online
-flyctl ssh console -a openmu-mu-online
-flyctl ips list -a openmu-mu-online
-flyctl apps restart openmu-mu-online
-```
-
-## Costos estimados: ~$4-7/mes
+| Archivo | Para que |
+|---|---|
+| `babylon/barriomu.sh` | Prender, apagar y vigilar todo |
+| `babylon/iniciar-cliente.sh` | Arranca proxy, pagina y registro (lo usa barriomu.sh) |
+| `babylon/servir.ts` | Servidor web minimo de la pagina y el registro |
+| `babylon/diagnostico.sh` | Prueba OpenMU, proxy y Cloudflare por separado |
+| `babylon/branding/` | Logo, iconos y lista de servidores |
+| `openmu-barrio/` | Cambios de BarrioMU sobre OpenMU |

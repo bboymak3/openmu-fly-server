@@ -7,10 +7,16 @@
 #   bash ~/barriomu.sh estado      que esta prendido y que no
 #   bash ~/barriomu.sh logs        muestra lo que va pasando (CTRL+C para salir)
 #   bash ~/barriomu.sh reset-db    BORRA la base de datos y la crea de nuevo
+#   bash ~/barriomu.sh arranque    prende BarrioMU solo al encender la tablet
+#                                  (necesita la app Termux:Boot)
+#
+# Al prender tambien arranca un vigilante que cada 5 minutos revisa que todo
+# siga prendido y vuelve a prender lo que se haya caido.
 
 PGDATA="$PREFIX/var/lib/postgresql"
 LOGS="$HOME/barriomu-logs"
 TOKEN="$HOME/.barriomu-token"
+WATCHDOG_PID="$LOGS/vigilante.pid"
 mkdir -p "$LOGS"
 
 command -v pgrep >/dev/null || pkg install -y procps >/dev/null
@@ -60,12 +66,50 @@ prender() {
     echo "   prendido"
   fi
 
+  [ -n "$VIGILANTE" ] || start_watchdog
+
   echo
   echo "Listo: https://mu.makeseo.app"
 }
 
+watchdog_running() { [ -f "$WATCHDOG_PID" ] && kill -0 "$(cat "$WATCHDOG_PID")" 2>/dev/null; }
+
+start_watchdog() {
+  watchdog_running && return
+  nohup bash "$0" vigilar </dev/null >>"$LOGS/vigilante.log" 2>&1 &
+  echo $! >"$WATCHDOG_PID"
+  echo "5) Vigilante prendido (revisa cada 5 minutos)"
+}
+
+stop_watchdog() {
+  watchdog_running && kill "$(cat "$WATCHDOG_PID")" 2>/dev/null
+  rm -f "$WATCHDOG_PID"
+}
+
+vigilar() {
+  while true; do
+    sleep 300
+    echo "--- $(date '+%F %T') revisando"
+    VIGILANTE=1 prender
+  done
+}
+
+arranque() {
+  mkdir -p "$HOME/.termux/boot"
+  cat >"$HOME/.termux/boot/barriomu" <<'BOOT'
+#!/data/data/com.termux/files/usr/bin/sh
+termux-wake-lock
+sleep 30
+bash ~/barriomu.sh prender >>~/barriomu-logs/arranque.log 2>&1
+BOOT
+  chmod +x "$HOME/.termux/boot/barriomu"
+  echo "Listo: BarrioMU se prendera solo al encender la tablet."
+  echo "Recuerda: instala la app Termux:Boot (F-Droid) y abrela una vez."
+}
+
 apagar() {
   echo "Apagando..."
+  stop_watchdog
   pkill -f "cloudflared tunnel run"
   pkill -f proxy/main.ts; pkill -f register/server/main.ts; pkill -f mu-servir
   if pgrep -f MUnique.OpenMU.Startup >/dev/null; then
@@ -88,6 +132,7 @@ estado() {
   show 8082 "Pagina registro   (8082)"
   if pgrep -f "cloudflared tunnel run" >/dev/null; then echo "  [OK]  Tunel Cloudflare"
   else echo "  [--]  Tunel Cloudflare"; fi
+  if watchdog_running; then echo "  [OK]  Vigilante"; else echo "  [--]  Vigilante"; fi
 }
 
 reset_db() {
@@ -95,6 +140,7 @@ reset_db() {
   echo "y crea de nuevo la base con barrio01..barrio10."
   read -r -p "Escribe SI para continuar: " ok
   [ "$ok" = "SI" ] || { echo "Cancelado."; return 1; }
+  stop_watchdog
   pkill -f proxy/main.ts; pkill -f register/server/main.ts; pkill -f mu-servir
   pkill -TERM -f MUnique.OpenMU.Startup; sleep 5; pkill -KILL -f MUnique.OpenMU.Startup 2>/dev/null
   pg_ctl -D "$PGDATA" status >/dev/null 2>&1 || pg_ctl -D "$PGDATA" -l "$PGDATA/log.txt" -w start >/dev/null
@@ -109,5 +155,7 @@ case "$1" in
   estado) estado ;;
   logs) tail -n 30 -f "$LOGS"/*.log ;;
   reset-db) reset_db ;;
-  *) sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//' ;;
+  arranque) arranque ;;
+  vigilar) vigilar ;;
+  *) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//' ;;
 esac

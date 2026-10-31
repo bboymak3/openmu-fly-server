@@ -20,8 +20,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Version fija de OpenMU: la que ya se probo en la tablet. Para cambiarla,
+      # poner otro commit aqui y revisar que los parches de openmu-barrio apliquen.
       - name: Descargar codigo de OpenMU
-        run: git clone --depth 1 https://github.com/MUnique/OpenMU.git openmu
+        env:
+          OPENMU_COMMIT: b15148ea9f5dc6ea49b86224800a8e6608262457
+        run: |
+          git init -q openmu
+          git -C openmu fetch -q --depth 1 https://github.com/MUnique/OpenMU.git "$OPENMU_COMMIT"
+          git -C openmu checkout -q FETCH_HEAD
 
       - name: Personalizar BarrioMU
         run: |
@@ -32,11 +39,17 @@ jobs:
           # 2 game servers con nombre propio
           sed -i 's/CreateInitialDataAsync(3, true)/CreateInitialDataAsync(2, true)/' $S/Startup/Program.cs
           sed -i 's/server.Description = \$"Server {i}";/server.Description = i switch { 0 => "MIJAGUA", 1 => "ALTOBARINAS", _ => $"Server {i}" };/' $S/Persistence/Initialization/DataInitializationBase.cs
+          # MIJAGUA con PvP, ALTOBARINAS sin PvP (en una base de datos nueva)
+          sed -i 's/server.ExperienceRate = 1.0f;/server.ExperienceRate = 1.0f;\n            server.PvpEnabled = i != 1;/' $S/Persistence/Initialization/DataInitializationBase.cs
+          # ALTOBARINAS con doble drop
+          git -C openmu apply ../openmu-barrio/doble-drop.patch
           # Todos los jugadores llegan por el proxy desde 127.0.0.1: sin limite por IP
           sed -i 's/this.CheckMaxConnectionsPerAddress = true;/this.CheckMaxConnectionsPerAddress = false;/' $S/DataModel/Configuration/ConnectServerDefinition.cs
           grep -c 'CreateInitialDataAsync(2, true)' $S/Startup/Program.cs
           grep -c 'MIJAGUA' $S/Persistence/Initialization/DataInitializationBase.cs
           grep -c 'CheckMaxConnectionsPerAddress = false' $S/DataModel/Configuration/ConnectServerDefinition.cs
+          grep -c 'PvpEnabled = i != 1' $S/Persistence/Initialization/DataInitializationBase.cs
+          grep -c 'DropRateMultiplier' $S/GameServer/GameServer.cs
 
       - uses: actions/setup-dotnet@v4
         with:
