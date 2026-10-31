@@ -76,6 +76,29 @@
 
   let data = null;
 
+  const zenFmt = n => Number(n).toLocaleString("es");
+
+  function canReset(c) {
+    const r = data.reset;
+    return !!(r && c.nextReset && c.level >= r.requiredLevel && Number(c.zen) >= c.nextReset.zen && !(r.limit && c.nextReset.next > r.limit));
+  }
+
+  /** Lo que pide y da el proximo reset de este personaje. */
+  function resetInfo(c) {
+    const r = data.reset;
+    if (!r || !c.nextReset) return "";
+    const lvl = c.level >= r.requiredLevel ? "ok" : "bad";
+    const zen = Number(c.zen) >= c.nextReset.zen ? "ok" : "bad";
+    return `
+      <div class="reset-box">
+        <strong>Reset ${c.nextReset.next}</strong>
+        <span class="${lvl}">Nivel ${r.requiredLevel}</span>
+        <span class="${zen}">${zenFmt(c.nextReset.zen)} zen</span>
+        <span>→ ${zenFmt(c.nextReset.points)} puntos</span>
+        ${r.panel ? "" : '<em>Se hace dentro del juego: escribe /reset</em>'}
+      </div>`;
+  }
+
   function render() {
     $("#login-view").hidden = true;
     $("#panel-view").hidden = false;
@@ -106,11 +129,14 @@
             <div><dt>Energía</dt><dd>${c.ene}</dd></div>
             ${c.cmd != null ? `<div><dt>Comando</dt><dd>${c.cmd}</dd></div>` : ""}
             <div><dt>Puntos libres</dt><dd class="gold">${c.points}</dd></div>
+            <div><dt>Zen</dt><dd>${Number(c.zen).toLocaleString("es")}</dd></div>
           </dl>
+          ${resetInfo(c)}
           <div class="char-actions">
             <button class="btn btn-gold btn-small" data-act="points" data-i="${i}" ${locked || !c.points ? "disabled" : ""}>➕ Add Points</button>
             <button class="btn btn-ghost btn-small" data-act="pk" data-i="${i}" ${locked || !c.isPk ? "disabled" : ""}>🕊 PK Clear</button>
             <button class="btn btn-ghost btn-small" data-act="unstuck" data-i="${i}" ${locked ? "disabled" : ""}>🆘 Desbloquear</button>
+            ${data.reset?.panel ? `<button class="btn btn-gold btn-small" data-act="reset" data-i="${i}" ${locked || !canReset(c) ? "disabled" : ""}>🔁 Reset</button>` : ""}
           </div>
         </article>`)
           .join("")
@@ -177,6 +203,11 @@
       if (confirm(`¿Limpiar el estado PK de ${c.name}?`)) act("/me/pk-clear", c.name);
     } else if (btn.dataset.act === "unstuck") {
       if (confirm(`¿Mandar a ${c.name} a su ciudad de inicio?`)) act("/me/unstuck", c.name);
+    } else if (btn.dataset.act === "reset") {
+      const n = c.nextReset;
+      if (confirm(`¿Hacer el reset ${n.next} de ${c.name}?\n\nCuesta ${zenFmt(n.zen)} zen. Vuelve a nivel inicial, las estadísticas vuelven a cero y recibe ${zenFmt(n.points)} puntos para repartir.`)) {
+        act("/me/reset", c.name);
+      }
     } else if (btn.dataset.act === "points") {
       openPoints(c);
     }

@@ -41,6 +41,8 @@ tablet en `https://mu-api.makeseo.app` (`babylon/api/main.ts`, puerto 3400).
   del juego, Add Points, PK Clear, desbloquear personaje y cambio de clave.
   Solo con la cuenta desconectada (lo confirma el proxy) y un minuto despues
   de salir del juego. Limite de intentos de login por IP y por cuenta.
+  Con los resets activos tambien tiene el boton Reset (mismas reglas que
+  /reset en el juego).
 
 ## Manejo diario (Termux normal, `~ $`)
 
@@ -51,6 +53,8 @@ bash ~/barriomu.sh estado      # que esta prendido
 bash ~/barriomu.sh logs        # lo que va pasando
 bash ~/barriomu.sh arranque    # prender solo al encender la tablet (Termux:Boot)
 bash ~/barriomu.sh reset-db    # BORRA la base y crea barrio01..barrio10
+bash ~/barriomu.sh panel on|off # panel de admin bajo demanda
+bash ~/barriomu.sh resets      # activa los resets (nivel 400, sin limite)
 ```
 
 El script se descarga con:

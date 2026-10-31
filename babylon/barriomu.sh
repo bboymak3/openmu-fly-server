@@ -11,6 +11,7 @@
 #                                  (necesita la app Termux:Boot)
 #   bash ~/barriomu.sh panel on    prende el panel de admin (reinicia OpenMU)
 #   bash ~/barriomu.sh panel off   lo apaga para ahorrar memoria (reinicia OpenMU)
+#   bash ~/barriomu.sh resets      activa los resets de BarrioMU (reinicia OpenMU)
 #
 # Al prender tambien arranca un vigilante que cada 5 minutos revisa que todo
 # siga prendido y vuelve a prender lo que se haya caido.
@@ -126,6 +127,32 @@ vigilar() {
   done
 }
 
+# Reset de OpenMU (ResetFeaturePlugIn): nivel 400, sin limite, stats a cero,
+# 1.500 puntos x reset, 1.000.000 de zen x reset, vuelve a nivel 1.
+RESET_PLUGIN="6a9d585d-79d7-4674-b6ea-7e87392fa501"
+RESET_CONFIG='{"RequiredLevel":400,"ResetLimit":null,"LevelAfterReset":1,"RequiredMoney":1000000,"MultiplyRequiredMoneyByResetCount":true,"ResetStats":true,"PointsPerReset":1500,"MultiplyPointsByResetCount":true,"ReplacePointsPerReset":true,"MoveHome":true,"LogOut":true}'
+
+resets() {
+  pg_ctl -D "$PGDATA" status >/dev/null 2>&1 || { echo "PostgreSQL esta apagado: bash ~/barriomu.sh prender"; return 1; }
+  echo "Activando resets..."
+  psql -U postgres -d openmu -v ON_ERROR_STOP=1 -q <<SQL || { echo "No se pudo activar."; return 1; }
+UPDATE config."PlugInConfiguration"
+   SET "IsActive" = true,
+       "CustomConfiguration" = (coalesce(nullif("CustomConfiguration", ''), '{}')::jsonb || '$RESET_CONFIG'::jsonb)::text
+ WHERE "TypeId" = '$RESET_PLUGIN';
+INSERT INTO config."PlugInConfiguration" ("Id", "GameConfigurationId", "TypeId", "IsActive", "CustomConfiguration")
+SELECT gen_random_uuid(), (SELECT "Id" FROM config."GameConfiguration" LIMIT 1), '$RESET_PLUGIN', true, '$RESET_CONFIG'
+ WHERE NOT EXISTS (SELECT 1 FROM config."PlugInConfiguration" WHERE "TypeId" = '$RESET_PLUGIN');
+SQL
+  echo "Listo. Reiniciando OpenMU para que lo lea (los jugadores se desconectan un momento)..."
+  stop_watchdog
+  stop_openmu
+  start_openmu ""
+  wait_port 44405 OpenMU 600
+  start_watchdog
+  echo "Resets activos: en el juego escribe /reset (nivel 400)."
+}
+
 arranque() {
   mkdir -p "$HOME/.termux/boot"
   cat >"$HOME/.termux/boot/barriomu" <<'BOOT'
@@ -187,6 +214,7 @@ case "$1" in
   reset-db) reset_db ;;
   arranque) arranque ;;
   panel) panel "$2" ;;
+  resets) resets ;;
   vigilar) vigilar ;;
-  *) sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//' ;;
+  *) sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//' ;;
 esac

@@ -152,11 +152,13 @@ img { display: block; max-width: 100%; }
 .event.is-soon .countdown { color: #ff9b9b; }
 
 /* Rankings */
-.tabs { display: flex; justify-content: center; gap: 8px; margin: 24px 0; }
+.tabs { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 24px 0; }
 .tab {
   padding: 10px 22px; border-radius: 999px; border: 1px solid var(--card-border);
   background: transparent; color: var(--muted); font: inherit; font-weight: 700; cursor: pointer;
+  white-space: nowrap;
 }
+@media (max-width: 420px) { .tab { padding: 9px 14px; font-size: 0.9rem; } }
 .tab.is-active { background: linear-gradient(180deg, var(--gold-2), var(--gold)); color: #1b1305; border-color: transparent; }
 
 .podium { display: grid; grid-template-columns: 1fr 1.15fr 1fr; gap: 12px; align-items: end; margin-bottom: 20px; }
@@ -280,3 +282,13 @@ img { display: block; max-width: 100%; }
 .points-grid { display: grid; gap: 12px; }
 .points-grid label { display: grid; gap: 6px; color: var(--muted); font-size: 0.9rem; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+
+.reset-box {
+  display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; margin: -4px 0 14px;
+  padding: 10px 12px; border-radius: 10px; font-size: 0.85rem;
+  background: rgba(232, 183, 92, 0.07); border: 1px dashed rgba(232, 183, 92, 0.35);
+}
+.reset-box strong { color: var(--gold-2); }
+.reset-box .ok { color: #86efac; }
+.reset-box .bad { color: #ff9b9b; }
+.reset-box em { flex-basis: 100%; color: var(--muted); }

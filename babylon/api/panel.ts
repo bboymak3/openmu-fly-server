@@ -40,6 +40,61 @@ const PRESENCE_URL = process.env.PRESENCE_URL ?? "http://127.0.0.1:3001";
 /** Tiempo que OpenMU necesita para guardar despues de que el jugador sale. */
 const OFFLINE_COOLDOWN_MS = Number(process.env.OFFLINE_COOLDOWN_MS ?? 60_000);
 
+/** ResetFeaturePlugIn de OpenMU: su configuracion la escribe `barriomu.sh resets`. */
+const RESET_PLUGIN = "6a9d585d-79d7-4674-b6ea-7e87392fa501";
+
+type ResetConfig = {
+  RequiredLevel: number;
+  ResetLimit: number | null;
+  LevelAfterReset: number;
+  RequiredMoney: number;
+  MultiplyRequiredMoneyByResetCount: boolean;
+  ResetStats: boolean;
+  PointsPerReset: number;
+  MultiplyPointsByResetCount: boolean;
+  ReplacePointsPerReset: boolean;
+  MoveHome: boolean;
+  /** Si hay items o escalas, el reset solo se hace en el juego (/reset). */
+  simple: boolean;
+};
+
+const RESET_DEFAULTS = {
+  RequiredLevel: 400, ResetLimit: null, LevelAfterReset: 10, RequiredMoney: 1,
+  MultiplyRequiredMoneyByResetCount: true, ResetStats: true, PointsPerReset: 1500,
+  MultiplyPointsByResetCount: true, ReplacePointsPerReset: true, MoveHome: true,
+};
+
+/** La lista de una coleccion del JSON de OpenMU (con o sin "$values"). */
+const listOf = (v: unknown): unknown[] =>
+  Array.isArray(v) ? v : Array.isArray((v as { $values?: unknown[] })?.$values) ? (v as { $values: unknown[] }).$values : [];
+
+/** La configuracion del reset si esta activo; null si no. */
+async function resetConfig(sql: Sql): Promise<ResetConfig | null> {
+  const [row] = await sql`
+    select "IsActive" as active, "CustomConfiguration" as config
+    from config."PlugInConfiguration" where "TypeId" = ${RESET_PLUGIN} limit 1`;
+  if (!row?.active) return null;
+  let parsed: Record<string, unknown> = {};
+  try {
+    parsed = row.config ? JSON.parse(row.config) : {};
+  } catch {
+    return null;
+  }
+  return {
+    ...RESET_DEFAULTS,
+    ...parsed,
+    simple: !parsed.RequiredResetItem && listOf(parsed.PointsTiers).length === 0 && listOf(parsed.ItemCostTiers).length === 0,
+  } as ResetConfig;
+}
+
+/** Lo que cuesta y da el proximo reset (ResetProgressionCalculator de OpenMU, sin escalas). */
+function nextReset(cfg: ResetConfig, resets: number) {
+  const next = resets + 1;
+  const zen = Math.max(0, cfg.RequiredMoney) * (cfg.MultiplyRequiredMoneyByResetCount ? next : 1);
+  const points = Math.max(0, cfg.PointsPerReset) * (cfg.MultiplyPointsByResetCount ? next : 1);
+  return { next, zen, points };
+}
+
 const SESSION_MS = 2 * 60 * 60 * 1000;
 const sessions = new Map<string, { accountId: string; login: string; expires: number }>();
 
@@ -171,7 +226,7 @@ async function me(req: Request, sql: Sql) {
   const rows = await sql`
     select c."Id"::text as id, c."Name" as name, cc."Number" as class,
            c."LevelUpPoints" as points, c."PlayerKillCount" as kills, c."State" as "heroState",
-           m."Number" as map,
+           m."Number" as map, coalesce(inv."Money", 0) as zen,
            coalesce(lv."Value", 0)::int as level,
            coalesce(ml."Value", 0)::int as "masterLevel",
            coalesce(rs."Value", 0)::int as resets,
@@ -181,6 +236,7 @@ async function me(req: Request, sql: Sql) {
     from data."Character" c
     join config."CharacterClass" cc on cc."Id" = c."CharacterClassId"
     left join config."GameMapDefinition" m on m."Id" = c."CurrentMapId"
+    left join data."ItemStorage" inv on inv."Id" = c."InventoryId"
     left join data."StatAttribute" lv on lv."CharacterId" = c."Id" and lv."DefinitionId" = ${LEVEL}
     left join data."StatAttribute" ml on ml."CharacterId" = c."Id" and ml."DefinitionId" = ${MASTER_LEVEL}
     left join data."StatAttribute" rs on rs."CharacterId" = c."Id" and rs."DefinitionId" = ${RESETS}
@@ -198,10 +254,16 @@ async function me(req: Request, sql: Sql) {
   } catch {
     online = null;
   }
+  const cfg = await resetConfig(sql);
   return {
     account: s.login,
     online,
-    characters: rows.map(r => ({ ...r, isPk: r.heroState > HERO_NORMAL })),
+    reset: cfg ? { requiredLevel: cfg.RequiredLevel, limit: cfg.ResetLimit, panel: cfg.simple } : null,
+    characters: rows.map(r => ({
+      ...r,
+      isPk: r.heroState > HERO_NORMAL,
+      nextReset: cfg ? nextReset(cfg, r.resets) : null,
+    })),
   };
 }
 
@@ -289,6 +351,76 @@ async function unstuck(req: Request, sql: Sql) {
   });
 }
 
+/** El reset de OpenMU (ResetCharacterAction), hecho sobre la base con la cuenta desconectada. */
+async function reset(req: Request, sql: Sql) {
+  const s = session(req);
+  const b = await body(req);
+  const cfg = await resetConfig(sql);
+  if (!cfg) throw new PanelError(400, "Los resets no estan activos en BarrioMU.");
+  if (!cfg.simple) throw new PanelError(400, "Este reset se hace dentro del juego: escribe /reset.");
+  await requireOffline(s.login);
+
+  return sql.begin(async tx => {
+    const c = await ownCharacter(tx, s.accountId, b.character);
+    const [info] = await tx`
+      select coalesce(lv."Value", 0)::int as level, coalesce(rs."Value", 0)::int as resets,
+             lv."Id"::text as "levelId", rs."Id"::text as "resetsId",
+             inv."Id"::text as "inventoryId", coalesce(inv."Money", 0) as money
+      from data."Character" ch
+      left join data."StatAttribute" lv on lv."CharacterId" = ch."Id" and lv."DefinitionId" = ${LEVEL}
+      left join data."StatAttribute" rs on rs."CharacterId" = ch."Id" and rs."DefinitionId" = ${RESETS}
+      left join data."ItemStorage" inv on inv."Id" = ch."InventoryId"
+      where ch."Id" = ${c.id}
+      for update of ch`;
+    if (!info?.levelId) throw new PanelError(500, "No se encontro el nivel del personaje.");
+    if (info.level < cfg.RequiredLevel) throw new PanelError(400, `${c.name} necesita nivel ${cfg.RequiredLevel} para resetear.`);
+
+    const { next, zen, points } = nextReset(cfg, info.resets);
+    if (cfg.ResetLimit && cfg.ResetLimit > 0 && next > cfg.ResetLimit) {
+      throw new PanelError(400, `Ya llegaste al maximo de ${cfg.ResetLimit} resets.`);
+    }
+    if (zen > 0) {
+      if (!info.inventoryId || info.money < zen) {
+        throw new PanelError(400, `Necesitas ${zen.toLocaleString("es")} de zen en el inventario de ${c.name}.`);
+      }
+      await tx`update data."ItemStorage" set "Money" = "Money" - ${zen} where "Id" = ${info.inventoryId}`;
+    }
+
+    if (info.resetsId) {
+      await tx`update data."StatAttribute" set "Value" = ${next} where "Id" = ${info.resetsId}`;
+    } else {
+      await tx`insert into data."StatAttribute" ("Id", "DefinitionId", "CharacterId", "Value")
+               values (gen_random_uuid(), ${RESETS}, ${c.id}, ${next})`;
+    }
+    await tx`update data."StatAttribute" set "Value" = ${cfg.LevelAfterReset} where "Id" = ${info.levelId}`;
+
+    if (cfg.ResetStats) {
+      // Las estadisticas que el jugador sube vuelven al valor inicial de su clase.
+      await tx`
+        update data."StatAttribute" sa set "Value" = d."BaseValue"
+        from config."StatAttributeDefinition" d
+        where sa."CharacterId" = ${c.id} and d."CharacterClassId" = ${c.classId}
+          and d."AttributeId" = sa."DefinitionId" and d."IncreasableByPlayer"`;
+    }
+    const newPoints = cfg.ReplacePointsPerReset ? points : c.points + points;
+    await tx`update data."Character" set "Experience" = 0, "LevelUpPoints" = ${newPoints} where "Id" = ${c.id}`;
+
+    if (cfg.MoveHome) {
+      const [gate] = await tx`
+        select g."MapId"::text as map, g."X1" as x1, g."Y1" as y1, g."X2" as x2, g."Y2" as y2
+        from config."CharacterClass" cc
+        join config."ExitGate" g on g."MapId" = cc."HomeMapId" and g."IsSpawnGate"
+        where cc."Id" = ${c.classId} limit 1`;
+      if (gate) {
+        await tx`update data."Character" set "CurrentMapId" = ${gate.map},
+                 "PositionX" = ${Math.round((gate.x1 + gate.x2) / 2)}, "PositionY" = ${Math.round((gate.y1 + gate.y2) / 2)}
+                 where "Id" = ${c.id}`;
+      }
+    }
+    return { ok: true, message: `¡Reset ${next} listo! ${c.name} vuelve a nivel ${cfg.LevelAfterReset} con ${newPoints.toLocaleString("es")} puntos.` };
+  });
+}
+
 async function changePassword(req: Request, sql: Sql) {
   const s = session(req);
   const b = await body(req);
@@ -327,6 +459,7 @@ export async function handlePanel(
     "/me/add-points": ["POST", addPoints],
     "/me/pk-clear": ["POST", pkClear],
     "/me/unstuck": ["POST", unstuck],
+    "/me/reset": ["POST", reset],
     "/me/password": ["POST", changePassword],
   };
   if (url.pathname === "/auth/logout" && req.method === "POST") {
