@@ -17,7 +17,7 @@ using MUnique.OpenMU.PlugIns;
 
 /// <summary>
 /// BarrioMU: two NPCs in Lorencia, next to the spawn, which give buffs.
-/// "Guerrero" (Jerint, 522): +20% attack and +20% magic for 30 minutes, free, any time.
+/// "Guerrero" (David, 579; Jerint 522 has a monster model and the web client never talks to it): +20% attack and +20% magic for 30 minutes, free, any time.
 /// "Fortuna" (Delgado, 478): double experience and double drop for 45 minutes, once every 3 hours.
 /// The buffs show up in the buff bar of the client with their remaining time
 /// (Scroll of Wrath, Scroll of Wizardry and Seal of Wealth). They stack with every other buff.
@@ -38,7 +38,7 @@ public class BarrioBuffNpcsPlugIn : IObjectAddedToMapPlugIn, IPlayerTalkToNpcPlu
     /// <summary>The magic effect of Guerrero (eBuff_ScrollOfWizardry of the client).</summary>
     private const short MagicEffectNumber = 47;
 
-    private const short GuerreroNpcNumber = 522;
+    private const short GuerreroNpcNumber = 579;
 
     private const short FortunaNpcNumber = 478;
 

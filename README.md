@@ -85,9 +85,11 @@ Cambios sobre OpenMU (`openmu-barrio/`):
 - Master Reset (`/masterreset` o el panel): con 50 resets y nivel 400 vuelve a
   0 resets; cada Master Reset suma 10.000 puntos a cada reset. Se guarda en
   `~/openmu/data/master-reset.json` (la API lo lee para el ranking).
-- NPCs en Lorencia, frente a la fuente: Guerrero (+20% ataque y magia, 30 min)
-  y Fortuna (doble EXP y doble drop, 45 min, cada 3 horas). Lo que queda de los
+- NPCs en Lorencia, frente a la fuente: Guerrero (David, +20% ataque y magia, 30 min)
+  y Fortuna (Delgado, doble EXP y doble drop, 45 min, cada 3 horas). Lo que queda de los
   buffs se guarda en `~/openmu/data/buffs-npc.json`.
+- Últimos ganadores de Blood Castle, Devil Square y Chaos Castle en la landing:
+  la API los lee de `data."MiniGameRankingEntry"`, donde OpenMU ya los guarda.
 
 ## Archivos
 
