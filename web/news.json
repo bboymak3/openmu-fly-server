@@ -2,6 +2,12 @@
   {
     "date": "2026-10-31",
     "tag": "Novedad",
+    "title": "Master Reset y NPCs de buff",
+    "text": "Con 50 resets escribe /masterreset (o usa Mi cuenta): vuelves a 0 y cada reset te da 10.000 puntos extra. En Lorencia, junto a la fuente: Guerrero (+20% ataque y magia, 30 min) y Fortuna (doble EXP y drop, 45 min cada 3 horas)."
+  },
+  {
+    "date": "2026-10-31",
+    "tag": "Novedad",
     "title": "Premio diario de zen",
     "text": "Cada cuenta recibe 5.000.000 de zen la primera vez que entra al juego cada dia."
   },

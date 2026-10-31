@@ -14,6 +14,7 @@ import postgres from "postgres";
 import { connect } from "node:net";
 import { readFileSync } from "node:fs";
 import { handlePanel } from "./panel";
+import { readMasterResets } from "./masterReset";
 
 const PORT = Number(process.env.PORT || 3400);
 const DATABASE_URL = process.env.DATABASE_URL || "postgres://postgres:admin@127.0.0.1:5432/openmu";
@@ -111,8 +112,13 @@ async function status() {
 }
 
 async function rankingLevel(limit: number) {
+  // Los Master Reset estan en un archivo de OpenMU: van a la consulta como una lista.
+  const masterResets = [...readMasterResets()];
+  const ids = masterResets.map(([id]) => id);
+  const counts = masterResets.map(([, n]) => n);
   const rows = await sql`
     select c."Name" as name, cc."Number" as class,
+           coalesce(mr.n, 0)::int as "masterResets",
            coalesce(lv."Value", 0)::int as level,
            coalesce(ml."Value", 0)::int as "masterLevel",
            coalesce(rs."Value", 0)::int as resets,
@@ -123,8 +129,9 @@ async function rankingLevel(limit: number) {
     left join data."StatAttribute" lv on lv."CharacterId" = c."Id" and lv."DefinitionId" = ${LEVEL}
     left join data."StatAttribute" ml on ml."CharacterId" = c."Id" and ml."DefinitionId" = ${MASTER_LEVEL}
     left join data."StatAttribute" rs on rs."CharacterId" = c."Id" and rs."DefinitionId" = ${RESETS}
+    left join unnest(${ids}::uuid[], ${counts}::int[]) as mr(id, n) on mr.id = c."Id"
     where a."State" <> all(${HIDDEN_ACCOUNT_STATES}::int[])
-    order by resets desc, level desc, "masterLevel" desc, c."Experience" desc, c."Name"
+    order by "masterResets" desc, resets desc, level desc, "masterLevel" desc, c."Experience" desc, c."Name"
     limit ${limit}`;
   return rows.map((r, i) => ({ rank: i + 1, ...r }));
 }

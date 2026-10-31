@@ -178,9 +178,9 @@
   const RANKINGS = {
     level: {
       path: "/rankings/level?limit=50",
-      head: ["#", "Personaje", "Clase", "Nivel", "Master", "Resets"],
-      row: r => [r.level, r.masterLevel, r.resets],
-      podium: r => `Nivel ${r.level}${r.resets ? ` · ${r.resets} RR` : ""}`,
+      head: ["#", "Personaje", "Clase", "MR", "Resets", "Nivel", "Master"],
+      row: r => [r.masterResets ?? 0, r.resets, r.level, r.masterLevel],
+      podium: r => [r.masterResets ? `${r.masterResets} MR` : "", r.resets ? `${r.resets} RR` : "", `Nivel ${r.level}`].filter(Boolean).join(" · "),
     },
     guilds: {
       path: "/rankings/guilds?limit=50",

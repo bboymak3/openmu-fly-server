@@ -8,6 +8,7 @@
 
 import type { Sql } from "postgres";
 import bcrypt from "bcryptjs";
+import { BONUS_POINTS, REQUIRED_RESETS, masterResetsOf, readMasterResets, setMasterResets } from "./masterReset";
 
 // Atributos de OpenMU (MUnique.OpenMU.GameLogic.Attributes.Stats).
 const LEVEL = "560931ad-0901-4342-b7f4-fd2e2fcc0563";
@@ -87,12 +88,16 @@ async function resetConfig(sql: Sql): Promise<ResetConfig | null> {
   } as ResetConfig;
 }
 
-/** Lo que cuesta y da el proximo reset (ResetProgressionCalculator de OpenMU, sin escalas). */
-function nextReset(cfg: ResetConfig, resets: number) {
+/**
+ * Lo que cuesta y da el proximo reset (ResetProgressionCalculator de OpenMU, sin escalas),
+ * con los puntos extra de los Master Reset (master-reset.patch).
+ */
+function nextReset(cfg: ResetConfig, resets: number, masterResets: number) {
   const next = resets + 1;
   const zen = Math.max(0, cfg.RequiredMoney) * (cfg.MultiplyRequiredMoneyByResetCount ? next : 1);
-  const points = Math.max(0, cfg.PointsPerReset) * (cfg.MultiplyPointsByResetCount ? next : 1);
-  return { next, zen, points };
+  const bonus = masterResets * BONUS_POINTS;
+  const points = Math.max(0, cfg.PointsPerReset) * (cfg.MultiplyPointsByResetCount ? next : 1) + bonus;
+  return { next, zen, points, bonus };
 }
 
 const SESSION_MS = 2 * 60 * 60 * 1000;
@@ -255,15 +260,21 @@ async function me(req: Request, sql: Sql) {
     online = null;
   }
   const cfg = await resetConfig(sql);
+  const masterResets = readMasterResets();
   return {
     account: s.login,
     online,
     reset: cfg ? { requiredLevel: cfg.RequiredLevel, limit: cfg.ResetLimit, panel: cfg.simple } : null,
-    characters: rows.map(r => ({
-      ...r,
-      isPk: r.heroState > HERO_NORMAL,
-      nextReset: cfg ? nextReset(cfg, r.resets) : null,
-    })),
+    masterReset: { requiredResets: REQUIRED_RESETS, requiredLevel: cfg?.RequiredLevel ?? 400, bonus: BONUS_POINTS },
+    characters: rows.map(({ id, ...r }) => {
+      const mr = masterResets.get(id.toLowerCase()) ?? 0;
+      return {
+        ...r,
+        masterResets: mr,
+        isPk: r.heroState > HERO_NORMAL,
+        nextReset: cfg ? nextReset(cfg, r.resets, mr) : null,
+      };
+    }),
   };
 }
 
@@ -375,7 +386,7 @@ async function reset(req: Request, sql: Sql) {
     if (!info?.levelId) throw new PanelError(500, "No se encontro el nivel del personaje.");
     if (info.level < cfg.RequiredLevel) throw new PanelError(400, `${c.name} necesita nivel ${cfg.RequiredLevel} para resetear.`);
 
-    const { next, zen, points } = nextReset(cfg, info.resets);
+    const { next, zen, points } = nextReset(cfg, info.resets, masterResetsOf(c.id));
     if (cfg.ResetLimit && cfg.ResetLimit > 0 && next > cfg.ResetLimit) {
       throw new PanelError(400, `Ya llegaste al maximo de ${cfg.ResetLimit} resets.`);
     }
@@ -421,6 +432,63 @@ async function reset(req: Request, sql: Sql) {
   });
 }
 
+/** El Master Reset (BarrioMasterResetPlugIn de OpenMU), hecho sobre la base con la cuenta desconectada. */
+async function masterReset(req: Request, sql: Sql) {
+  const s = session(req);
+  const b = await body(req);
+  const cfg = await resetConfig(sql);
+  const requiredLevel = cfg?.RequiredLevel ?? 400;
+  const levelAfterReset = cfg?.LevelAfterReset ?? 1;
+  await requireOffline(s.login);
+
+  return sql.begin(async tx => {
+    const c = await ownCharacter(tx, s.accountId, b.character);
+    const [info] = await tx`
+      select coalesce(lv."Value", 0)::int as level, coalesce(rs."Value", 0)::int as resets,
+             lv."Id"::text as "levelId", rs."Id"::text as "resetsId"
+      from data."Character" ch
+      left join data."StatAttribute" lv on lv."CharacterId" = ch."Id" and lv."DefinitionId" = ${LEVEL}
+      left join data."StatAttribute" rs on rs."CharacterId" = ch."Id" and rs."DefinitionId" = ${RESETS}
+      where ch."Id" = ${c.id}`;
+    if (!info?.levelId) throw new PanelError(500, "No se encontro el nivel del personaje.");
+    if (info.resets < REQUIRED_RESETS || info.level < requiredLevel) {
+      throw new PanelError(400, `${c.name} necesita ${REQUIRED_RESETS} resets y nivel ${requiredLevel} para el Master Reset.`);
+    }
+
+    const next = masterResetsOf(c.id) + 1;
+    const points = next * BONUS_POINTS;
+    await tx`update data."StatAttribute" set "Value" = 0 where "Id" = ${info.resetsId}`;
+    await tx`update data."StatAttribute" set "Value" = ${levelAfterReset} where "Id" = ${info.levelId}`;
+    await tx`
+      update data."StatAttribute" sa set "Value" = d."BaseValue"
+      from config."StatAttributeDefinition" d
+      where sa."CharacterId" = ${c.id} and d."CharacterClassId" = ${c.classId}
+        and d."AttributeId" = sa."DefinitionId" and d."IncreasableByPlayer"`;
+    await tx`update data."Character" set "Experience" = 0, "LevelUpPoints" = ${points} where "Id" = ${c.id}`;
+    const [gate] = await tx`
+      select g."MapId"::text as map, g."X1" as x1, g."Y1" as y1, g."X2" as x2, g."Y2" as y2
+      from config."CharacterClass" cc
+      join config."ExitGate" g on g."MapId" = cc."HomeMapId" and g."IsSpawnGate"
+      where cc."Id" = ${c.classId} limit 1`;
+    if (gate) {
+      await tx`update data."Character" set "CurrentMapId" = ${gate.map},
+               "PositionX" = ${Math.round((gate.x1 + gate.x2) / 2)}, "PositionY" = ${Math.round((gate.y1 + gate.y2) / 2)}
+               where "Id" = ${c.id}`;
+    }
+    // Al final: si no se puede guardar el archivo, la transaccion se deshace.
+    try {
+      await setMasterResets(c.id, next);
+    } catch (error) {
+      console.error("master reset", error);
+      throw new PanelError(503, "No se pudo guardar el Master Reset. Intenta en un rato.");
+    }
+    return {
+      ok: true,
+      message: `¡Master Reset ${next} listo! ${c.name} vuelve a nivel ${levelAfterReset} con ${points.toLocaleString("es")} puntos, y cada reset le dara ${points.toLocaleString("es")} puntos extra.`,
+    };
+  });
+}
+
 async function changePassword(req: Request, sql: Sql) {
   const s = session(req);
   const b = await body(req);
@@ -460,6 +528,7 @@ export async function handlePanel(
     "/me/pk-clear": ["POST", pkClear],
     "/me/unstuck": ["POST", unstuck],
     "/me/reset": ["POST", reset],
+    "/me/master-reset": ["POST", masterReset],
     "/me/password": ["POST", changePassword],
   };
   if (url.pathname === "/auth/logout" && req.method === "POST") {

@@ -20,6 +20,9 @@ window.BARRIOMU = {
     { icon: "💎", title: "ALTOBARINAS", text: "Sin PvP y con doble drop. Farmea tranquilo." },
     { icon: "🎁", title: "Premio diario", text: "5.000.000 de zen al entrar cada dia." },
     { icon: "🔁", title: "Resets", text: "Nivel 400, sin limite. Stats a cero y 1.500 puntos x reset." },
+    { icon: "⭐", title: "Master Reset", text: "Con 50 resets: vuelves a 0 y cada reset te da 10.000 puntos extra, para siempre." },
+    { icon: "🗡️", title: "Guerrero", text: "NPC en Lorencia: +20% de ataque y magia por 30 minutos, gratis." },
+    { icon: "🍀", title: "Fortuna", text: "NPC en Lorencia: doble EXP y doble drop por 45 minutos, cada 3 horas." },
   ],
 
   // Reglas del servidor (una por linea)
