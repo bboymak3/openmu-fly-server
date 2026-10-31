@@ -174,6 +174,36 @@
   setInterval(renderEvents, 1000);
   setInterval(loadEvents, 10 * 60000);
 
+  // ---------- Ultimos ganadores ----------
+  const ago = iso => {
+    const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+    if (min < 60) return `hace ${min} min`;
+    const h = Math.round(min / 60);
+    if (h < 48) return `hace ${h} h`;
+    return `hace ${Math.round(h / 24)} días`;
+  };
+  const TROPHY = { "Blood Castle": "🏰", "Devil Square": "😈", "Chaos Castle": "⚔️" };
+
+  async function loadWinners() {
+    try {
+      const rows = await api("/events/winners?limit=8");
+      $("#winners").innerHTML = rows.length
+        ? rows
+            .map(w => `
+          <li>
+            <span class="trophy">${TROPHY[w.event] ?? "🏆"}</span>
+            <span class="who"><strong>${esc(w.name)}</strong><small>${esc(w.event)} ${esc(w.level)} · ${esc(className(w.class))} · ${esc(w.score)} puntos</small></span>
+            <span class="ago">${w.at ? ago(w.at) : ""}</span>
+          </li>`)
+            .join("")
+        : '<li class="skeleton">Todavía no hay ganadores. ¡Entra al próximo evento!</li>';
+    } catch {
+      $("#winners").innerHTML = '<li class="skeleton">El servidor está fuera de línea.</li>';
+    }
+  }
+  loadWinners();
+  setInterval(loadWinners, 5 * 60000);
+
   // ---------- Rankings ----------
   const RANKINGS = {
     level: {

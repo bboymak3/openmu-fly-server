@@ -163,6 +163,32 @@ async function rankingGuilds(limit: number) {
   return rows.map((r, i) => ({ rank: i + 1, ...r }));
 }
 
+// MiniGameType de OpenMU -> nombre. OpenMU guarda el resultado de cada partida
+// en data."MiniGameRankingEntry" (SaveRankingStatistics esta activo en los tres).
+const EVENT_TYPES: Record<number, string> = { 1: "Devil Square", 2: "Blood Castle", 3: "Chaos Castle" };
+
+/** El primer lugar de las ultimas partidas de Blood Castle, Devil Square y Chaos Castle. */
+async function eventWinners(limit: number) {
+  const rows = await sql`
+    select * from (
+      select distinct on (e."GameInstanceId")
+             e."Timestamp" as at, d."Type" as type, d."GameLevel" as level,
+             c."Name" as name, cc."Number" as class, e."Score" as score,
+             (select count(*) from data."MiniGameRankingEntry" x where x."GameInstanceId" = e."GameInstanceId")::int as players
+      from data."MiniGameRankingEntry" e
+      join config."MiniGameDefinition" d on d."Id" = e."MiniGameId"
+      join data."Character" c on c."Id" = e."CharacterId"
+      join data."Account" a on a."Id" = c."AccountId"
+      join config."CharacterClass" cc on cc."Id" = c."CharacterClassId"
+      where e."Rank" = 1 and d."Type" in (1, 2, 3)
+        and a."State" <> all(${HIDDEN_ACCOUNT_STATES}::int[])
+      order by e."GameInstanceId", e."Score" desc
+    ) w
+    order by at desc nulls last
+    limit ${limit}`;
+  return rows.map(r => ({ ...r, event: EVENT_TYPES[r.type] ?? "Evento" }));
+}
+
 /** "HH:mm:ss" -> minutos del dia. */
 function minutesOf(time: string): number | null {
   const m = /^(\d{1,2}):(\d{2})/.exec(time);
@@ -276,6 +302,10 @@ Bun.serve({
         }
         case "/events":
           return reply(await cached("events", 60, events), 60);
+        case "/events/winners": {
+          const limit = Math.min(limitOf(url), 30);
+          return reply(await cached(`winners:${limit}`, 60, () => eventWinners(limit)), 60);
+        }
         default:
           return new Response(JSON.stringify({ error: "Not found" }), { status: 404, headers: cors });
       }
