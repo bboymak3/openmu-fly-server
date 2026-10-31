@@ -292,3 +292,5 @@ img { display: block; max-width: 100%; }
 .reset-box .ok { color: #86efac; }
 .reset-box .bad { color: #ff9b9b; }
 .reset-box em { flex-basis: 100%; color: var(--muted); }
+.reset-box.master { background: rgba(168, 120, 255, 0.08); border-color: rgba(168, 120, 255, 0.4); }
+.reset-box.master strong { color: #c9a8ff; }

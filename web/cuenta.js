@@ -94,8 +94,27 @@
         <strong>Reset ${c.nextReset.next}</strong>
         <span class="${lvl}">Nivel ${r.requiredLevel}</span>
         <span class="${zen}">${zenFmt(c.nextReset.zen)} zen</span>
-        <span>→ ${zenFmt(c.nextReset.points)} puntos</span>
+        <span>→ ${zenFmt(c.nextReset.points)} puntos${c.nextReset.bonus ? ` (${zenFmt(c.nextReset.bonus)} de Master Reset)` : ""}</span>
         ${r.panel ? "" : '<em>Se hace dentro del juego: escribe /reset</em>'}
+      </div>`;
+  }
+
+  function canMasterReset(c) {
+    const m = data.masterReset;
+    return !!(m && c.resets >= m.requiredResets && c.level >= m.requiredLevel);
+  }
+
+  /** Lo que pide y da el proximo Master Reset. */
+  function masterResetInfo(c) {
+    const m = data.masterReset;
+    if (!m) return "";
+    const next = c.masterResets + 1;
+    return `
+      <div class="reset-box master">
+        <strong>Master Reset ${next}</strong>
+        <span class="${c.resets >= m.requiredResets ? "ok" : "bad"}">${m.requiredResets} resets (tienes ${c.resets})</span>
+        <span class="${c.level >= m.requiredLevel ? "ok" : "bad"}">Nivel ${m.requiredLevel}</span>
+        <span>→ +${zenFmt(next * m.bonus)} puntos en cada reset</span>
       </div>`;
   }
 
@@ -120,6 +139,7 @@
           </div>
           <dl class="char-stats">
             <div><dt>Master</dt><dd>${c.masterLevel}</dd></div>
+            <div><dt>Master Reset</dt><dd class="gold">${c.masterResets}</dd></div>
             <div><dt>Resets</dt><dd>${c.resets}</dd></div>
             <div><dt>Asesinatos</dt><dd>${c.kills}</dd></div>
             <div><dt>Mapa</dt><dd>${esc(MAPS[c.map] ?? (c.map == null ? "—" : "Mapa " + c.map))}</dd></div>
@@ -132,11 +152,13 @@
             <div><dt>Zen</dt><dd>${Number(c.zen).toLocaleString("es")}</dd></div>
           </dl>
           ${resetInfo(c)}
+          ${masterResetInfo(c)}
           <div class="char-actions">
             <button class="btn btn-gold btn-small" data-act="points" data-i="${i}" ${locked || !c.points ? "disabled" : ""}>➕ Add Points</button>
             <button class="btn btn-ghost btn-small" data-act="pk" data-i="${i}" ${locked || !c.isPk ? "disabled" : ""}>🕊 PK Clear</button>
             <button class="btn btn-ghost btn-small" data-act="unstuck" data-i="${i}" ${locked ? "disabled" : ""}>🆘 Desbloquear</button>
             ${data.reset?.panel ? `<button class="btn btn-gold btn-small" data-act="reset" data-i="${i}" ${locked || !canReset(c) ? "disabled" : ""}>🔁 Reset</button>` : ""}
+            ${data.masterReset ? `<button class="btn btn-gold btn-small" data-act="master" data-i="${i}" ${locked || !canMasterReset(c) ? "disabled" : ""}>⭐ Master Reset</button>` : ""}
           </div>
         </article>`)
           .join("")
@@ -207,6 +229,12 @@
       const n = c.nextReset;
       if (confirm(`¿Hacer el reset ${n.next} de ${c.name}?\n\nCuesta ${zenFmt(n.zen)} zen. Vuelve a nivel inicial, las estadísticas vuelven a cero y recibe ${zenFmt(n.points)} puntos para repartir.`)) {
         act("/me/reset", c.name);
+      }
+    } else if (btn.dataset.act === "master") {
+      const m = data.masterReset;
+      const next = c.masterResets + 1;
+      if (confirm(`¿Hacer el Master Reset ${next} de ${c.name}?\n\nLos resets vuelven a 0, el nivel y las estadísticas al inicio. Recibe ${zenFmt(next * m.bonus)} puntos ahora, y desde entonces cada reset le da ${zenFmt(next * m.bonus)} puntos extra.`)) {
+        act("/me/master-reset", c.name);
       }
     } else if (btn.dataset.act === "points") {
       openPoints(c);

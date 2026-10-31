@@ -81,6 +81,13 @@ Cambios sobre OpenMU (`openmu-barrio/`):
 - Dos game servers: MIJAGUA (PvP) y ALTOBARINAS (sin PvP, doble drop).
 - Sin limite de conexiones por IP en el Connect Server: todos los jugadores
   llegan por el proxy desde 127.0.0.1.
+- Premio diario de 5.000.000 de zen por cuenta.
+- Master Reset (`/masterreset` o el panel): con 50 resets y nivel 400 vuelve a
+  0 resets; cada Master Reset suma 10.000 puntos a cada reset. Se guarda en
+  `~/openmu/data/master-reset.json` (la API lo lee para el ranking).
+- NPCs en Lorencia, frente a la fuente: Guerrero (+20% ataque y magia, 30 min)
+  y Fortuna (doble EXP y doble drop, 45 min, cada 3 horas). Lo que queda de los
+  buffs se guarda en `~/openmu/data/buffs-npc.json`.
 
 ## Archivos
 
