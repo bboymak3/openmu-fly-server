@@ -18,3 +18,41 @@
     line-height: 1;
   }
 }
+
+// ---- BarrioMU: the full screen button, under the chat button ---------------
+
+.mobile-controls .mobile-fullscreen-button {
+  position: absolute;
+  top: 12px + (61px + 8px) * 2;
+  left: 12px;
+  pointer-events: auto;
+  cursor: pointer;
+  touch-action: none;
+
+  .mobile-fullscreen-glyph {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 26px;
+    height: 26px;
+    // Four white corners: the usual "expand" icon, drawn so it needs no font.
+    @c: #fff;
+    background:
+      linear-gradient(@c, @c) left top / 10px 3px,
+      linear-gradient(@c, @c) left top / 3px 10px,
+      linear-gradient(@c, @c) right top / 10px 3px,
+      linear-gradient(@c, @c) right top / 3px 10px,
+      linear-gradient(@c, @c) left bottom / 10px 3px,
+      linear-gradient(@c, @c) left bottom / 3px 10px,
+      linear-gradient(@c, @c) right bottom / 10px 3px,
+      linear-gradient(@c, @c) right bottom / 3px 10px;
+    background-repeat: no-repeat;
+
+    // Already full screen: the corners shrink in, the "leave" look.
+    &.is-full {
+      width: 18px;
+      height: 18px;
+    }
+  }
+}
