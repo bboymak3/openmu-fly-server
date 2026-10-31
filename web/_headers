@@ -1,0 +1,6 @@
+/assets/*
+  Cache-Control: public, max-age=604800
+/news.json
+  Cache-Control: public, max-age=300
+/config.js
+  Cache-Control: public, max-age=300

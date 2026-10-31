@@ -54,10 +54,18 @@ jobs:
           grep -c barriomu-logo $P/logoLight.tsx $P/directLoad.tsx
           # Boton de chat en el celular (no hay tecla Enter), debajo del de Move.
           M=$C/versions/shared/ui/hud/mobile_controls
-          cp babylon/mobile/chatButton.tsx $M/
+          # Y uno de pantalla completa (no hay F11), debajo del de chat.
+          cp babylon/mobile/chatButton.tsx babylon/mobile/fullscreenButton.tsx $M/
           cat babylon/mobile/chatButton.less >> $M/style.less
-          sed -i "s#^import { MoveButton } from './moveButton';#&\nimport { ChatButton } from './chatButton';#; s#<MoveButton />#&\n      <ChatButton />#" $M/index.tsx
+          sed -i "s#^import { MoveButton } from './moveButton';#&\nimport { ChatButton } from './chatButton';\nimport { FullscreenButton } from './fullscreenButton';#; s#<MoveButton />#&\n      <ChatButton />\n      <FullscreenButton />#" $M/index.tsx
           grep -c ChatButton $M/index.tsx
+          grep -c FullscreenButton $M/index.tsx
+          # Otros cambios de texto (espanol por defecto, ...)
+          python3 babylon/patch-client.py $C
+
+      # Para la version "lite" (musica en Opus)
+      - name: Instalar ffmpeg
+        run: command -v ffmpeg || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg)
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -73,7 +81,18 @@ jobs:
           VITE_SERVER_LIST_URL: /serverlist.md
           VITE_REGISTER_URL: https://mu-registro.makeseo.app
           VITE_REGISTER_API: /api/register
+          # Copias livianas (WebP, Opus) junto a los originales: menos memoria y
+          # descarga en el celular. El proxy lo anuncia con MU_LITE_ASSETS=on.
+          MU_LITE_ASSETS: "on"
         run: bun run build
+
+      # BarrioMU solo usa Season 6: fuera los archivos de la version 0.97d.
+      - name: Quitar version 0.97d
+        working-directory: client-src/dist
+        run: |
+          du -sh .
+          rm -rf Data-v097d game-assets-v097d assets-index-v097d.json bundles/v097d-*
+          du -sh .
 
       - name: Compilar pagina de registro
         working-directory: client-src
@@ -96,6 +115,8 @@ jobs:
           mkdir -p out/proxy/tools out/proxy/register
           cp client-src/tools/sqliteMigrate.ts out/proxy/tools/
           cp -r client-src/register/server out/proxy/register/
+          # API de BarrioMU para la landing (usa el paquete postgres del proxy)
+          cp -r babylon/api out/proxy/api
           (cd out/proxy && bun install --production --frozen-lockfile --ignore-scripts)
           curl -fsSL -o bun.zip https://github.com/oven-sh/bun/releases/download/bun-v1.4.2/bun-linux-aarch64.zip
           unzip -q bun.zip
@@ -137,13 +158,14 @@ jobs:
           mv instalar-babylon.sh babylon-proxy-arm64.tar.gz parts/
           cat parts/instalar-babylon.sh
 
+      # GitHub no deja crear la etiqueta babylon-arm64 sobre esta rama: se crea sobre main
+      # (solo es una marca) si falta, y se reemplazan los archivos del Release.
       - name: Publicar en Releases
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release delete babylon-arm64 --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes || true
-          gh release create babylon-arm64 parts/* \
-            --repo "$GITHUB_REPOSITORY" \
-            --target "$GITHUB_SHA" \
-            --title "Cliente Babylon linux-arm64" \
-            --notes "Cliente web Ignies/OpenMu-Client-Babylon con proxy, para la tablet."
+          gh release view babylon-arm64 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create babylon-arm64 --repo "$GITHUB_REPOSITORY" --target main \
+              --title "Cliente Babylon linux-arm64" \
+              --notes "Cliente web Ignies/OpenMu-Client-Babylon con proxy, para la tablet."
+          gh release upload babylon-arm64 parts/* --repo "$GITHUB_REPOSITORY" --clobber

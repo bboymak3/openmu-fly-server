@@ -41,6 +41,8 @@ jobs:
           T=$S/Persistence/Initialization/VersionSeasonSix/TestAccounts
           # Cuentas barrio01..barrio10 en lugar de las de prueba (test0, testgm, ...)
           cp openmu-barrio/TestAccountsInitialization.cs openmu-barrio/BarrioAccount.cs $T/
+          # Premio diario de zen
+          cp openmu-barrio/BarrioDailyRewardPlugIn.cs $S/GameLogic/PlugIns/
           # 2 game servers con nombre propio
           sed -i 's/CreateInitialDataAsync(3, true)/CreateInitialDataAsync(2, true)/' $S/Startup/Program.cs
           sed -i 's/server.Description = \$"Server {i}";/server.Description = i switch { 0 => "MIJAGUA", 1 => "ALTOBARINAS", _ => $"Server {i}" };/' $S/Persistence/Initialization/DataInitializationBase.cs
@@ -89,14 +91,15 @@ jobs:
       - name: Crear zip
         run: cd out && zip -qr ../openmu-linux-arm64.zip .
 
+      # GitHub no deja crear la etiqueta openmu-arm64 sobre esta rama: se crea sobre main
+      # (solo es una marca) si falta, y se reemplazan los archivos del Release.
       - name: Publicar en Releases
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           OPENMU_COMMIT=$(git -C openmu rev-parse --short HEAD)
-          gh release delete openmu-arm64 --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes || true
-          gh release create openmu-arm64 openmu-linux-arm64.zip \
-            --repo "$GITHUB_REPOSITORY" \
-            --target "$GITHUB_SHA" \
-            --title "OpenMU linux-arm64" \
-            --notes "Compilado desde MUnique/OpenMU commit ${OPENMU_COMMIT}."
+          gh release view openmu-arm64 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create openmu-arm64 --repo "$GITHUB_REPOSITORY" --target main \
+              --title "OpenMU linux-arm64" \
+              --notes "Compilado desde MUnique/OpenMU commit ${OPENMU_COMMIT}."
+          gh release upload openmu-arm64 openmu-linux-arm64.zip --repo "$GITHUB_REPOSITORY" --clobber

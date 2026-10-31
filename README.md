@@ -23,7 +23,20 @@ juega desde el navegador en **https://mu.makeseo.app**.
 | https://mu.makeseo.app | El juego | puerto 8081 |
 | wss://mu-ws.makeseo.app | Proxy del juego | puerto 3000 |
 | https://mu-registro.makeseo.app | Crear cuenta | puerto 8082 |
+| https://barriomu.makeseo.app | Landing (Cloudflare Pages) | - |
+| https://mu-api.makeseo.app | API de la landing | puerto 3400 |
 | http://localhost:8080 | Panel de admin de OpenMU (solo en la tablet) | puerto 8080 |
+
+## Landing (https://barriomu.makeseo.app)
+
+Pagina informativa en `web/`: estado en vivo, eventos, rankings de nivel y PvP,
+noticias y reglas. Es estatica (HTML, CSS y JS sin compilar) y lee la API de la
+tablet en `https://mu-api.makeseo.app` (`babylon/api/main.ts`, puerto 3400).
+
+- **Cloudflare Pages**: conectar este repo, rama `main`, sin comando de
+  compilacion, carpeta de salida `web`. Dominio propio `barriomu.makeseo.app`.
+- **Tunel**: ruta `mu-api.makeseo.app` -> `http://localhost:3400`.
+- Links, caracteristicas y reglas: `web/config.js`. Noticias: `web/news.json`.
 
 ## Manejo diario (Termux normal, `~ $`)
 
