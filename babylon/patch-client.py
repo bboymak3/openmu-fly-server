@@ -34,17 +34,11 @@ PATCHES = [
         "    <Sparks />\n",
         "",
     ),
-    # Sin boton "Iniciar": apenas termina de cargar entra solo al login de
-    # BarrioMU (server.json con directLogin, junto a la pagina).
+    # La llamarada que sale al abrir la lista de mundos, tambien pesada.
     (
         "versions/shared/ui/pages/preloader/index.tsx",
-        "  // Enter enters from the grid or the search box.",
-        "  // BarrioMU: no Start press, straight on to the login once loaded.\n"
-        "  useEffect(() => {\n"
-        "    if (phase === 'ready' && DirectLogin.on) start();\n"
-        "  }, [phase]);\n"
-        "\n"
-        "  // Enter enters from the grid or the search box.",
+        "      {open && <Hellfire />}\n",
+        "",
     ),
 ]
 
