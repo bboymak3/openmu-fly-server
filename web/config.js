@@ -19,7 +19,7 @@ window.BARRIOMU = {
     { icon: "🏘️", title: "MIJAGUA", text: "Servidor con PvP. Caza con riesgo." },
     { icon: "💎", title: "ALTOBARINAS", text: "Sin PvP y con doble drop. Farmea tranquilo." },
     { icon: "🎁", title: "Premio diario", text: "5.000.000 de zen al entrar cada dia." },
-    { icon: "🔁", title: "Resets", text: "Proximamente." },
+    { icon: "🔁", title: "Resets", text: "Nivel 400, sin limite. Stats a cero y 1.500 puntos x reset." },
   ],
 
   // Reglas del servidor (una por linea)

@@ -143,6 +143,19 @@ async function rankingPvp(limit: number) {
   return rows.map((r, i) => ({ rank: i + 1, ...r }));
 }
 
+async function rankingGuilds(limit: number) {
+  const rows = await sql`
+    select g."Name" as name, g."Score" as score, count(m."Id")::int as members,
+           coalesce(sum(lv."Value"), 0)::int as "totalLevel"
+    from guild."Guild" g
+    left join guild."GuildMember" m on m."GuildId" = g."Id"
+    left join data."StatAttribute" lv on lv."CharacterId" = m."Id" and lv."DefinitionId" = ${LEVEL}
+    group by g."Id", g."Name", g."Score"
+    order by g."Score" desc, members desc, "totalLevel" desc, g."Name"
+    limit ${limit}`;
+  return rows.map((r, i) => ({ rank: i + 1, ...r }));
+}
+
 /** "HH:mm:ss" -> minutos del dia. */
 function minutesOf(time: string): number | null {
   const m = /^(\d{1,2}):(\d{2})/.exec(time);
@@ -249,6 +262,10 @@ Bun.serve({
         case "/rankings/pvp": {
           const limit = limitOf(url);
           return reply(await cached(`pvp:${limit}`, 60, () => rankingPvp(limit)), 60);
+        }
+        case "/rankings/guilds": {
+          const limit = limitOf(url);
+          return reply(await cached(`guilds:${limit}`, 60, () => rankingGuilds(limit)), 60);
         }
         case "/events":
           return reply(await cached("events", 60, events), 60);

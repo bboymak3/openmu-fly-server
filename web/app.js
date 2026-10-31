@@ -182,6 +182,13 @@
       row: r => [r.level, r.masterLevel, r.resets],
       podium: r => `Nivel ${r.level}${r.resets ? ` · ${r.resets} RR` : ""}`,
     },
+    guilds: {
+      path: "/rankings/guilds?limit=50",
+      head: ["#", "Guild", "Miembros", "Puntaje", "Nivel total"],
+      row: r => [r.score, r.totalLevel],
+      cls: r => `${r.members} miembros`,
+      podium: r => `${r.score} puntos`,
+    },
     pvp: {
       path: "/rankings/pvp?limit=50",
       head: ["#", "Personaje", "Clase", "Asesinatos", "Nivel"],
@@ -212,7 +219,7 @@
           <div class="card place p${r.rank}">
             <div class="medal">${medals[r.rank - 1]}</div>
             <div class="name">${esc(r.name)}</div>
-            <div class="cls">${esc(className(r.class))}</div>
+            <div class="cls">${esc(def.cls ? def.cls(r) : className(r.class))}</div>
             <div class="value">${esc(def.podium(r))}</div>
           </div>` : "<div></div>"))
         .join("");
@@ -221,7 +228,7 @@
           <tr>
             <td class="rank">${r.rank}</td>
             <td><strong>${esc(r.name)}</strong></td>
-            <td><span class="class-tag">${esc(className(r.class))}</span></td>
+            <td>${def.cls ? `<span class="num">${r.members}</span>` : `<span class="class-tag">${esc(className(r.class))}</span>`}</td>
             ${def.row(r).map(v => `<td class="num">${esc(v)}</td>`).join("")}
           </tr>`)
         .join("");
