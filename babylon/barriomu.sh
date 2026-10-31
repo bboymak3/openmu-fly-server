@@ -9,6 +9,8 @@
 #   bash ~/barriomu.sh reset-db    BORRA la base de datos y la crea de nuevo
 #   bash ~/barriomu.sh arranque    prende BarrioMU solo al encender la tablet
 #                                  (necesita la app Termux:Boot)
+#   bash ~/barriomu.sh panel on    prende el panel de admin (reinicia OpenMU)
+#   bash ~/barriomu.sh panel off   lo apaga para ahorrar memoria (reinicia OpenMU)
 #
 # Al prender tambien arranca un vigilante que cada 5 minutos revisa que todo
 # siga prendido y vuelve a prender lo que se haya caido.
@@ -17,6 +19,11 @@ PGDATA="$PREFIX/var/lib/postgresql"
 LOGS="$HOME/barriomu-logs"
 TOKEN="$HOME/.barriomu-token"
 WATCHDOG_PID="$LOGS/vigilante.pid"
+PANEL_STATE="$LOGS/panel"
+
+# Memoria de .NET para OpenMU: limite de 1.5 GB (antes 7 GB) y modo ahorro,
+# que devuelve memoria al sistema mas seguido.
+DOTNET_MEM="DOTNET_GCHeapHardLimit=0x60000000 DOTNET_GCConserveMemory=5"
 mkdir -p "$LOGS"
 
 command -v pgrep >/dev/null || pkg install -y procps >/dev/null
@@ -40,8 +47,33 @@ in_ubuntu() {
   nohup proot-distro login ubuntu -- bash -c "$cmd" </dev/null >"$LOGS/$log" 2>&1 &
 }
 
+# El panel de admin es lo que mas memoria usa despues del juego: va apagado
+# salvo que se pida con 'panel on'.
+panel_arg() { [ "$(cat "$PANEL_STATE" 2>/dev/null)" = on ] || echo "-adminpanel:disabled"; }
+
 start_openmu() {
-  in_ubuntu openmu.log "cd ~/openmu && exec ./iniciar.sh -autostart -deamon -resolveIP:loopback $1"
+  in_ubuntu openmu.log "cd ~/openmu && $DOTNET_MEM exec ./iniciar.sh -autostart -deamon -resolveIP:loopback $(panel_arg) $1"
+}
+
+stop_openmu() {
+  pgrep -f MUnique.OpenMU.Startup >/dev/null || return 0
+  pkill -TERM -f MUnique.OpenMU.Startup
+  for ((i = 0; i < 30; i++)); do pgrep -f MUnique.OpenMU.Startup >/dev/null || return 0; sleep 1; done
+  pkill -KILL -f MUnique.OpenMU.Startup 2>/dev/null
+}
+
+panel() {
+  case "$1" in
+    on | off) echo "$1" >"$PANEL_STATE" ;;
+    *) echo "Uso: bash ~/barriomu.sh panel on|off"; return 1 ;;
+  esac
+  stop_watchdog
+  echo "Reiniciando OpenMU con el panel $1 (los jugadores se desconectan un momento)..."
+  stop_openmu
+  start_openmu ""
+  wait_port 44405 OpenMU 600
+  [ "$1" = on ] && wait_port 8080 "panel de admin" 300 && echo "Panel en http://localhost:8080"
+  start_watchdog
 }
 
 prender() {
@@ -112,11 +144,7 @@ apagar() {
   stop_watchdog
   pkill -f "cloudflared tunnel run"
   pkill -f proxy/main.ts; pkill -f register/server/main.ts; pkill -f mu-servir
-  if pgrep -f MUnique.OpenMU.Startup >/dev/null; then
-    pkill -TERM -f MUnique.OpenMU.Startup
-    for ((i = 0; i < 30; i++)); do pgrep -f MUnique.OpenMU.Startup >/dev/null || break; sleep 1; done
-    pkill -KILL -f MUnique.OpenMU.Startup 2>/dev/null
-  fi
+  stop_openmu
   pg_ctl -D "$PGDATA" -w stop >/dev/null 2>&1
   termux-wake-unlock 2>/dev/null
   echo "Todo apagado."
@@ -126,7 +154,8 @@ estado() {
   show() { if port_open "$1"; then echo "  [OK]  $2"; else echo "  [--]  $2"; fi; }
   show 5432 "PostgreSQL        (5432)"
   show 44405 "OpenMU            (44405)"
-  show 8080 "Panel de admin    (8080)"
+  if [ -z "$(panel_arg)" ]; then show 8080 "Panel de admin    (8080)"
+  else echo "  [..]  Panel de admin    (apagado: bash ~/barriomu.sh panel on)"; fi
   show 3000 "Proxy del juego   (3000)"
   show 8081 "Pagina del juego  (8081)"
   show 8082 "Pagina registro   (8082)"
@@ -156,6 +185,7 @@ case "$1" in
   logs) tail -n 30 -f "$LOGS"/*.log ;;
   reset-db) reset_db ;;
   arranque) arranque ;;
+  panel) panel "$2" ;;
   vigilar) vigilar ;;
-  *) sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//' ;;
+  *) sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//' ;;
 esac

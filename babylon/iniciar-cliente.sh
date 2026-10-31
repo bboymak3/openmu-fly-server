@@ -11,6 +11,11 @@ mkdir -p "$BASE/data"
 
 export TRACK_DB_PATH="${TRACK_DB_PATH:-memory}"
 export LOG_PACKETS="${LOG_PACKETS:-off}"
+# Proxy liviano: sin seguimiento de sesiones, sin "band" (instrumentos en
+# grupo) y sin "ping" de mapa, que BarrioMU no usa.
+export TRACK="${TRACK:-off}" BAND="${BAND:-off}" PING="${PING:-off}"
+# Los jugadores usan las copias livianas (WebP, Opus) de los graficos.
+export MU_LITE_ASSETS="${MU_LITE_ASSETS:-on}"
 
 # El proxy exige puerto exacto para direcciones internas: Connect Servers,
 # Game Servers y chat de OpenMU, en loopback.

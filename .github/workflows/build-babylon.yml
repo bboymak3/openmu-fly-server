@@ -60,6 +60,12 @@ jobs:
           sed -i "s#^import { MoveButton } from './moveButton';#&\nimport { ChatButton } from './chatButton';\nimport { FullscreenButton } from './fullscreenButton';#; s#<MoveButton />#&\n      <ChatButton />\n      <FullscreenButton />#" $M/index.tsx
           grep -c ChatButton $M/index.tsx
           grep -c FullscreenButton $M/index.tsx
+          # Otros cambios de texto (espanol por defecto, ...)
+          python3 babylon/patch-client.py $C
+
+      # Para la version "lite" (musica en Opus)
+      - name: Instalar ffmpeg
+        run: command -v ffmpeg || (sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg)
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -75,7 +81,18 @@ jobs:
           VITE_SERVER_LIST_URL: /serverlist.md
           VITE_REGISTER_URL: https://mu-registro.makeseo.app
           VITE_REGISTER_API: /api/register
+          # Copias livianas (WebP, Opus) junto a los originales: menos memoria y
+          # descarga en el celular. El proxy lo anuncia con MU_LITE_ASSETS=on.
+          MU_LITE_ASSETS: "on"
         run: bun run build
+
+      # BarrioMU solo usa Season 6: fuera los archivos de la version 0.97d.
+      - name: Quitar version 0.97d
+        working-directory: client-src/dist
+        run: |
+          du -sh .
+          rm -rf Data-v097d game-assets-v097d assets-index-v097d.json bundles/v097d-*
+          du -sh .
 
       - name: Compilar pagina de registro
         working-directory: client-src
