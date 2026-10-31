@@ -40,6 +40,22 @@ PATCHES = [
         "      {open && <Hellfire />}\n",
         "",
     ),
+    # Antes de la lista de servidores el juego cargaba el mapa del login y
+    # paseaba la camara por el como un video. Ahora usa el mismo escenario de
+    # la seleccion de personajes, con la camara quieta: sin animacion y con
+    # un mapa menos que cargar.
+    (
+        "versions/season6/ui/index.ts",
+        "login: ENUM_WORLD.WD_73NEW_LOGIN_SCENE,",
+        "login: ENUM_WORLD.WD_74NEW_CHARACTER_SCENE,",
+    ),
+    # En la lista de mundos solo BarrioMU: no se agrega el perfil
+    # "Local (OpenMU)" al abrir la pagina desde la red de la casa.
+    (
+        "src/modules/servers/serverConfig.ts",
+        "function seedsDefaultProfile(): boolean {\n",
+        "function seedsDefaultProfile(): boolean {\n  return false; // BarrioMU: solo los mundos de serverlist.md\n",
+    ),
 ]
 
 for path, old, new in PATCHES:
