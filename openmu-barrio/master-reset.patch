@@ -1,0 +1,14 @@
+diff --git a/src/GameLogic/Resets/ResetCharacterAction.cs b/src/GameLogic/Resets/ResetCharacterAction.cs
+index 5b18b06..6712fef 100644
+--- a/src/GameLogic/Resets/ResetCharacterAction.cs
++++ b/src/GameLogic/Resets/ResetCharacterAction.cs
+@@ -85,6 +85,9 @@ public class ResetCharacterAction
+         this._player.Attributes[Stats.Level] = configuration.LevelAfterReset;
+         this._player.SelectedCharacter.Experience = 0;
+         this.UpdateStats(configuration, resetProgression);
++
++        // BarrioMU: every Master Reset adds a permanent bonus of points to each reset.
++        this._player.SelectedCharacter.LevelUpPoints += MUnique.OpenMU.GameLogic.PlugIns.BarrioMasterResetPlugIn.BonusPoints(this._player.SelectedCharacter.Id);
+         if (configuration.MoveHome)
+         {
+             await this.MoveHomeAsync().ConfigureAwait(false);

@@ -1,8 +1,8 @@
 diff --git a/src/GameLogic/DefaultDropGenerator.cs b/src/GameLogic/DefaultDropGenerator.cs
-index db537b6..ac123a6 100644
+index db537b6..c1a2e2c 100644
 --- a/src/GameLogic/DefaultDropGenerator.cs
 +++ b/src/GameLogic/DefaultDropGenerator.cs
-@@ -40,6 +40,11 @@ public class DefaultDropGenerator : IDropGenerator
+@@ -40,6 +40,18 @@ public class DefaultDropGenerator : IDropGenerator
      private readonly byte _maxItemOptionLevelDrop;
      private readonly byte _excellentItemDropLevelDelta;
  
@@ -11,16 +11,52 @@ index db537b6..ac123a6 100644
 +    /// </summary>
 +    public double DropRateMultiplier { get; set; } = 1.0;
 +
++    /// <summary>
++    /// The multiplier of the current GenerateItemDropsAsync call: the one of the
++    /// server, doubled while the player has the buff of the NPC "Fortuna" (BarrioMU).
++    /// Only used under the lock of GenerateItemDropsAsync.
++    /// </summary>
++    private double _callDropRateMultiplier = 1.0;
++
      /// <summary>
      /// Initializes a new instance of the <see cref="DefaultDropGenerator" /> class.
      /// </summary>
-@@ -566,11 +571,18 @@ public class DefaultDropGenerator : IDropGenerator
+@@ -71,6 +83,8 @@ public class DefaultDropGenerator : IDropGenerator
+         }
  
-     private DropItemGroup? SelectRandomGroup(IEnumerable<DropItemGroup> groups, double totalChance)
+         using var l = await this._lock.LockAsync().ConfigureAwait(false);
++        this._callDropRateMultiplier = this.DropRateMultiplier
++            * (player.MagicEffectList.ContainsEffect(MUnique.OpenMU.GameLogic.PlugIns.BarrioBuffNpcsPlugIn.FortunaEffectNumber) ? 2.0 : 1.0);
+         this._guaranteedDropGroups.Clear();
+         this._chanceDropGroups.Clear();
+ 
+@@ -107,7 +121,7 @@ public class DefaultDropGenerator : IDropGenerator
+     /// <inheritdoc/>
+     public (Item? Item, uint? Money, ItemDropEffect DropEffect) GenerateItemDrop(IEnumerable<DropItemGroup> groups)
      {
-+        // BarrioMU: every chance is multiplied by DropRateMultiplier; dividing
+-        var group = this.SelectRandomGroup(groups.OrderBy(group => group.Chance), 1.0);
++        var group = this.SelectRandomGroup(groups.OrderBy(group => group.Chance), 1.0, this.DropRateMultiplier);
+         if (group is null)
+         {
+             return (null, null, ItemDropEffect.Undefined);
+@@ -313,7 +327,7 @@ public class DefaultDropGenerator : IDropGenerator
+ 
+             for (int i = 0; i < remainingDrops; i++)
+             {
+-                var group = this.SelectRandomGroup(this._chanceDropGroups, totalChance);
++                var group = this.SelectRandomGroup(this._chanceDropGroups, totalChance, this._callDropRateMultiplier);
+                 if (group is null)
+                 {
+                     continue;
+@@ -564,13 +578,19 @@ public class DefaultDropGenerator : IDropGenerator
+         };
+     }
+ 
+-    private DropItemGroup? SelectRandomGroup(IEnumerable<DropItemGroup> groups, double totalChance)
++    private DropItemGroup? SelectRandomGroup(IEnumerable<DropItemGroup> groups, double totalChance, double multiplier)
+     {
++        // BarrioMU: every chance is multiplied by the multiplier; dividing
 +        // the random threshold by it is the same, until they add up past 1.
-+        var multiplier = this.DropRateMultiplier;
          var remainingThreshold = this._randomizer.NextDouble();
 -        if (totalChance > 1.0)
 +        if (totalChance * multiplier > 1.0)

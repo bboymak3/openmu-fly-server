@@ -41,15 +41,18 @@ jobs:
           T=$S/Persistence/Initialization/VersionSeasonSix/TestAccounts
           # Cuentas barrio01..barrio10 en lugar de las de prueba (test0, testgm, ...)
           cp openmu-barrio/TestAccountsInitialization.cs openmu-barrio/BarrioAccount.cs $T/
-          # Premio diario de zen
-          cp openmu-barrio/BarrioDailyRewardPlugIn.cs $S/GameLogic/PlugIns/
+          # Premio diario de zen, Master Reset y NPCs de buff en Lorencia (Guerrero y Fortuna)
+          cp openmu-barrio/BarrioDailyRewardPlugIn.cs openmu-barrio/BarrioStore.cs \
+             openmu-barrio/BarrioMasterResetPlugIn.cs openmu-barrio/BarrioBuffNpcsPlugIn.cs $S/GameLogic/PlugIns/
           # 2 game servers con nombre propio
           sed -i 's/CreateInitialDataAsync(3, true)/CreateInitialDataAsync(2, true)/' $S/Startup/Program.cs
           sed -i 's/server.Description = \$"Server {i}";/server.Description = i switch { 0 => "MIJAGUA", 1 => "ALTOBARINAS", _ => $"Server {i}" };/' $S/Persistence/Initialization/DataInitializationBase.cs
           # MIJAGUA con PvP, ALTOBARINAS sin PvP (en una base de datos nueva)
           sed -i 's/server.ExperienceRate = 1.0f;/server.ExperienceRate = 1.0f;\n            server.PvpEnabled = i != 1;/' $S/Persistence/Initialization/DataInitializationBase.cs
-          # ALTOBARINAS con doble drop
+          # ALTOBARINAS con doble drop; Fortuna duplica el drop de quien tenga su buff
           git -C openmu apply ../openmu-barrio/doble-drop.patch
+          # Cada Master Reset suma sus puntos extra a cada reset
+          git -C openmu apply ../openmu-barrio/master-reset.patch
           # Todos los jugadores llegan por el proxy desde 127.0.0.1: sin limite por IP
           sed -i 's/this.CheckMaxConnectionsPerAddress = true;/this.CheckMaxConnectionsPerAddress = false;/' $S/DataModel/Configuration/ConnectServerDefinition.cs
           grep -c 'CreateInitialDataAsync(2, true)' $S/Startup/Program.cs
@@ -57,6 +60,8 @@ jobs:
           grep -c 'CheckMaxConnectionsPerAddress = false' $S/DataModel/Configuration/ConnectServerDefinition.cs
           grep -c 'PvpEnabled = i != 1' $S/Persistence/Initialization/DataInitializationBase.cs
           grep -c 'DropRateMultiplier' $S/GameServer/GameServer.cs
+          grep -c 'FortunaEffectNumber' $S/GameLogic/DefaultDropGenerator.cs
+          grep -c 'BarrioMasterResetPlugIn.BonusPoints' $S/GameLogic/Resets/ResetCharacterAction.cs
 
       - uses: actions/setup-dotnet@v4
         with:
