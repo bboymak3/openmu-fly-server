@@ -17,6 +17,9 @@ cp $B/icon-192.png $B/icon-512.png $B/icon-maskable-512.png $B/apple-touch-icon.
 cp $B/banner.webp $B/serverlist.md $C/public/
 sed -i 's/OpenMUCB/BarrioMU/g' $C/index.html $C/public/manifest.webmanifest $C/src/modules/servers/pageTitle.ts $C/register/index.html
 sed -i 's/JS implementation of MU Online/BarrioMU - MU Online en el navegador/' $C/index.html
+# La app que se instala en el telefono: descripcion en espanol (el nombre y el logo ya son de BarrioMU).
+sed -i 's/"description": "MU Online, played in the browser."/"description": "BarrioMU - MU Online Season 6 Episodio 3 en el navegador",\n  "lang": "es"/' $C/public/manifest.webmanifest
+grep -c '"lang": "es"' $C/public/manifest.webmanifest
 sed -i 's/alt="OpenMU Babylon"/alt="BarrioMU"/' $P/logoLight.tsx
 grep -c BarrioMU $C/index.html $C/public/manifest.webmanifest $C/src/modules/servers/pageTitle.ts $C/register/index.html
 grep -c barriomu-logo $P/logoLight.tsx $P/directLoad.tsx
