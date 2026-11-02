@@ -29,10 +29,8 @@
       <a href="#servidor">Servidor</a>
       <a href="#eventos">Eventos</a>
       <a href="#rankings">Rankings</a>
-      <a href="#noticias">Noticias</a>
-      <a href="#reglas">Reglas</a>
       <a href="cuenta.html">Mi cuenta</a>
-      <a href="#empezar">Cómo empezar</a>
+      <a href="#empezar">Empezar</a>
       <a href="#descargas">Descargas</a>
       <a class="btn btn-small btn-gold" data-link="play" href="#">Jugar</a>
     </nav>
@@ -49,7 +47,7 @@
       <div class="hero-actions">
         <a class="btn btn-gold btn-big" data-link="play" href="#">▶ Jugar ahora</a>
         <a class="btn btn-ghost btn-big" data-link="register" href="#">Crear cuenta</a>
-        <a class="btn btn-ghost btn-big btn-pc" data-pc-modal href="#">💻 Versión para PC</a>
+        <a class="btn btn-ghost btn-big btn-pc" data-link="pc" href="#">💻 Descargar para PC</a>
       </div>
       <p class="pc-note">Versión de PC para Windows 10/11, con gráficos completos y actualización automática.</p>
       <div class="status-pill" id="status-pill"><i></i><span>Consultando servidor…</span></div>
@@ -73,7 +71,7 @@
           <p>En el <b>teléfono</b> o el navegador se juega al instante, con gráficos livianos. En una <b>PC con Windows</b> puedes instalar la versión con gráficos completos.</p>
           <div class="start-actions">
             <a class="btn btn-gold" data-link="play" href="#">📱 Jugar en el navegador</a>
-            <a class="btn btn-ghost" data-pc-modal href="#">💻 Versión para PC</a>
+            <a class="btn btn-ghost" href="#pc">💻 Versión para PC</a>
           </div>
         </li>
         <li class="card start-step">
@@ -127,9 +125,50 @@
             <li>Cuando haya una versión nueva, se baja sola y se instala al cerrar el juego.</li>
           </ol>
           <p class="version-note">¿No usas Windows? También puedes jugar desde el navegador de la PC con el botón "Jugar ahora".</p>
-          <a class="btn btn-gold" data-pc-modal href="#">💻 Ver cómo instalar en PC</a>
+          <a class="btn btn-gold" data-link="pc" href="#">💻 Descargar para PC</a>
+          <a class="version-more" href="#pc">Ver el paso a paso completo ↓</a>
         </article>
       </div>
+    </section>
+
+    <!-- Version para computadora: paso a paso -->
+    <section id="pc" class="section pc-section">
+      <p class="modal-kicker">BarrioMU para Windows 10/11</p>
+      <h2 class="title">Versión para computadora</h2>
+      <p class="subtitle">Gráficos completos, sin descargas al entrar y se actualiza solo. Sigue estos pasos:</p>
+      <div class="pc-download-box">
+        <a class="btn btn-gold btn-big" data-link="pc" href="#">⬇️ Descargar para PC</a>
+        <span>BarrioMU-Setup.exe · unos 660 MB</span>
+      </div>
+      <ol class="modal-steps">
+        <li>
+          <h4>Crea tu cuenta</h4>
+          <p>Si todavía no tienes, créala gratis: usuario de 4 a 10 letras o números y una clave de 4 a 10 caracteres. Si ya tienes, salta este paso.</p>
+          <a class="btn btn-ghost" data-link="register" href="#" target="_blank" rel="noopener">✍️ Crear mi cuenta</a>
+        </li>
+        <li>
+          <h4>Descarga el instalador</h4>
+          <p>Baja <b>BarrioMU-Setup.exe</b> (unos 660 MB). Mejor con una buena conexión.</p>
+          <a class="btn btn-gold" data-link="pc" href="#">⬇️ Descargar BarrioMU-Setup.exe</a>
+        </li>
+        <li>
+          <h4>Ábrelo</h4>
+          <p>Abre el archivo descargado. Si Windows dice <b>"Windows protegió su PC"</b>, toca <b>"Más información"</b> y luego <b>"Ejecutar de todas formas"</b>. Sale porque el programa no tiene una firma de pago; es normal.</p>
+        </li>
+        <li>
+          <h4>Instala</h4>
+          <p>Elige la carpeta (o deja la que viene), toca <b>Instalar</b> y al final <b>Finalizar</b>. Queda el icono de <b>BarrioMU</b> en el escritorio.</p>
+        </li>
+        <li>
+          <h4>Entra al mundo</h4>
+          <p>Abre BarrioMU, toca <b>COMENZAR</b>, elige <b>BarrioMU</b> en la lista de mundos y el servidor: <b>MIJAGUA</b> (PvP) o <b>ALTOBARINAS</b> (sin PvP, doble drop).</p>
+        </li>
+        <li>
+          <h4>¡A jugar!</h4>
+          <p>Escribe tu usuario y clave, crea tu personaje y listo. <b>F11</b> pone pantalla completa. Cuando haya una versión nueva, se baja sola y se instala al cerrar el juego.</p>
+        </li>
+      </ol>
+      <p class="modal-req">Necesitas: Windows 10 u 11 de 64 bits, unos 3 GB libres en el disco e internet para jugar.</p>
     </section>
 
     <!-- Estado del servidor -->
@@ -195,46 +234,5 @@
   </footer>
 
   <div class="floating" id="floating"></div>
-
-  <!-- Ventana: version para computadora -->
-  <dialog class="modal" id="pc-modal" aria-labelledby="pc-modal-title">
-    <button class="modal-close" type="button" data-close aria-label="Cerrar">✕</button>
-    <p class="modal-kicker">BarrioMU para Windows 10/11</p>
-    <h2 id="pc-modal-title">Versión para computadora</h2>
-    <p class="modal-sub">Gráficos completos, sin descargas al entrar y se actualiza solo. Sigue estos pasos:</p>
-    <ol class="modal-steps">
-      <li>
-        <h4>Crea tu cuenta</h4>
-        <p>Si todavía no tienes, créala gratis: usuario de 4 a 10 letras o números y una clave de 4 a 10 caracteres. Si ya tienes, salta este paso.</p>
-        <a class="btn btn-ghost" data-link="register" href="#" target="_blank" rel="noopener">✍️ Crear mi cuenta</a>
-      </li>
-      <li>
-        <h4>Descarga el instalador</h4>
-        <p>Baja <b>BarrioMU-Setup.exe</b> (unos 660 MB). Mejor con una buena conexión.</p>
-        <a class="btn btn-gold" data-link="pc" href="#">⬇️ Descargar BarrioMU-Setup.exe</a>
-      </li>
-      <li>
-        <h4>Ábrelo</h4>
-        <p>Abre el archivo descargado. Si Windows dice <b>"Windows protegió su PC"</b>, toca <b>"Más información"</b> y luego <b>"Ejecutar de todas formas"</b>. Sale porque el programa no tiene una firma de pago; es normal.</p>
-      </li>
-      <li>
-        <h4>Instala</h4>
-        <p>Elige la carpeta (o deja la que viene), toca <b>Instalar</b> y al final <b>Finalizar</b>. Queda el icono de <b>BarrioMU</b> en el escritorio.</p>
-      </li>
-      <li>
-        <h4>Entra al mundo</h4>
-        <p>Abre BarrioMU, toca <b>COMENZAR</b>, elige <b>BarrioMU</b> en la lista de mundos y el servidor: <b>MIJAGUA</b> (PvP) o <b>ALTOBARINAS</b> (sin PvP, doble drop).</p>
-      </li>
-      <li>
-        <h4>¡A jugar!</h4>
-        <p>Escribe tu usuario y clave, crea tu personaje y listo. <b>F11</b> pone pantalla completa. Cuando haya una versión nueva, se baja sola y se instala al cerrar el juego.</p>
-      </li>
-    </ol>
-    <p class="modal-req">Necesitas: Windows 10 u 11 de 64 bits, unos 3 GB libres en el disco e internet para jugar.</p>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" type="button" data-close>Cerrar</button>
-      <a class="btn btn-gold" data-link="pc" href="#">⬇️ Descargar para PC</a>
-    </div>
-  </dialog>
 </body>
 </html>
