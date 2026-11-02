@@ -103,4 +103,4 @@ Cambios sobre OpenMU (`openmu-barrio/`):
 | `babylon/branding/` | Logo, iconos y lista de servidores |
 | `openmu-barrio/` | Cambios de BarrioMU sobre OpenMU |
 | `babylon/personalizar-cliente.sh` | Cambios de BarrioMU sobre el cliente (web y PC) |
-| `desktop/` | Version para PC: Electron con un servidor local de los graficos |
+| `desktop/` | Version para PC: Electron con un servidor local de los graficos y actualizacion automatica (solo baja lo que cambio) |

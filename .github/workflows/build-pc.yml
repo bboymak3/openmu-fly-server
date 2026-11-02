@@ -97,10 +97,18 @@ jobs:
           # Sin firma digital (cuesta dinero): Windows avisa "editor desconocido".
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
         run: |
+          # Cada compilacion es una version nueva (1.0.N): el actualizador la compara.
+          V="1.0.${GITHUB_RUN_NUMBER}"
+          npm pkg set version="$V"
           npm install --no-audit --no-fund
           npx electron-builder --win nsis --x64 --publish never
           ls -la release
-          test -f release/BarrioMU-Setup.exe
+          test -f "release/BarrioMU-Setup-$V.exe"
+          test -f "release/BarrioMU-Setup-$V.exe.blockmap"
+          test -f release/latest.yml
+          cat release/latest.yml
+          # Un nombre fijo para el boton de la landing.
+          cp "release/BarrioMU-Setup-$V.exe" release/BarrioMU-Setup.exe
 
       - name: Publicar en Releases
         env:
@@ -110,4 +118,16 @@ jobs:
             gh release create barriomu-pc --repo "$GITHUB_REPOSITORY" --target main \
               --title "BarrioMU para PC (Windows)" \
               --notes "Instalador de BarrioMU para Windows 10/11 con los graficos completos. Descarga BarrioMU-Setup.exe, abrelo y sigue los pasos."
-          gh release upload barriomu-pc desktop/release/BarrioMU-Setup.exe --repo "$GITHUB_REPOSITORY" --clobber
+          V="1.0.${GITHUB_RUN_NUMBER}"
+          R=desktop/release
+          # latest.yml al final: el actualizador solo ve la version nueva cuando ya esta todo arriba.
+          gh release upload barriomu-pc "$R/BarrioMU-Setup-$V.exe" "$R/BarrioMU-Setup-$V.exe.blockmap" \
+            "$R/BarrioMU-Setup.exe" --repo "$GITHUB_REPOSITORY" --clobber
+          gh release upload barriomu-pc "$R/latest.yml" --repo "$GITHUB_REPOSITORY" --clobber
+          # Se guardan los .blockmap de todas las versiones (pesan poco y permiten bajar
+          # solo lo nuevo); de los instaladores con numero, solo los 3 ultimos.
+          gh release view barriomu-pc --repo "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' \
+            | { grep -E '^BarrioMU-Setup-1\.0\.[0-9]+\.exe$' || true; } | sort -t. -k3 -n | head -n -3 \
+            | while read -r old; do
+                gh release delete-asset barriomu-pc "$old" --repo "$GITHUB_REPOSITORY" -y
+              done

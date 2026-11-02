@@ -3,7 +3,7 @@
 // del disco; el juego se conecta al mismo servidor de siempre por
 // wss://mu-ws.makeseo.app (serverlist.md) y el registro pasa a mu.makeseo.app.
 
-const { app, BrowserWindow, Menu, shell } = require("electron");
+const { app, BrowserWindow, Menu, dialog, shell } = require("electron");
 const fs = require("node:fs");
 const http = require("node:http");
 const https = require("node:https");
@@ -143,6 +143,42 @@ function startServer() {
 
 let win = null;
 
+/**
+ * Actualizacion automatica: al abrir, revisa el Release barriomu-pc de GitHub
+ * (latest.yml) y baja solo los bloques que cambiaron (.blockmap). Se instala
+ * al cerrar el juego, o enseguida si el jugador lo pide.
+ */
+function checkForUpdates() {
+  if (!app.isPackaged) return;
+  let autoUpdater;
+  try {
+    ({ autoUpdater } = require("electron-updater"));
+  } catch {
+    return;
+  }
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.on("download-progress", p => win?.setProgressBar(Math.max(0, Math.min(1, p.percent / 100))));
+  autoUpdater.on("error", () => win?.setProgressBar(-1));
+  autoUpdater.on("update-downloaded", async info => {
+    win?.setProgressBar(-1);
+    if (!win) return;
+    const { response } = await dialog.showMessageBox(win, {
+      type: "info",
+      title: "BarrioMU",
+      message: `Hay una version nueva de BarrioMU (${info.version}).`,
+      detail: "Ya se descargo. Se instala sola cuando cierres el juego, o puedes reiniciar ahora.",
+      buttons: ["Al cerrar el juego", "Reiniciar ahora"],
+      defaultId: 0,
+      cancelId: 0,
+    });
+    if (response === 1) autoUpdater.quitAndInstall(true, true);
+  });
+  autoUpdater.checkForUpdates().catch(() => {
+    // Sin internet o sin Release: se juega con la version instalada.
+  });
+}
+
 function createWindow(port) {
   const base = `http://127.0.0.1:${port}`;
   win = new BrowserWindow({
@@ -203,6 +239,7 @@ if (!app.requestSingleInstanceLock()) {
     Menu.setApplicationMenu(null);
     const port = await startServer();
     createWindow(port);
+    checkForUpdates();
   });
 
   app.on("window-all-closed", () => app.quit());

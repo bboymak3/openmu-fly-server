@@ -19,12 +19,30 @@
     "appId": "app.makeseo.barriomu",
     "productName": "BarrioMU",
     "copyright": "BarrioMU",
-    "directories": { "output": "release" },
-    "files": ["main.js", "icon.png", "package.json"],
-    "extraResources": [{ "from": "client", "to": "client" }],
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.js",
+      "icon.png",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "client",
+        "to": "client"
+      }
+    ],
     "compression": "normal",
     "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "icon": "icon.png"
     },
     "nsis": {
@@ -34,9 +52,21 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "BarrioMU",
-      "artifactName": "BarrioMU-Setup.${ext}",
-      "installerLanguages": ["es_ES"],
-      "language": "3082"
-    }
+      "artifactName": "BarrioMU-Setup-${version}.${ext}",
+      "installerLanguages": [
+        "es_ES"
+      ],
+      "language": "3082",
+      "differentialPackage": true
+    },
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://github.com/bboymak3/openmu-fly-server/releases/download/barriomu-pc/"
+      }
+    ]
+  },
+  "dependencies": {
+    "electron-updater": "6.3.9"
   }
 }
