@@ -1,13 +1,19 @@
 # BarrioMU
 
 Servidor de MU Online Season 6 Episodio 3 que corre en una tablet Android y se
-juega desde el navegador en **https://mu.makeseo.app**.
+juega desde el navegador en **https://mu.makeseo.app** o con el instalador de PC.
+
+> 📖 **[Manual completo en español](docs/MANUAL.md)**: manejo diario, cómo actualizar,
+> funciones del juego, Cloudflare, versión de PC, respaldos y solución de problemas.
 
 - Servidor: [OpenMU](https://github.com/MUnique/OpenMU) con PostgreSQL, dentro de
   Termux (Ubuntu con proot-distro).
 - Cliente: [OpenMu Client Babylon](https://github.com/Ignies/OpenMu-Client-Babylon)
-  con el logo y la lista de servidores de BarrioMU.
-- Internet: Cloudflare Tunnel, sin abrir puertos ni IP publica.
+  con el logo y la lista de servidores de BarrioMU. Version **lite** para el
+  celular (se instala como app con el logo) y version **completa** para PC
+  (`BarrioMU-Setup.exe`, con actualizacion automatica).
+- Internet: Cloudflare Tunnel, sin abrir puertos ni IP publica. Los graficos
+  del celular quedan en la cache de Cloudflare (regla de cache + Tiered Cache).
 
 ## Servidores
 
@@ -29,12 +35,14 @@ juega desde el navegador en **https://mu.makeseo.app**.
 
 ## Landing (https://barriomu.makeseo.app)
 
-Pagina informativa en `web/`: estado en vivo, eventos, rankings de nivel y PvP,
-noticias y reglas. Es estatica (HTML, CSS y JS sin compilar) y lee la API de la
+Pagina informativa en `web/`: como empezar (crear cuenta), versiones para
+telefono y PC con su paso a paso, estado en vivo, eventos y ultimos ganadores,
+rankings (nivel con Master Reset, PvP y guilds), noticias y reglas. Es estatica (HTML, CSS y JS sin compilar) y lee la API de la
 tablet en `https://mu-api.makeseo.app` (`babylon/api/main.ts`, puerto 3400).
 
-- **Cloudflare Pages**: conectar este repo, rama `main`, sin comando de
-  compilacion, carpeta de salida `web`. Dominio propio `barriomu.makeseo.app`.
+- **Cloudflare Pages**: conectado a este repo, rama `main`, sin comando de
+  compilacion, directorio raiz vacio y carpeta de salida `web`. Dominio propio
+  `barriomu.makeseo.app`. Cada cambio en `main` se publica solo.
 - **Tunel**: ruta `mu-api.makeseo.app` -> `http://localhost:3400`.
 - Links, caracteristicas y reglas: `web/config.js`. Noticias: `web/news.json`.
 - **Mi cuenta** (`web/cuenta.html`, `babylon/api/panel.ts`): login con la cuenta
@@ -96,6 +104,7 @@ Cambios sobre OpenMU (`openmu-barrio/`):
 
 | Archivo | Para que |
 |---|---|
+| `docs/MANUAL.md` | Manual completo en español |
 | `babylon/barriomu.sh` | Prender, apagar y vigilar todo |
 | `babylon/iniciar-cliente.sh` | Arranca proxy, pagina y registro (lo usa barriomu.sh) |
 | `babylon/servir.ts` | Servidor web minimo de la pagina y el registro |
