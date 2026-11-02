@@ -114,6 +114,8 @@ Se usa en **Termux normal** (`~ $`), **no** dentro de Ubuntu.
 | `bash ~/barriomu.sh panel on` | Prende el panel de admin (reinicia OpenMU) |
 | `bash ~/barriomu.sh panel off` | Lo apaga para ahorrar memoria (reinicia OpenMU) |
 | `bash ~/barriomu.sh resets` | Activa o reaplica la configuración de resets (reinicia OpenMU) |
+| `bash ~/barriomu.sh gm CUENTA` | Hace GM una cuenta, para entrar al panel admin (con la cuenta fuera del juego) |
+| `bash ~/barriomu.sh cloudflare` | Guarda en la tablet el token de Cloudflare del panel admin |
 | `bash ~/barriomu.sh reset-db` | ⚠️ **BORRA TODA LA BASE** y la crea de nuevo (pide escribir `SI`) |
 
 - El **vigilante** revisa cada 5 minutos y vuelve a prender lo que se haya caído.
@@ -227,6 +229,31 @@ Los ganadores salen solos en la landing ("Últimos ganadores").
 Desde el panel se puede: ver jugadores conectados, editar cuentas y personajes, cambiar la
 configuración de los servidores (por ejemplo PvP en ALTOBARINAS) y los horarios de los eventos.
 
+### Panel admin web: https://barriomu.makeseo.app/admin.html
+Estadísticas y botón para borrar la caché, desde el celular o la PC. **Solo entran cuentas GM.**
+
+Qué muestra:
+- Jugadores conectados ahora (por servidor), cuentas y personajes (total, hoy, 7 días), cuentas baneadas.
+- Gráficos de cuentas y personajes nuevos por día (14 días).
+- Visitas a la landing y entradas al juego **por país** (últimas 24 horas, de Cloudflare).
+- Cuánto de los gráficos salió de la caché de Cloudflare y cuánto de la tablet.
+- Descargas del instalador de PC (de GitHub) y el top 5 del servidor.
+- Botón **🧹 Borrar caché del juego**. Si Cloudflare no deja borrar solo el juego, aparece un segundo
+  botón para borrar la caché de todo makeseo.app (no rompe nada).
+
+Configurarlo (una sola vez):
+1. **Cuenta GM:** con la cuenta fuera del juego, en Termux: `bash ~/barriomu.sh gm TUCUENTA`.
+   Ojo: en el juego también queda como GM (comandos de GM y fuera de los rankings); mejor usar una
+   cuenta solo para administrar.
+2. **Token de Cloudflare:** dash.cloudflare.com → tu perfil → **Mi perfil → Tokens de API → Crear token
+   → Crear token personalizado**. Permisos: **Zona · Zona · Leer**, **Zona · Analytics · Leer** y
+   **Zona · Purgar caché · Purgar**. Recursos de zona: **Incluir · Zona específica · makeseo.app**.
+3. En Termux: `bash ~/barriomu.sh cloudflare` y pega el token (no se ve mientras lo pegas).
+   Se guarda solo en la tablet (`~/.barriomu-cloudflare` dentro de Ubuntu). **No lo compartas.**
+4. Abre el panel y entra con la cuenta GM.
+
+Sin el token, el panel igual muestra las estadísticas del juego; solo faltan las visitas y el botón de caché.
+
 ### Crear cuentas
 - Los jugadores las crean en https://mu-registro.makeseo.app (usuario de 4 a 10 letras o números,
   clave de 4 a 10 caracteres, sin correo).
@@ -305,8 +332,9 @@ curl -sI https://mu.makeseo.app/game-assets/Music/victory.ogg | grep -i cf-cache
 ```
 Primero `MISS`, después `HIT` = funciona. Si dice `BYPASS` o `DYNAMIC`, revisa la regla.
 
-**Después de actualizar el cliente:** Caching → Configuration → **Custom Purge** → Hostname
-`mu.makeseo.app`. Si no está esa opción, **Purge Everything** (no rompe nada).
+**Después de actualizar el cliente:** en el **panel admin** (admin.html) toca **🧹 Borrar caché del juego**.
+O a mano: Caching → Configuration → **Custom Purge** → Hostname `mu.makeseo.app`; si no está esa
+opción, **Purge Everything** (no rompe nada).
 
 ---
 
@@ -421,8 +449,8 @@ bash ~/barriomu.sh logs
 
 ## 14. Seguridad
 
-- **Nunca compartas** el token del túnel (`~/.barriomu-token`), contraseñas de SSH ni la clave de
-  la base de datos.
+- **Nunca compartas** el token del túnel (`~/.barriomu-token`), el token de Cloudflare del panel admin
+  (`~/.barriomu-cloudflare`), contraseñas de SSH ni la clave de la base de datos.
 - Las cuentas de prueba `barrio01`…`barrio10` tienen la clave igual al usuario: cámbiales la clave
   o bórralas antes de abrir el servidor al público.
 - El panel de admin (8080) solo se abre en la tablet; no lo pongas en el túnel.

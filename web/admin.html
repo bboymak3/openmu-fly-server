@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Panel admin · BarrioMU</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" content="#0b0a0f" />
+  <link rel="icon" type="image/png" href="assets/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="config.js"></script>
+  <script src="admin.js" defer></script>
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="index.html">
+      <img src="assets/logo.webp" alt="" width="40" height="40" />
+      <span>BARRIO<b>MU</b></span>
+    </a>
+    <nav class="menu-inline">
+      <a href="index.html">Inicio</a>
+    </nav>
+  </header>
+
+  <main class="section account admin">
+    <!-- Entrar -->
+    <section id="login-view" hidden>
+      <h1 class="title">Panel admin</h1>
+      <p class="subtitle">Solo para cuentas GM. Entra con tu usuario y clave del juego.</p>
+      <form id="login-form" class="card form" autocomplete="on">
+        <label>Usuario
+          <input name="username" required minlength="4" maxlength="10" autocomplete="username" autocapitalize="off" spellcheck="false" />
+        </label>
+        <label>Clave
+          <input name="password" type="password" required minlength="4" maxlength="10" autocomplete="current-password" />
+        </label>
+        <button class="btn btn-gold" type="submit">Entrar</button>
+        <p class="form-msg" id="login-msg" role="alert"></p>
+        <p class="form-foot">¿Tu cuenta no es GM? En la tablet: <code>bash ~/barriomu.sh gm TUCUENTA</code></p>
+      </form>
+    </section>
+
+    <!-- Panel -->
+    <section id="panel-view" hidden>
+      <div class="admin-head">
+        <div>
+          <p class="modal-kicker">Panel admin</p>
+          <h1 class="admin-title">Hola, <span id="admin-name"></span></h1>
+          <p class="muted" id="updated"></p>
+        </div>
+        <div class="admin-head-actions">
+          <button class="btn btn-ghost btn-small" id="refresh" type="button">↻ Actualizar</button>
+          <button class="btn btn-ghost btn-small" id="logout" type="button">Salir</button>
+        </div>
+      </div>
+
+      <div class="toast" id="toast" role="status" hidden></div>
+
+      <h2 class="admin-h2">El juego ahora</h2>
+      <div class="tiles" id="tiles"></div>
+
+      <h2 class="admin-h2">Nuevos por día <small>(últimos 14 días)</small></h2>
+      <div class="charts">
+        <figure class="card chart" id="chart-accounts"></figure>
+        <figure class="card chart" id="chart-characters"></figure>
+      </div>
+
+      <h2 class="admin-h2">Visitas por país <small>(últimas 24 horas, Cloudflare)</small></h2>
+      <div id="cf-box"></div>
+
+      <h2 class="admin-h2">Caché de Cloudflare</h2>
+      <div class="card cache-card">
+        <div id="cache-stats"></div>
+        <p class="muted">Bórrala después de actualizar el cliente del celular, para que los jugadores reciban la versión nueva.</p>
+        <div class="cache-actions">
+          <button class="btn btn-gold" id="purge" type="button">🧹 Borrar caché del juego</button>
+          <button class="btn btn-ghost" id="purge-all" type="button" hidden>Borrar caché de todo makeseo.app</button>
+        </div>
+      </div>
+
+      <h2 class="admin-h2">Top 5 del servidor</h2>
+      <div class="card table-wrap">
+        <table class="ranking">
+          <thead><tr><th>#</th><th>Personaje</th><th class="num">MR</th><th class="num">Resets</th><th class="num">Nivel</th></tr></thead>
+          <tbody id="top"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div class="chart-tip" id="chart-tip" role="tooltip" hidden></div>
+</body>
+</html>

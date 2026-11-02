@@ -12,6 +12,8 @@
 #   bash ~/barriomu.sh panel on    prende el panel de admin (reinicia OpenMU)
 #   bash ~/barriomu.sh panel off   lo apaga para ahorrar memoria (reinicia OpenMU)
 #   bash ~/barriomu.sh resets      activa los resets de BarrioMU (reinicia OpenMU)
+#   bash ~/barriomu.sh gm CUENTA   hace GM una cuenta (para el panel admin; con la cuenta fuera del juego)
+#   bash ~/barriomu.sh cloudflare  guarda el token de Cloudflare del panel admin
 #
 # Al prender tambien arranca un vigilante que cada 5 minutos revisa que todo
 # siga prendido y vuelve a prender lo que se haya caido.
@@ -153,6 +155,40 @@ SQL
   echo "Resets activos: en el juego escribe /reset (nivel 400)."
 }
 
+# El panel admin (barriomu.makeseo.app/admin.html) solo deja entrar cuentas GM.
+# Ojo: en el juego la cuenta tambien queda como GM (comandos de GM y fuera de
+# los rankings). Mejor usar una cuenta solo para administrar.
+gm() {
+  local cuenta=$1
+  if ! [[ "$cuenta" =~ ^[A-Za-z0-9]{4,10}$ ]]; then
+    echo "Uso: bash ~/barriomu.sh gm NOMBRE_DE_CUENTA   (de 4 a 10 letras o numeros)"; return 1
+  fi
+  pg_ctl -D "$PGDATA" status >/dev/null 2>&1 || { echo "PostgreSQL esta apagado: bash ~/barriomu.sh prender"; return 1; }
+  local n
+  n=$(psql -U postgres -d openmu -tAq -c "UPDATE data.\"Account\" SET \"State\" = 2 WHERE lower(\"LoginName\") = lower('$cuenta') RETURNING 1" | grep -cx 1)
+  if [ "$n" = 1 ]; then
+    echo "Listo: la cuenta $cuenta ahora es GM. Si estaba dentro del juego, sal y vuelve a entrar."
+  else
+    echo "No existe la cuenta $cuenta."; return 1
+  fi
+}
+
+# El token de Cloudflare del panel admin se guarda dentro de Ubuntu, donde corre
+# la API (~/.barriomu-cloudflare). Nunca se manda a ningun lado: la API lo usa
+# para leer las visitas y borrar la cache.
+cloudflare() {
+  local destino="$PREFIX/var/lib/proot-distro/installed-rootfs/ubuntu/root/.barriomu-cloudflare"
+  echo "Pega el token de Cloudflare del panel admin y dale Enter (no se ve mientras lo pegas):"
+  local token
+  read -rs token; echo
+  token=$(printf '%s' "$token" | tr -d '[:space:]')
+  if ! [[ "$token" =~ ^[A-Za-z0-9_-]{20,}$ ]]; then
+    echo "Eso no parece un token de Cloudflare. No se guardo nada."; return 1
+  fi
+  ( umask 077; printf '%s\n' "$token" > "$destino" ) || { echo "No se pudo guardar."; return 1; }
+  echo "Listo: token guardado. El panel admin ya puede ver las visitas y borrar la cache."
+}
+
 arranque() {
   mkdir -p "$HOME/.termux/boot"
   cat >"$HOME/.termux/boot/barriomu" <<'BOOT'
@@ -215,6 +251,8 @@ case "$1" in
   arranque) arranque ;;
   panel) panel "$2" ;;
   resets) resets ;;
+  gm) gm "$2" ;;
+  cloudflare) cloudflare ;;
   vigilar) vigilar ;;
-  *) sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//' ;;
+  *) sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//' ;;
 esac
