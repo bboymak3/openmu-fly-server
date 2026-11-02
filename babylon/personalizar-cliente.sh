@@ -26,10 +26,12 @@ grep -c barriomu-logo $P/logoLight.tsx $P/directLoad.tsx
 # Boton de chat en el celular (no hay tecla Enter), debajo del de Move.
 M=$C/versions/shared/ui/hud/mobile_controls
 # Y uno de pantalla completa (no hay F11), debajo del de chat.
-cp babylon/mobile/chatButton.tsx babylon/mobile/fullscreenButton.tsx $M/
+# Y dos de zoom de la camara (alejar / acercar), a la derecha de pantalla completa.
+cp babylon/mobile/chatButton.tsx babylon/mobile/fullscreenButton.tsx babylon/mobile/zoomButtons.tsx $M/
 cat babylon/mobile/chatButton.less >> $M/style.less
-sed -i "s#^import { MoveButton } from './moveButton';#&\nimport { ChatButton } from './chatButton';\nimport { FullscreenButton } from './fullscreenButton';#; s#<MoveButton />#&\n      <ChatButton />\n      <FullscreenButton />#" $M/index.tsx
+sed -i "s#^import { MoveButton } from './moveButton';#&\nimport { ChatButton } from './chatButton';\nimport { FullscreenButton } from './fullscreenButton';\nimport { ZoomButtons } from './zoomButtons';#; s#<MoveButton />#&\n      <ChatButton />\n      <FullscreenButton />\n      <ZoomButtons />#" $M/index.tsx
 grep -c ChatButton $M/index.tsx
 grep -c FullscreenButton $M/index.tsx
+grep -c ZoomButtons $M/index.tsx
 # Otros cambios de texto (espanol por defecto, ...)
 python3 babylon/patch-client.py $C

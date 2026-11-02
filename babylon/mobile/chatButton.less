@@ -56,3 +56,28 @@
     }
   }
 }
+
+// ---- BarrioMU: zoom de la camara, a la derecha de pantalla completa --------
+
+.mobile-controls .mobile-zoom-button {
+  position: absolute;
+  top: 12px + (61px + 8px) * 2;
+  pointer-events: auto;
+  cursor: pointer;
+  touch-action: none;
+
+  &.mobile-zoom-out { left: 12px + 61px + 8px; }
+  &.mobile-zoom-in { left: 12px + (61px + 8px) * 2; }
+
+  .mobile-zoom-glyph {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 34px;
+    font-weight: 700;
+    line-height: 1;
+    color: #fff;
+    text-shadow: 0 1px 3px #000;
+  }
+}

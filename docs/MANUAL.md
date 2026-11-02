@@ -204,6 +204,13 @@ Se guarda en `~/openmu/data/premio-diario.json`.
   (`~/openmu/data/buffs-npc.json`).
 - Encima de los NPCs el cliente muestra su nombre original (David y Delgado).
 
+### Cámara (ver más mapa)
+- **PC:** **Ctrl + rueda del mouse**: hacia atrás aleja la cámara, hacia adelante la acerca.
+  Va desde primera persona hasta más del doble de la distancia normal.
+- **Celular:** botones **−** (alejar) y **+** (acercar), a la derecha del de pantalla completa.
+- Necesita la opción **Control de cámara** encendida (Opciones del juego; viene encendida).
+- Más lejos = más cosas en pantalla: en celulares sencillos puede dar algo de lag.
+
 ### Eventos
 Blood Castle, Devil Square y Chaos Castle, cada 4 horas (horario por defecto de OpenMU).
 Los ganadores salen solos en la landing ("Últimos ganadores").
@@ -310,7 +317,9 @@ Primero `MISS`, después `HIT` = funciona. Si dice `BYPASS` o `DYNAMIC`, revisa 
 - Se baja desde **GitHub**, no desde la tablet. Entra al mismo servidor que la versión web.
 - Windows avisa "Windows protegió su PC" porque no tiene firma de pago: **Más información →
   Ejecutar de todas formas**.
-- **F11** pone pantalla completa.
+- **F11** pone pantalla completa. **F5** recarga. **F12** abre la consola de errores.
+- Si no conecta: el programa guarda un registro en **`%APPDATA%\BarrioMU\barriomu.log`**
+  (pega esa dirección en la barra del Explorador de archivos). Ahí salen los errores de conexión.
 
 ### Actualización automática
 - Al abrir, revisa si hay versión nueva en GitHub (`latest.yml` del Release `barriomu-pc`).

@@ -144,6 +144,31 @@ function startServer() {
 let win = null;
 
 /**
+ * Registro para encontrar problemas: los errores de la pagina (por ejemplo
+ * "WebSocket connection ... failed") quedan en barriomu.log, en la carpeta de
+ * datos del programa (%APPDATA%\\BarrioMU). F12 abre la consola.
+ */
+let logFile = null;
+function log(line) {
+  if (!logFile) return;
+  try {
+    fs.appendFileSync(logFile, `${new Date().toISOString()} ${line}\n`);
+  } catch {
+    // sin registro, el juego sigue
+  }
+}
+function startLog() {
+  try {
+    logFile = path.join(app.getPath("userData"), "barriomu.log");
+    // Que no crezca sin fin: se empieza de nuevo si pasa de 1 MB.
+    if (fs.existsSync(logFile) && fs.statSync(logFile).size > 1024 * 1024) fs.writeFileSync(logFile, "");
+    log(`--- BarrioMU ${app.getVersion()} (${process.platform} ${process.arch}) ---`);
+  } catch {
+    logFile = null;
+  }
+}
+
+/**
  * Actualizacion automatica: al abrir, revisa el Release barriomu-pc de GitHub
  * (latest.yml) y baja solo los bloques que cambiaron (.blockmap). Se instala
  * al cerrar el juego, o enseguida si el jugador lo pide.
@@ -194,6 +219,13 @@ function createWindow(port) {
   });
   win.maximize();
 
+  // Errores y avisos de la pagina, y lo que tenga que ver con la conexion.
+  win.webContents.on("console-message", (_event, level, message) => {
+    if (level >= 2 || /socket|connect|server|proxy|login/i.test(message)) log(`[pagina] ${message}`);
+  });
+  win.webContents.on("did-fail-load", (_event, code, description, url) => log(`[carga] ${code} ${description} ${url}`));
+  win.webContents.on("render-process-gone", (_event, details) => log(`[pagina cerrada] ${details.reason}`));
+
   // Los links de afuera (registro, landing, Discord...) abren en el navegador.
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (/^https?:\/\//i.test(url) && !url.startsWith(base)) shell.openExternal(url);
@@ -206,11 +238,14 @@ function createWindow(port) {
     }
   });
 
-  // F11: pantalla completa. Ctrl+R / F5: recargar.
+  // F11: pantalla completa. Ctrl+R / F5: recargar. F12: consola (para ver errores).
   win.webContents.on("before-input-event", (event, input) => {
     if (input.type !== "keyDown") return;
     if (input.key === "F11") {
       win.setFullScreen(!win.isFullScreen());
+      event.preventDefault();
+    } else if (input.key === "F12") {
+      win.webContents.toggleDevTools();
       event.preventDefault();
     } else if (input.key === "F5" || (input.control && input.key.toLowerCase() === "r")) {
       win.webContents.reload();
@@ -221,6 +256,10 @@ function createWindow(port) {
   win.on("closed", () => (win = null));
   win.loadURL(base + "/");
 }
+
+// Que se presente como un Chrome normal: sin las marcas "Electron/x" ni el
+// nombre del programa, que Cloudflare puede tratar distinto a un navegador.
+app.userAgentFallback = app.userAgentFallback.replace(/\s(Electron|barriomu-pc|BarrioMU)\/\S+/gi, "");
 
 // Sin la lista negra de tarjetas de video: el juego necesita WebGL.
 app.commandLine.appendSwitch("ignore-gpu-blocklist");
@@ -236,6 +275,7 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.whenReady().then(async () => {
+    startLog();
     Menu.setApplicationMenu(null);
     const port = await startServer();
     createWindow(port);
