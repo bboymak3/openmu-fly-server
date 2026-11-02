@@ -7,6 +7,8 @@ window.BARRIOMU = {
   // Links principales
   play: "https://mu.makeseo.app",
   register: "https://mu-registro.makeseo.app",
+  // Instalador para Windows con los graficos completos (workflow build-pc.yml)
+  pc: "https://github.com/bboymak3/openmu-fly-server/releases/download/barriomu-pc/BarrioMU-Setup.exe",
 
   // Comunidad: deja "" para ocultar el boton
   discord: "",

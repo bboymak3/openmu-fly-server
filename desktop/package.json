@@ -1,0 +1,42 @@
+{
+  "name": "barriomu-pc",
+  "productName": "BarrioMU",
+  "version": "1.0.0",
+  "description": "BarrioMU - MU Online Season 6 para PC",
+  "author": "BarrioMU",
+  "license": "MIT",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis --x64 --publish never"
+  },
+  "devDependencies": {
+    "electron": "33.4.11",
+    "electron-builder": "25.1.8"
+  },
+  "build": {
+    "appId": "app.makeseo.barriomu",
+    "productName": "BarrioMU",
+    "copyright": "BarrioMU",
+    "directories": { "output": "release" },
+    "files": ["main.js", "icon.png", "package.json"],
+    "extraResources": [{ "from": "client", "to": "client" }],
+    "compression": "normal",
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": "icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "BarrioMU",
+      "artifactName": "BarrioMU-Setup.${ext}",
+      "installerLanguages": ["es_ES"],
+      "language": "3082"
+    }
+  }
+}

@@ -1,0 +1,113 @@
+name: Compilar BarrioMU para PC (Windows)
+
+# Instalador de Windows (BarrioMU-Setup.exe) con el cliente Babylon y sus
+# graficos completos adentro (sin las copias "lite" del celular). Se conecta al
+# mismo servidor que la version web. Se publica en Releases con el tag "barriomu-pc".
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/build-pc.yml
+      - desktop/**
+      - babylon/personalizar-cliente.sh
+      - babylon/patch-client.py
+      - babylon/branding/**
+      - babylon/mobile/**
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pc-release
+  cancel-in-progress: false
+
+jobs:
+  cliente:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # La misma version del cliente que la web (build-babylon.yml).
+      - name: Descargar codigo del cliente Babylon
+        env:
+          BABYLON_COMMIT: 26c0921c1bed65b1aab4762022f24021a5318130
+        run: |
+          git init -q client-src
+          git -C client-src fetch -q --depth 1 https://github.com/Ignies/OpenMu-Client-Babylon.git "$BABYLON_COMMIT"
+          git -C client-src checkout -q FETCH_HEAD
+
+      - name: Personalizar BarrioMU (version PC)
+        run: bash desktop/preparar-cliente.sh client-src
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Instalar dependencias
+        working-directory: client-src
+        run: bun install --frozen-lockfile
+
+      # Solo Season 6, con los archivos originales: sin copias lite, sin
+      # archivos .gz (se leen del disco) y sin la version 0.97d.
+      - name: Compilar cliente con graficos completos
+        working-directory: client-src
+        env:
+          APP_ENV: prod
+          VITE_SERVER_LIST_URL: /serverlist.md
+          VITE_REGISTER_URL: https://mu-registro.makeseo.app
+          VITE_REGISTER_API: /api/register
+        run: |
+          bunx vite build
+          bun run tools/copyData.ts
+          bun run tools/assetsIndex.ts
+          rm -rf dist/Data-v097d dist/game-assets-v097d dist/assets-index-v097d.json dist/bundles/v097d-*
+          test -f dist/index.html
+          test -f dist/serverlist.md
+          du -sh dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cliente-pc
+          path: client-src/dist
+          compression-level: 1
+          retention-days: 1
+
+  instalador:
+    needs: cliente
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: cliente-pc
+          path: desktop/client
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Armar instalador
+        working-directory: desktop
+        env:
+          # Sin firma digital (cuesta dinero): Windows avisa "editor desconocido".
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: |
+          npm install --no-audit --no-fund
+          npx electron-builder --win nsis --x64 --publish never
+          ls -la release
+          test -f release/BarrioMU-Setup.exe
+
+      - name: Publicar en Releases
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view barriomu-pc --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create barriomu-pc --repo "$GITHUB_REPOSITORY" --target main \
+              --title "BarrioMU para PC (Windows)" \
+              --notes "Instalador de BarrioMU para Windows 10/11 con los graficos completos. Descarga BarrioMU-Setup.exe, abrelo y sigue los pasos."
+          gh release upload barriomu-pc desktop/release/BarrioMU-Setup.exe --repo "$GITHUB_REPOSITORY" --clobber
