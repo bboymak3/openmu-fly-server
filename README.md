@@ -72,6 +72,7 @@ originales no rompa el servidor.
 |---|---|---|
 | `build-arm64.yml` | OpenMU para linux-arm64, con los cambios de `openmu-barrio/` | `openmu-arm64` |
 | `build-babylon.yml` | Cliente, proxy y registro, con el logo de `babylon/branding/` | `babylon-arm64` |
+| `build-pc.yml` | Instalador de Windows (`desktop/`) con el cliente y los graficos completos | `barriomu-pc` |
 
 Cambios sobre OpenMU (`openmu-barrio/`):
 
@@ -101,3 +102,5 @@ Cambios sobre OpenMU (`openmu-barrio/`):
 | `babylon/diagnostico.sh` | Prueba OpenMU, proxy y Cloudflare por separado |
 | `babylon/branding/` | Logo, iconos y lista de servidores |
 | `openmu-barrio/` | Cambios de BarrioMU sobre OpenMU |
+| `babylon/personalizar-cliente.sh` | Cambios de BarrioMU sobre el cliente (web y PC) |
+| `desktop/` | Version para PC: Electron con un servidor local de los graficos y actualizacion automatica (solo baja lo que cambio) |
