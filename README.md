@@ -45,6 +45,11 @@ tablet en `https://mu-api.makeseo.app` (`babylon/api/main.ts`, puerto 3400).
   `barriomu.makeseo.app`. Cada cambio en `main` se publica solo.
 - **Tunel**: ruta `mu-api.makeseo.app` -> `http://localhost:3400`.
 - Links, caracteristicas y reglas: `web/config.js`. Noticias: `web/news.json`.
+- **Panel admin** (`web/admin.html`, `babylon/api/admin.ts`): solo cuentas GM
+  (`bash ~/barriomu.sh gm CUENTA`). Jugadores en linea, cuentas y personajes por
+  dia, visitas por pais y cache (Cloudflare), descargas del instalador de PC y
+  boton para borrar la cache del juego. El token de Cloudflare vive solo en la
+  tablet (`bash ~/barriomu.sh cloudflare`).
 - **Mi cuenta** (`web/cuenta.html`, `babylon/api/panel.ts`): login con la cuenta
   del juego, Add Points, PK Clear, desbloquear personaje y cambio de clave.
   Solo con la cuenta desconectada (lo confirma el proxy) y un minuto despues

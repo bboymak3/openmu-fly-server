@@ -15,6 +15,7 @@ import { connect } from "node:net";
 import { readFileSync } from "node:fs";
 import { handlePanel } from "./panel";
 import { readMasterResets } from "./masterReset";
+import { handleAdmin } from "./admin";
 
 const PORT = Number(process.env.PORT || 3400);
 const DATABASE_URL = process.env.DATABASE_URL || "postgres://postgres:admin@127.0.0.1:5432/openmu";
@@ -277,6 +278,8 @@ Bun.serve({
 
     const panel = await handlePanel(req, url, cors, sql);
     if (panel) return panel;
+    const admin = await handleAdmin(req, url, cors, sql, () => cached("status-admin", 20, status).then(JSON.parse));
+    if (admin) return admin;
     if (req.method !== "GET") return new Response("Method not allowed", { status: 405, headers: cors });
 
     const reply = (body: string, seconds: number) =>

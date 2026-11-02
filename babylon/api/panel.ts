@@ -33,8 +33,8 @@ const HERO_NORMAL = 3;
 const BANNED_STATES = new Set([4, 5]);
 
 // Igual que el registro (register/server/accounts.ts) y OpenMU.
-const PASSWORD_RE = /^[!-~]{4,10}$/;
-const USERNAME_RE = /^[A-Za-z0-9]{4,10}$/;
+export const PASSWORD_RE = /^[!-~]{4,10}$/;
+export const USERNAME_RE = /^[A-Za-z0-9]{4,10}$/;
 const BCRYPT_COST = 11;
 
 const PRESENCE_URL = process.env.PRESENCE_URL ?? "http://127.0.0.1:3001";
@@ -105,11 +105,11 @@ const sessions = new Map<string, { accountId: string; login: string; expires: nu
 
 // Intentos fallidos de login: por IP y por cuenta, en una ventana de 15 minutos.
 const FAIL_WINDOW_MS = 15 * 60 * 1000;
-const MAX_FAILS_PER_IP = 10;
-const MAX_FAILS_PER_ACCOUNT = 5;
+export const MAX_FAILS_PER_IP = 10;
+export const MAX_FAILS_PER_ACCOUNT = 5;
 const fails = new Map<string, number[]>();
 
-function recentFails(key: string): number {
+export function recentFails(key: string): number {
   const now = Date.now();
   const list = (fails.get(key) ?? []).filter(t => now - t < FAIL_WINDOW_MS);
   if (list.length) fails.set(key, list);
@@ -117,7 +117,7 @@ function recentFails(key: string): number {
   return list.length;
 }
 
-function addFail(key: string): void {
+export function addFail(key: string): void {
   fails.set(key, [...(fails.get(key) ?? []), Date.now()]);
 }
 
@@ -127,7 +127,7 @@ setInterval(() => {
   for (const key of fails.keys()) recentFails(key);
 }, 5 * 60 * 1000).unref();
 
-class PanelError extends Error {
+export class PanelError extends Error {
   constructor(
     readonly status: number,
     message: string,
@@ -136,14 +136,14 @@ class PanelError extends Error {
   }
 }
 
-function json(body: unknown, status: number, cors: Record<string, string>): Response {
+export function json(body: unknown, status: number, cors: Record<string, string>): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: { "Content-Type": "application/json", "Cache-Control": "no-store", ...cors },
   });
 }
 
-async function body(req: Request): Promise<Record<string, unknown>> {
+export async function body(req: Request): Promise<Record<string, unknown>> {
   const text = await req.text();
   if (text.length > 2048) throw new PanelError(413, "Solicitud demasiado grande.");
   try {
@@ -154,7 +154,7 @@ async function body(req: Request): Promise<Record<string, unknown>> {
   }
 }
 
-function clientIp(req: Request): string {
+export function clientIp(req: Request): string {
   // Solo cloudflared llega a esta API (escucha en 127.0.0.1): este encabezado es de Cloudflare.
   return req.headers.get("cf-connecting-ip") ?? "local";
 }
