@@ -36,6 +36,31 @@
     a.href = cfg[a.dataset.link];
     if (a.dataset.link === "play") a.target = "_blank";
   });
+  // Ventana de la version para PC: la abren los botones con data-pc-modal.
+  const pcModal = $("#pc-modal");
+  const closePc = () => {
+    pcModal.close();
+  };
+  pcModal.addEventListener("close", () => document.body.classList.remove("modal-open"));
+  document.querySelectorAll("[data-pc-modal]").forEach(btn =>
+    btn.addEventListener("click", e => {
+      e.preventDefault();
+      document.body.classList.add("modal-open");
+      pcModal.showModal();
+    }),
+  );
+  pcModal.querySelectorAll("[data-close]").forEach(btn => btn.addEventListener("click", closePc));
+  // Tocar fuera de la ventana la cierra.
+  pcModal.addEventListener("click", e => {
+    if (e.target !== pcModal) return;
+    const r = pcModal.getBoundingClientRect();
+    if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) closePc();
+  });
+  if (location.hash === "#pc") {
+    document.body.classList.add("modal-open");
+    pcModal.showModal();
+  }
+
   const toggle = $(".menu-toggle");
   const menu = $(".menu");
   toggle.addEventListener("click", () => {
