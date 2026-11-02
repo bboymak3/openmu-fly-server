@@ -56,6 +56,18 @@ PATCHES = [
         "function seedsDefaultProfile(): boolean {\n",
         "function seedsDefaultProfile(): boolean {\n  return false; // BarrioMU: solo los mundos de serverlist.md\n",
     ),
+    # Zoom de la camara para los botones del celular (en la PC es Ctrl+rueda):
+    # los mismos pasos que la rueda, hasta 2900 (el normal es 1200).
+    (
+        "src/controllers/camera/index.ts",
+        "function syncMoved(): void {\n",
+        "/** BarrioMU: alejar (+1) o acercar (-1) la camara, como Ctrl+rueda. */\n"
+        "export function zoomCamera(step: number): void {\n"
+        "  if (!GameOptions.cameraControl) return;\n"
+        "  level = Math.max(0, Math.min(MAX_CAMERA_LEVEL, level + step));\n"
+        "}\n\n"
+        "function syncMoved(): void {\n",
+    ),
 ]
 
 for path, old, new in PATCHES:
