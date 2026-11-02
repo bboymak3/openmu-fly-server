@@ -162,6 +162,54 @@ img { display: block; max-width: 100%; }
 .version .steps b, .version .steps strong { color: var(--text, #f3efe6); }
 .version-note { font-size: 0.85rem; }
 .version .btn { margin-top: auto; align-self: flex-start; }
+/* Empieza en 3 pasos */
+.start { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.start-step { position: relative; display: flex; flex-direction: column; gap: 12px; padding-top: 34px; }
+.start-step h3 { margin: 0; font-family: var(--display); font-size: 1.35rem; }
+.start-step p { margin: 0; color: var(--muted); }
+.start-step b { color: var(--text); }
+.start-step small { color: var(--muted); font-size: 0.8rem; }
+.start-step .btn { align-self: flex-start; }
+.start-num {
+  position: absolute; top: -18px; left: 20px; width: 44px; height: 44px; border-radius: 50%;
+  display: grid; place-items: center; font-family: var(--display); font-size: 1.3rem; font-weight: 800;
+  color: #1b1305; background: linear-gradient(180deg, var(--gold-2), var(--gold)); box-shadow: 0 6px 20px rgba(232, 183, 92, 0.35);
+}
+.start-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* Ventana de la version para PC */
+.modal {
+  width: min(720px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow: auto;
+  padding: clamp(20px, 4vw, 36px); border-radius: var(--radius);
+  background: var(--bg-2); color: var(--text); border: 1px solid rgba(232, 183, 92, 0.35);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+}
+.modal::backdrop { background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(4px); }
+.modal-close {
+  position: sticky; top: 0; float: right; margin: -8px -8px 0 0; width: 40px; height: 40px; border-radius: 50%;
+  border: 1px solid var(--card-border); background: var(--bg-2); color: var(--text); font-size: 1.1rem; cursor: pointer;
+}
+.modal-kicker { margin: 0; color: var(--gold-2); font-size: 0.8rem; letter-spacing: 0.12em; text-transform: uppercase; }
+.modal h2 { margin: 4px 0 8px; font-family: var(--display); font-size: clamp(1.7rem, 5vw, 2.4rem); line-height: 1.1; }
+.modal-sub { margin: 0 0 20px; color: var(--muted); }
+.modal-steps { list-style: none; counter-reset: paso; margin: 0; padding: 0; display: grid; gap: 14px; }
+.modal-steps li {
+  counter-increment: paso; position: relative; padding: 14px 14px 14px 64px; border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03); border: 1px solid var(--card-border);
+}
+.modal-steps li::before {
+  content: counter(paso); position: absolute; left: 14px; top: 14px; width: 36px; height: 36px; border-radius: 50%;
+  display: grid; place-items: center; font-weight: 800; color: #1b1305;
+  background: linear-gradient(180deg, var(--gold-2), var(--gold));
+}
+.modal-steps h4 { margin: 0 0 4px; font-size: 1.05rem; }
+.modal-steps p { margin: 0; color: var(--muted); font-size: 0.92rem; }
+.modal-steps b { color: var(--text); }
+.modal-steps .btn { margin-top: 10px; }
+.modal-req { margin: 18px 0 0; color: var(--muted); font-size: 0.85rem; }
+.modal-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+body.modal-open { overflow: hidden; }
+
 .pc-note { margin: 10px 0 0; color: var(--muted); font-size: 0.82rem; }
 .winners-title { margin: 32px 0 12px; font-family: var(--display); font-size: 1.1rem; color: var(--gold-2); text-align: center; }
 .winners { list-style: none; margin: 0 auto; padding: 0; max-width: 720px; display: grid; gap: 8px; }
