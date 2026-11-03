@@ -6,7 +6,8 @@ import { isMobileDevice } from '@/controllers/interface/mobile';
  *
  * - Hold a finger on an item (inventory, gear, vault, shop, trade...): its
  *   description shows, and follows the finger from item to item, like the
- *   cursor does on a PC. Letting go after a hold picks nothing up.
+ *   cursor does on a PC. Letting go after a hold picks nothing up, and the
+ *   description stays up until the next touch anywhere on the screen.
  * - A quick tap still picks the item up, exactly like before.
  * - With an item in the hand, touches pass straight through (to drop it).
  *
@@ -26,6 +27,8 @@ type Touch = { id: number; x: number; y: number; at: number; target: Element; mo
 let touch: Touch | null = null;
 let hovered: Element | null = null;
 let longTimer = 0;
+/** A description left up after a hold, until the next touch. */
+let sticky = false;
 
 function mouseEvent(type: string, x: number, y: number, extra: PointerEventInit = {}): PointerEvent {
   return new PointerEvent(type, {
@@ -76,6 +79,10 @@ function stop(event: Event): void {
 
 function onDown(event: PointerEvent): void {
   if (event.pointerType !== 'touch' || !event.isPrimary || touch) return;
+  if (sticky) {
+    sticky = false;
+    hoverOut();
+  }
   const target = event.target instanceof Element ? event.target.closest(ITEM_AREAS) : null;
   if (!target || Bag.pickedItem) return;
   stop(event);
@@ -107,8 +114,11 @@ function onUp(event: PointerEvent): void {
     const el = underFinger(t.x, t.y) ?? t.target;
     el.dispatchEvent(mouseEvent('pointerdown', t.x, t.y, { buttons: 1 }));
     el.dispatchEvent(mouseEvent('pointerup', t.x, t.y));
+    hoverOut();
+    return;
   }
-  hoverOut();
+  // After a hold the description stays where it is, to be read: the next touch takes it away.
+  sticky = !!hovered;
 }
 
 function onCancel(event: PointerEvent): void {
@@ -116,6 +126,16 @@ function onCancel(event: PointerEvent): void {
   touch = null;
   window.clearTimeout(longTimer);
   hoverOut();
+}
+
+/**
+ * The finger's own enter / leave (a touch enters on press and leaves on release) would
+ * drop the description the replayed mouse is keeping up: over the item areas they are ours.
+ */
+function onTouchOverOut(event: PointerEvent): void {
+  if (event.pointerType !== 'touch') return;
+  const target = event.target instanceof Element ? event.target.closest(ITEM_AREAS) : null;
+  if (target || touch || sticky) event.stopPropagation();
 }
 
 /** A long press must not open the browser menu nor "use" the item under the finger. */
@@ -135,6 +155,9 @@ if (typeof window !== 'undefined' && isMobileDevice()) {
   }, { capture: true });
   window.addEventListener('pointercancel', onCancel, { capture: true });
   window.addEventListener('contextmenu', onContextMenu, { capture: true });
+  for (const type of ['pointerover', 'pointerout', 'pointerenter', 'pointerleave']) {
+    window.addEventListener(type, onTouchOverOut as EventListener, { capture: true });
+  }
 }
 
 export {};
