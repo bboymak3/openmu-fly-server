@@ -107,7 +107,14 @@ async function main() {
     anotar(`Página abierta (${res.status()}) en ${((Date.now() - t0) / 1000).toFixed(1)} s`);
 
     // 2. La lista de mundos: BarrioMU y "Entrar".
-    await page.waitForSelector('.ws-world, .servers-page, .login-page', { timeout: 90000 }).catch(() => {});
+    // Primero carga y muestra el botón "Empezar" (.ws-start); al tocarlo se abre la lista.
+    await page.waitForSelector('.ws-start, .ws-world, .servers-page, .login-page', { timeout: 120000 }).catch(() => {});
+    if (await page.locator('.ws-start').count()) {
+      await captura('empezar');
+      await page.click('.ws-start');
+      anotar('Botón Empezar tocado');
+    }
+    await page.waitForSelector('.ws-world, .servers-page, .login-page', { timeout: 60000 }).catch(() => {});
     if ((await pantalla()) === UI.Preloader) {
       const tarjeta = page.locator('.ws-world', { hasText: new RegExp(MUNDO, 'i') }).first();
       if (!(await tarjeta.count())) await fallar(`no aparece el mundo ${MUNDO} en la lista`);
