@@ -20,6 +20,8 @@
 #   bash ~/barriomu.sh spot        repone los monstruos de Lorencia que falten y pone el spot
 #                                  de las afueras (reinicia OpenMU)
 #   bash ~/barriomu.sh spot quitar quita el spot de las afueras (reinicia OpenMU)
+#   bash ~/barriomu.sh joyas       muestra como caen Bless, Soul, Chaos, Life y Creation
+#   bash ~/barriomu.sh joyas 1     las hace caer con 1% por monstruo en todos los mapas (reinicia OpenMU)
 #
 # Al prender tambien arranca un vigilante que cada 5 minutos revisa que todo
 # siga prendido y vuelve a prender lo que se haya caido.
@@ -359,6 +361,51 @@ SQL
   echo "Listo. Entra a Lorencia y sal por el sur de la ciudad."
 }
 
+# Joyas que caen de los monstruos: Bless (14,13), Soul (14,14), Chaos (12,15),
+# Life (14,16) y Creation (14,22). OpenMU trae un grupo con 0.1% por monstruo.
+joyas() {
+  pg_ctl -D "$PGDATA" status >/dev/null 2>&1 || { echo "PostgreSQL esta apagado: bash ~/barriomu.sh prender"; return 1; }
+  if [ -n "$1" ]; then
+    local pct=${1/,/.}
+    if ! awk -v p="$pct" 'BEGIN { exit !(p + 0 > 0 && p + 0 <= 10) }'; then
+      echo "Pon un porcentaje entre 0.01 y 10, por ejemplo: bash ~/barriomu.sh joyas 1"
+      return 1
+    fi
+    psql -U postgres -d openmu -q -v ON_ERROR_STOP=1 -v pct="$pct" <<'SQL' || { echo "No se pudo."; return 1; }
+-- El grupo de joyas de OpenMU, o el de BarrioMU si no hay ninguno.
+INSERT INTO config."DropItemGroup" ("Id", "Chance", "Description", "GameConfigurationId", "ItemType")
+SELECT 'ba000000-0000-4000-8000-000000000300', :pct / 100.0, 'BarrioMU: joyas', (SELECT "Id" FROM config."GameConfiguration" LIMIT 1), 3
+WHERE NOT EXISTS (SELECT 1 FROM config."DropItemGroup" WHERE "Description" ILIKE '%jewel%' OR "Id" = 'ba000000-0000-4000-8000-000000000300');
+CREATE TEMP TABLE grupo AS
+SELECT "Id" FROM config."DropItemGroup"
+WHERE "Description" ILIKE '%jewel%' OR "Id" = 'ba000000-0000-4000-8000-000000000300';
+UPDATE config."DropItemGroup" SET "Chance" = :pct / 100.0 WHERE "Id" IN (SELECT "Id" FROM grupo);
+INSERT INTO config."DropItemGroupItemDefinition" ("DropItemGroupId", "ItemDefinitionId")
+SELECT g."Id", i."Id" FROM grupo g
+CROSS JOIN config."ItemDefinition" i
+WHERE (i."Group", i."Number") IN ((14, 13), (14, 14), (12, 15), (14, 16), (14, 22))
+  AND NOT EXISTS (SELECT 1 FROM config."DropItemGroupItemDefinition" x WHERE x."DropItemGroupId" = g."Id" AND x."ItemDefinitionId" = i."Id");
+INSERT INTO config."GameMapDefinitionDropItemGroup" ("GameMapDefinitionId", "DropItemGroupId")
+SELECT m."Id", g."Id" FROM grupo g CROSS JOIN config."GameMapDefinition" m
+WHERE NOT EXISTS (SELECT 1 FROM config."GameMapDefinitionDropItemGroup" x WHERE x."GameMapDefinitionId" = m."Id" AND x."DropItemGroupId" = g."Id");
+SQL
+    echo "Listo: las joyas caen con $pct% por monstruo en todos los mapas (ALTOBARINAS y Fortuna lo duplican)."
+    reiniciar_openmu
+    return 0
+  fi
+  psql -U postgres -d openmu -P pager=off <<'SQL'
+\echo '== Grupos de joyas =='
+SELECT g."Description" AS grupo, round((g."Chance" * 100)::numeric, 3) || '%' AS por_monstruo,
+       (SELECT string_agg(i."Name", ', ') FROM config."DropItemGroupItemDefinition" x
+          JOIN config."ItemDefinition" i ON i."Id" = x."ItemDefinitionId" WHERE x."DropItemGroupId" = g."Id") AS joyas,
+       (SELECT count(*) FROM config."GameMapDefinitionDropItemGroup" x WHERE x."DropItemGroupId" = g."Id") || ' de ' ||
+       (SELECT count(*) FROM config."GameMapDefinition") AS mapas
+FROM config."DropItemGroup" g
+WHERE g."Description" ILIKE '%jewel%' OR g."Id" = 'ba000000-0000-4000-8000-000000000300';
+SQL
+  echo "Para subirlas, por ejemplo a 1% por monstruo: bash ~/barriomu.sh joyas 1"
+}
+
 arranque() {
   mkdir -p "$HOME/.termux/boot"
   cat >"$HOME/.termux/boot/barriomu" <<'BOOT'
@@ -426,6 +473,7 @@ case "$1" in
   npcs) npcs "$2" ;;
   mapas) mapas ;;
   spot) spot "$2" ;;
+  joyas) joyas "$2" ;;
   vigilar) vigilar ;;
-  *) sed -n '2,26p' "$0" | sed 's/^# \{0,1\}//' ;;
+  *) sed -n '2,28p' "$0" | sed 's/^# \{0,1\}//' ;;
 esac

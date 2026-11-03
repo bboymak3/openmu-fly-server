@@ -121,6 +121,8 @@ Se usa en **Termux normal** (`~ $`), **no** dentro de Ubuntu.
 | `bash ~/barriomu.sh mapas` | Solo mira: monstruos de cada mapa, los de Lorencia, los portales entre mapas y los destinos de /move (dice cuáles están rotos o llevan a un mapa apagado) |
 | `bash ~/barriomu.sh spot` | Repone los monstruos originales de Lorencia que falten y pone el **spot de las afueras** (al sur, x 140-170, y 185-215: 25 Gigantes, 25 Esqueletos, 20 Lich). No duplica si se corre otra vez. Reinicia OpenMU |
 | `bash ~/barriomu.sh spot quitar` | Quita el spot de las afueras (deja los monstruos originales). Reinicia OpenMU |
+| `bash ~/barriomu.sh joyas` | Muestra con qué porcentaje caen Bless, Soul, Chaos, Life y Creation y en cuántos mapas |
+| `bash ~/barriomu.sh joyas 1` | Las hace caer con 1% por monstruo (o el número que pongas, hasta 10) en todos los mapas. ALTOBARINAS y el buff de Fortuna lo duplican. Reinicia OpenMU |
 | `bash ~/barriomu.sh reset-db` | ⚠️ **BORRA TODA LA BASE** y la crea de nuevo (pide escribir `SI`) |
 
 - El **vigilante** revisa cada 5 minutos y vuelve a prender lo que se haya caído.
@@ -190,6 +192,23 @@ Notas:
 ---
 
 ## 6. Funciones del juego
+
+### Set gratis para personajes nuevos
+
+Cada personaje que se crea recibe en la bolsa el set más básico de su clase, +0
+(plugin `BarrioStarterSetPlugIn`). No va puesto porque pide un poco más de fuerza que
+la de un personaje recién creado: se lo pone a los pocos niveles.
+
+| Clase | Set |
+|---|---|
+| Dark Wizard | Pad |
+| Dark Knight, Dark Lord | Leather |
+| Fairy Elf | Vine |
+| Magic Gladiator | Leather sin casco |
+| Summoner | Mistery |
+| Rage Fighter | Leather sin guantes |
+
+Solo para personajes nuevos: los que ya existen no lo reciben.
 
 ### Cuentas de prueba
 `barrio01` a `barrio10` (clave igual al usuario). Cada una con un personaje nivel 400 de tercera
