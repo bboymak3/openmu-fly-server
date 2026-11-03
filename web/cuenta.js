@@ -171,6 +171,7 @@
     try {
       data = await call("/me");
       render();
+      loadRef();
     } catch (e) {
       if (!$("#panel-view").hidden) toast(e.message, true);
       else showLogin(store.get() ? e.message : "");
@@ -295,6 +296,170 @@
     } finally {
       btn.disabled = false;
     }
+  });
+
+
+  // ---------- Referidos ----------
+  const REF_KEY = "barriomu.ref";
+  const savedRef = () => { try { return localStorage.getItem(REF_KEY) || ""; } catch { return ""; } };
+  const forgetRef = () => { try { localStorage.removeItem(REF_KEY); } catch {} };
+  // Si llego con ?ref=CODIGO a esta pagina, tambien se guarda.
+  try {
+    const fromUrl = new URLSearchParams(location.search).get("ref");
+    if (fromUrl) localStorage.setItem(REF_KEY, fromUrl.trim().toUpperCase());
+  } catch {}
+  $("#ref-login-hint").hidden = !savedRef();
+
+  let ref = null;
+  const STATE = {
+    cuenta: '<span class="badge ok">✅ Cuenta</span>',
+    espera: '<span class="badge wait">⏳ Mes que viene</span>',
+    jugando: '<span class="badge">🎮 Jugando</span>',
+  };
+
+  function renderRef() {
+    const r = ref;
+    document.querySelectorAll('[data-ref="goal"]').forEach(el => (el.textContent = r.goalLevel));
+    $("#ref-link").value = r.link;
+    $("#ref-code").textContent = r.code;
+    const msg = `¡Juega MU conmigo en BarrioMU! Season 6 en el celular o la PC. Entra con mi link y los dos ganamos premios: ${r.link}`;
+    $("#ref-whatsapp").href = "https://wa.me/?text=" + encodeURIComponent(msg);
+    $("#ref-share").hidden = !navigator.share;
+    $("#ref-share").onclick = () => navigator.share({ title: "BarrioMU", text: msg, url: r.link }).catch(() => {});
+
+    $("#ref-count").textContent = r.counted;
+    $("#ref-month").textContent = `· ${r.monthCounted} de ${r.monthLimit} este mes`;
+    const max = r.milestones[r.milestones.length - 1].at;
+    $("#ref-bar").style.width = Math.min(100, (r.counted / max) * 100) + "%";
+    $("#ref-marks").innerHTML = r.milestones
+      .map(m => `<b class="${r.counted >= m.at ? "on" : ""}" style="left:${(m.at / max) * 100}%">${m.at}</b>`)
+      .join("");
+
+    const locked = data?.online === true;
+    const card = (m, title, lockText) => {
+      const state = m.claimed ? "claimed" : m.unlocked ? "ready" : "locked";
+      const action = m.claimed
+        ? `<span class="ref-done">✔ Entregado${m.claimed.detail ? ": " + esc(m.claimed.detail) : ""}</span>`
+        : m.unlocked
+          ? `<button class="btn btn-gold btn-small" data-claim="${m.key}" data-wings="${m.wings ?? ""}" ${locked ? "disabled" : ""}>🎁 Pedir premio</button>`
+          : `<span class="ref-lock">🔒 ${lockText ?? `Te faltan ${m.at - r.counted}`}</span>`;
+      return `<div class="ref-reward is-${state}"><div class="ref-reward-at">${title}</div><div class="ref-reward-what">${esc(m.label)}</div>${action}</div>`;
+    };
+    $("#ref-rewards").innerHTML = r.milestones
+      .map(m => card(m, `${m.at} ${m.at === 1 ? "amigo" : "amigos"}`))
+      .join("");
+
+    // ¿Me invito alguien?
+    let invited = "";
+    if (r.invitedBy) {
+      const w = r.welcome;
+      invited = `
+        <h3 class="ref-sub">Tu invitación</h3>
+        <p class="ref-rule">Entraste invitado por <b>${esc(r.invitedBy.name)}</b>. Al llegar a nivel ${r.goalLevel}, tú también ganas:</p>
+        <div class="ref-rewards">${card({ ...w, wings: null }, "Tu premio de bienvenida", `Llega a nivel ${r.goalLevel} (vas en ${r.own.level})`)}</div>`;
+    } else if (r.canLink) {
+      const days = Math.max(0, Math.ceil((new Date(r.linkDeadline).getTime() - Date.now()) / 86400000));
+      invited = `
+        <h3 class="ref-sub">¿Te invitó un amigo?</h3>
+        <form class="ref-enter" id="ref-enter">
+          <input name="code" maxlength="6" placeholder="Código de 6 letras" value="${esc(savedRef())}" autocapitalize="characters" spellcheck="false" />
+          <button class="btn btn-gold" type="submit">Activar invitación</button>
+        </form>
+        <p class="ref-rule small">Solo se pone una vez, antes de llegar a nivel ${r.goalLevel}. Te quedan ${days} ${days === 1 ? "día" : "días"}. Cuando llegues a nivel ${r.goalLevel}, tú y tu amigo ganan premios.</p>`;
+    }
+    $("#ref-invited").innerHTML = invited;
+
+    $("#ref-friends").innerHTML = r.friends.length
+      ? r.friends
+          .map(f => `<tr><td><strong>${esc(f.name)}</strong></td><td class="num">${f.level}</td><td class="num">${f.resets}</td><td>${STATE[f.state] ?? ""}</td></tr>`)
+          .join("")
+      : '<tr><td colspan="4" class="skeleton">Todavía no invitaste a nadie. ¡Comparte tu link!</td></tr>';
+    $("#ref-limits").textContent = `Cuenta cuando tu amigo llega a nivel ${r.goalLevel} (o hace un reset). Máximo ${r.monthLimit} amigos por mes y ${r.houseLimit} cuentas por casa.`;
+  }
+
+  async function loadRef() {
+    try {
+      ref = await call("/me/referidos");
+      renderRef();
+      // Codigo guardado del link: se activa solo si se puede.
+      const code = savedRef();
+      if (code && ref.canLink) {
+        try {
+          const res = await call("/me/referidos/codigo", { method: "POST", body: { code } });
+          forgetRef();
+          toast(res.message);
+          ref = await call("/me/referidos");
+          renderRef();
+        } catch (e) {
+          toast(e.message, true);
+        }
+      } else if (code && !ref.canLink) {
+        forgetRef();
+      }
+    } catch (e) {
+      $("#ref-link").value = "No se pudo cargar. Recarga la página.";
+    }
+  }
+
+  $("#ref-copy").addEventListener("click", async () => {
+    const input = $("#ref-link");
+    try {
+      await navigator.clipboard.writeText(input.value);
+    } catch {
+      input.select();
+      document.execCommand("copy");
+    }
+    $("#ref-copy").textContent = "✔ ¡Copiado!";
+    setTimeout(() => ($("#ref-copy").textContent = "📋 Copiar link"), 2500);
+  });
+
+  $("#referidos").addEventListener("submit", async e => {
+    if (e.target.id !== "ref-enter") return;
+    e.preventDefault();
+    const btn = e.target.querySelector("button");
+    btn.disabled = true;
+    try {
+      const res = await call("/me/referidos/codigo", { method: "POST", body: { code: e.target.code.value } });
+      forgetRef();
+      toast(res.message);
+      await loadRef();
+    } catch (err) {
+      toast(err.message, true);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  async function claim(reward, character) {
+    try {
+      const res = await call("/me/referidos/reclamar", { method: "POST", body: { reward, character } });
+      toast(res.message);
+      await loadRef();
+    } catch (e) {
+      toast(e.message, true);
+    }
+  }
+
+  const wingsDialog = $("#wings-dialog");
+  let wingsReward = null;
+  $("#referidos").addEventListener("click", e => {
+    const btn = e.target.closest("button[data-claim]");
+    if (!btn) return;
+    const reward = btn.dataset.claim;
+    if (btn.dataset.wings) {
+      if (!ref.characters.length) return toast("Crea un personaje primero: las alas son de su clase.", true);
+      wingsReward = reward;
+      $("#wings-char").innerHTML = ref.characters
+        .map(c => `<option value="${esc(c.name)}">${esc(c.name)} · ${esc(CLASSES[c.class] ?? "")}</option>`)
+        .join("");
+      wingsDialog.showModal();
+      return;
+    }
+    if (confirm("¿Pedir el premio ahora?\n\nRecuerda: fuera del juego y con el baúl vacío. Llega a tu baúl.")) claim(reward);
+  });
+  $("#wings-form").addEventListener("submit", e => {
+    if (e.submitter?.value !== "ok") return;
+    claim(wingsReward, $("#wings-char").value);
   });
 
   // ---------- Inicio ----------

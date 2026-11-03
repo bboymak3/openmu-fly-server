@@ -159,7 +159,7 @@ export function clientIp(req: Request): string {
   return req.headers.get("cf-connecting-ip") ?? "local";
 }
 
-function session(req: Request) {
+export function session(req: Request) {
   const token = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "";
   const s = sessions.get(token);
   if (!s || s.expires < Date.now()) {
@@ -179,7 +179,7 @@ async function presence(login: string): Promise<Presence> {
 }
 
 /** Solo deja seguir si la cuenta esta desconectada hace al menos un minuto. */
-async function requireOffline(login: string): Promise<void> {
+export async function requireOffline(login: string): Promise<void> {
   let p: Presence;
   try {
     p = await presence(login);

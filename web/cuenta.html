@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Mi cuenta · BarrioMU</title>
-  <meta name="description" content="Panel de usuario de BarrioMU: reparte puntos, limpia PK, desbloquea personajes y cambia tu clave." />
+  <meta name="description" content="Panel de usuario de BarrioMU: tu link de referidos y premios, reparte puntos, limpia PK, desbloquea personajes y cambia tu clave." />
   <meta name="robots" content="noindex" />
   <meta name="theme-color" content="#0b0a0f" />
   <link rel="icon" type="image/png" href="assets/favicon.png" />
@@ -33,6 +33,7 @@
     <section id="login-view" hidden>
       <h1 class="title">Mi cuenta</h1>
       <p class="subtitle">Entra con el mismo usuario y clave del juego.</p>
+      <p class="ref-login-hint" id="ref-login-hint" hidden>🎁 Te invitaron a BarrioMU. Entra (o crea tu cuenta y vuelve aquí) para activar tu invitación.</p>
       <form id="login-form" class="card form" autocomplete="on">
         <label>Usuario
           <input name="username" required minlength="4" maxlength="10" autocomplete="username" autocapitalize="off" spellcheck="false" />
@@ -60,6 +61,42 @@
         🎮 Estás conectado al juego. <strong>Sal del juego</strong> para usar el panel (espera un minuto después de salir).
       </div>
       <p class="toast" id="toast" role="status" hidden></p>
+
+      <!-- Referidos: lo primero que se ve -->
+      <section class="card ref" id="referidos">
+        <div class="ref-head">
+          <h2>🤝 Invita y gana</h2>
+          <a class="ref-how" href="index.html#referidos">¿Cómo funciona?</a>
+        </div>
+        <p class="ref-lead">Comparte tu link. Cuando un amigo llegue a <b>nivel <span data-ref="goal">200</span></b>, ganan los dos.</p>
+        <div class="ref-link">
+          <input id="ref-link" readonly aria-label="Tu link de referido" value="Cargando…" />
+          <div class="ref-link-actions">
+            <button class="btn btn-gold" id="ref-copy" type="button">📋 Copiar link</button>
+            <a class="btn btn-ghost" id="ref-whatsapp" href="#" target="_blank" rel="noopener">💬 WhatsApp</a>
+            <button class="btn btn-ghost" id="ref-share" type="button" hidden>📤 Compartir</button>
+          </div>
+          <p class="ref-code">Tu código: <b id="ref-code">——</b></p>
+        </div>
+
+        <div class="ref-progress">
+          <div class="ref-progress-text"><b id="ref-count">0</b> amigos llegaron a nivel <span data-ref="goal">200</span> <small id="ref-month"></small></div>
+          <div class="ref-bar"><i id="ref-bar"></i><span class="ref-marks" id="ref-marks"></span></div>
+        </div>
+
+        <h3 class="ref-sub">Tus premios</h3>
+        <p class="ref-rule">Para pedir un premio: <b>sal del juego</b> y deja tu <b>baúl vacío</b>. El premio llega al baúl.</p>
+        <div class="ref-rewards" id="ref-rewards"></div>
+
+        <div class="ref-invited" id="ref-invited"></div>
+
+        <h3 class="ref-sub">Tus invitados</h3>
+        <div class="table-wrap"><table class="ranking ref-friends">
+          <thead><tr><th>Personaje</th><th class="num">Nivel</th><th class="num">RR</th><th>Estado</th></tr></thead>
+          <tbody id="ref-friends"><tr><td colspan="4" class="skeleton">Cargando…</td></tr></tbody>
+        </table></div>
+        <p class="ref-rule small" id="ref-limits"></p>
+      </section>
 
       <div class="chars" id="chars"></div>
 
@@ -90,6 +127,19 @@
       <div class="dialog-actions">
         <button class="btn btn-ghost" value="cancel" formnovalidate>Cancelar</button>
         <button class="btn btn-gold" id="points-ok" value="ok">Repartir</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Elegir personaje para las alas -->
+  <dialog id="wings-dialog" class="dialog">
+    <form method="dialog" id="wings-form">
+      <h3>¿Para qué personaje son las alas?</h3>
+      <p class="muted">Te damos las alas de su clase. Llegan a tu baúl.</p>
+      <select id="wings-char" class="ref-select"></select>
+      <div class="dialog-actions">
+        <button class="btn btn-ghost" value="cancel" formnovalidate>Cancelar</button>
+        <button class="btn btn-gold" value="ok">Pedir alas</button>
       </div>
     </form>
   </dialog>

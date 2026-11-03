@@ -423,3 +423,77 @@ img { display: block; max-width: 100%; }
 .cache-card { padding: 18px; display: grid; gap: 10px; }
 .cache-card p { margin: 0; }
 .cache-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* ---------- Referidos ---------- */
+.ref { margin: 0 0 24px; border-color: rgba(232, 183, 92, 0.55); background: linear-gradient(180deg, rgba(232, 183, 92, 0.1), rgba(255, 255, 255, 0.03)); }
+.ref-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.ref-head h2 { margin: 0; font-family: var(--display); font-size: clamp(1.4rem, 4vw, 1.9rem); color: var(--gold-2); }
+.ref-how { color: var(--blue); font-size: 0.9rem; }
+.ref-lead { margin: 8px 0 16px; color: var(--muted); }
+.ref-lead b { color: var(--text); }
+.ref-link { display: grid; gap: 10px; padding: 16px; border-radius: 12px; background: rgba(0, 0, 0, 0.35); border: 1px dashed rgba(232, 183, 92, 0.6); }
+.ref-link input {
+  width: 100%; padding: 14px 16px; border-radius: 10px; border: 1px solid rgba(232, 183, 92, 0.45);
+  background: #07060a; color: var(--gold-2); font: 700 clamp(0.78rem, 3.2vw, 1.2rem) var(--body); text-align: center; padding-inline: 8px;
+}
+.ref-link-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.ref-link-actions .btn { flex: 1 1 140px; justify-content: center; text-align: center; }
+.ref-code { margin: 0; text-align: center; color: var(--muted); font-size: 0.9rem; }
+.ref-code b { color: var(--gold-2); letter-spacing: 0.2em; font-size: 1.1rem; }
+.ref-progress { margin: 20px 0 8px; }
+.ref-progress-text { margin-bottom: 10px; }
+.ref-progress-text b { font-size: 1.5rem; color: var(--gold-2); }
+.ref-progress-text small { color: var(--muted); }
+.ref-bar { position: relative; height: 12px; border-radius: 99px; background: rgba(255, 255, 255, 0.08); margin: 0 10px 26px; }
+.ref-bar > i { position: absolute; inset: 0 auto 0 0; border-radius: 99px; background: linear-gradient(90deg, var(--gold), var(--gold-2)); }
+.ref-marks b {
+  position: absolute; top: 18px; transform: translateX(-50%); font-size: 0.75rem; color: var(--muted);
+}
+.ref-marks b::before {
+  content: ""; position: absolute; top: -14px; left: 50%; width: 4px; height: 8px; margin-left: -2px; border-radius: 2px; background: rgba(255, 255, 255, 0.3);
+}
+.ref-marks b.on { color: var(--gold-2); }
+.ref-sub { margin: 22px 0 6px; font-family: var(--display); color: var(--gold-2); }
+.ref-rule { margin: 0 0 12px; color: var(--muted); font-size: 0.92rem; }
+.ref-rule b { color: var(--text); }
+.ref-rule.small { font-size: 0.8rem; margin-top: 10px; }
+.ref-rewards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.ref-reward { display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.03); }
+.ref-reward.is-ready { border-color: var(--gold); box-shadow: 0 0 18px rgba(232, 183, 92, 0.25); }
+.ref-reward.is-claimed { border-color: rgba(74, 222, 128, 0.45); }
+.ref-reward.is-locked { opacity: 0.75; }
+.ref-reward-at { font-weight: 800; color: var(--gold-2); }
+.ref-reward-what { flex: 1; font-size: 0.92rem; }
+.ref-lock { color: var(--muted); font-size: 0.85rem; }
+.ref-done { color: var(--green); font-size: 0.85rem; }
+.ref-enter { display: flex; flex-wrap: wrap; gap: 8px; }
+.ref-enter input {
+  flex: 1 1 180px; padding: 12px 14px; border-radius: 10px; border: 1px solid rgba(232, 183, 92, 0.45);
+  background: #07060a; color: var(--text); font: 700 1.05rem var(--body); letter-spacing: 0.15em; text-transform: uppercase;
+}
+.ref-friends { min-width: 0; }
+.ref-friends th, .ref-friends td { padding: 10px 8px; }
+.ref-friends td:first-child { white-space: normal; word-break: break-word; }
+.ref-select { width: 100%; padding: 12px; margin: 8px 0 16px; border-radius: 10px; background: #07060a; color: var(--text); border: 1px solid rgba(232, 183, 92, 0.45); font: inherit; }
+.ref-login-hint { text-align: center; color: var(--gold-2); margin: -10px 0 18px; }
+.badge.ok { background: rgba(74, 222, 128, 0.15); color: var(--green); }
+.badge.wait { background: rgba(95, 182, 255, 0.15); color: var(--blue); }
+
+/* Landing: referidos */
+.ref-banner {
+  margin: 0; padding: 12px 16px; text-align: center;
+  background: linear-gradient(90deg, rgba(232, 183, 92, 0.95), rgba(255, 217, 138, 0.95)); color: #1b1305; font-weight: 700;
+}
+.ref-banner a { color: #1b1305; }
+.ref-steps { list-style: none; margin: 0 0 20px; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.ref-steps li { display: flex; gap: 12px; align-items: flex-start; }
+.ref-steps .start-num { position: static; flex: none; }
+.ref-steps h4 { margin: 0 0 4px; }
+.ref-steps p { margin: 0; color: var(--muted); font-size: 0.92rem; }
+.ref-table td:last-child { color: var(--gold-2); font-weight: 700; }
+.ref-table, .ref-top .ranking { min-width: 0; }
+.ref-table th, .ref-table td { white-space: normal; padding: 10px 12px; }
+.ref-top .ranking th, .ref-top .ranking td { padding: 10px 12px; }
+.ref-cta { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 20px 0 8px; }
+.ref-top { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 12px; }
+.ref-top h3 { margin: 0 0 8px; font-family: var(--display); color: var(--gold-2); text-align: center; }
