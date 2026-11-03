@@ -177,7 +177,6 @@ gm() {
 # la API (~/.barriomu-cloudflare). Nunca se manda a ningun lado: la API lo usa
 # para leer las visitas y borrar la cache.
 cloudflare() {
-  local destino="$PREFIX/var/lib/proot-distro/installed-rootfs/ubuntu/root/.barriomu-cloudflare"
   echo "Pega el token de Cloudflare del panel admin y dale Enter (no se ve mientras lo pegas):"
   local token
   read -rs token; echo
@@ -185,7 +184,10 @@ cloudflare() {
   if ! [[ "$token" =~ ^[A-Za-z0-9_-]{20,}$ ]]; then
     echo "Eso no parece un token de Cloudflare. No se guardo nada."; return 1
   fi
-  ( umask 077; printf '%s\n' "$token" > "$destino" ) || { echo "No se pudo guardar."; return 1; }
+  # Se escribe desde dentro de Ubuntu (por la entrada, no como argumento), asi
+  # no depende de donde guarde proot-distro la carpeta de Ubuntu.
+  printf '%s\n' "$token" | proot-distro login ubuntu -- bash -c 'umask 077; cat > ~/.barriomu-cloudflare' \
+    || { echo "No se pudo guardar."; return 1; }
   echo "Listo: token guardado. El panel admin ya puede ver las visitas y borrar la cache."
 }
 

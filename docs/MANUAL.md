@@ -373,7 +373,7 @@ pg_dump -U postgres openmu | gzip > ~/respaldo-openmu-$(date +%F).sql.gz
 
 ### Copiar los datos de los plugins (premio diario, Master Reset, buffs)
 ```bash
-proot-distro login ubuntu -- bash -c 'cd ~/openmu && tar -czf ~/respaldo-data.tar.gz data' && cp $PREFIX/var/lib/proot-distro/installed-rootfs/ubuntu/root/respaldo-data.tar.gz ~/respaldo-data-$(date +%F).tar.gz
+proot-distro login ubuntu -- bash -c 'cd ~/openmu && tar -czf - data' > ~/respaldo-data-$(date +%F).tar.gz
 ```
 
 ### Llevar los respaldos fuera de la tablet
