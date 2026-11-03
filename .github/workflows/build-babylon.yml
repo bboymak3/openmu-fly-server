@@ -99,6 +99,9 @@ jobs:
           rm -rf bun.zip bun-linux-aarch64
 
       - name: Armar paquete
+        env:
+          # Carpetas de graficos del cliente: van solo en el paquete completo.
+          HEAVY_DIRS: Data game-assets packs items bundles
         run: |
           mv client-src/dist out/client
           mv client-src/dist-register out/register
@@ -107,7 +110,13 @@ jobs:
           git -C client-src rev-parse --short HEAD > out/VERSION
           rm -rf client-src
           tar -czf babylon-proxy-arm64.tar.gz -C out proxy register mu-servir iniciar-cliente.sh
-          du -sh out babylon-proxy-arm64.tar.gz
+          # Huella de los graficos (lo pesado, que casi nunca cambia). La actualizacion corta
+          # (actualizar-babylon.sh) solo trae el codigo y exige que la huella sea la misma.
+          (cd out && for d in $HEAVY_DIRS; do [ -d "client/$d" ] && find "client/$d" -type f; done | sort | xargs -d '\n' sha256sum | sha256sum | cut -c1-16) > out/DATA_VERSION
+          echo "DATA_VERSION: $(cat out/DATA_VERSION)"
+          excludes=(); for d in $HEAVY_DIRS; do excludes+=(--exclude="./client/$d"); done
+          tar -czf babylon-codigo-arm64.tar.gz -C out "${excludes[@]}" .
+          du -sh out babylon-proxy-arm64.tar.gz babylon-codigo-arm64.tar.gz
 
       - name: Partir en trozos
         run: |
@@ -130,7 +139,27 @@ jobs:
             echo 'done | tar -x'
             echo 'echo "Listo. Para iniciar: cd ~/babylon && ./iniciar-cliente.sh"'
           } > instalar-babylon.sh
-          mv instalar-babylon.sh babylon-proxy-arm64.tar.gz parts/
+          {
+            echo '#!/bin/bash'
+            echo '# BarrioMU: actualizacion corta del cliente (solo el codigo, sin los graficos).'
+            echo 'set -eo pipefail'
+            echo "BASE=https://github.com/${GITHUB_REPOSITORY}/releases/download/babylon-arm64"
+            echo 'cd ~/babylon'
+            echo 'wget -O ~/babylon-codigo.tar.gz "$BASE/babylon-codigo-arm64.tar.gz"'
+            echo 'want=$(tar -xzOf ~/babylon-codigo.tar.gz ./DATA_VERSION)'
+            echo 'have=$(cat DATA_VERSION 2>/dev/null || true)'
+            echo 'if [ "$want" != "$have" ]; then'
+            echo '  rm -f ~/babylon-codigo.tar.gz'
+            echo '  echo "Los graficos cambiaron (o es la primera vez): esta vez hace falta la instalacion completa, instalar-babylon.sh."'
+            echo '  exit 1'
+            echo 'fi'
+            echo 'rm -rf client/assets client/js'
+            echo 'tar -xzf ~/babylon-codigo.tar.gz'
+            echo 'rm -f ~/babylon-codigo.tar.gz'
+            echo 'echo "Listo: cliente actualizado ($(cat VERSION)). Para iniciar: bash ~/barriomu.sh prender"'
+          } > actualizar-babylon.sh
+          cat actualizar-babylon.sh
+          mv instalar-babylon.sh actualizar-babylon.sh babylon-proxy-arm64.tar.gz babylon-codigo-arm64.tar.gz parts/
           cat parts/instalar-babylon.sh
 
       # GitHub no deja crear la etiqueta babylon-arm64 sobre esta rama: se crea sobre main
