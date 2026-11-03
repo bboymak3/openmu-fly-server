@@ -194,6 +194,19 @@ Notas:
 
 ## 6. Funciones del juego
 
+### En el celular
+
+- **Nombres**: el nombre de cada jugador (y el tuyo) se ve siempre encima de la cabeza, con
+  su guild; sobre tu personaje hay una barra de vida (y sobre los de tu party).
+- **Descripción de un ítem**: mantén el dedo sobre el ítem (inventario, equipo, baúl, tienda,
+  trade): sale su descripción arriba del dedo y, si arrastras, va mostrando la de cada ítem.
+  Al soltar no se agarra nada. Un **toque rápido** agarra el ítem como siempre.
+- Con el inventario, el baúl, una tienda o un trade abiertos se esconde la rueda de combate.
+- **Salir a otra app** (WhatsApp): el proxy manda pings para que la conexión aguante y espera
+  4 minutos antes de darla por muerta. Si igual se corta, al volver el juego reconecta solo:
+  no gasta intentos mientras estás fuera, reintenta si la sesión vieja sigue abierta (OpenMU la
+  cierra) y vuelve a prender el MU Helper (server.json del proxy, `babylon/iniciar-cliente.sh`).
+
 ### Set gratis para personajes nuevos
 
 Cada personaje que se crea recibe en la bolsa el set más básico de su clase, +0
