@@ -173,6 +173,15 @@ proot-distro login ubuntu -- bash -c 'cd ~ && wget -O openmu.zip https://github.
 proot-distro login ubuntu -- bash -c 'cd ~ && wget -O instalar-babylon.sh https://github.com/bboymak3/openmu-fly-server/releases/download/babylon-arm64/instalar-babylon.sh && bash instalar-babylon.sh'
 ```
 
+**Actualización corta del cliente (unos 30 MB en vez de 2 GB)**: cuando solo cambió el código
+(lo normal), en lugar del paso 3:
+```bash
+proot-distro login ubuntu -- bash -c 'cd ~ && wget -O actualizar-babylon.sh https://github.com/bboymak3/openmu-fly-server/releases/download/babylon-arm64/actualizar-babylon.sh && bash actualizar-babylon.sh'
+```
+Baja solo el código (juego, proxy, registro y API) y deja los gráficos que ya tienes. Si los
+gráficos cambiaron, o si la tablet todavía no tiene la marca `~/babylon/DATA_VERSION` (la trae la
+instalación completa a partir de esta versión), lo avisa y hay que usar el paso 3 completo.
+
 **4. Prender**
 ```bash
 bash ~/barriomu.sh prender
