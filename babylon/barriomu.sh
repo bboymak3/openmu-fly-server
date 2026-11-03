@@ -17,8 +17,8 @@
 #   bash ~/barriomu.sh npcs        lista los NPCs de las ciudades y cuantos estan apagados
 #   bash ~/barriomu.sh npcs activar  vuelve a prender todos los NPCs y monstruos (reinicia OpenMU)
 #   bash ~/barriomu.sh mapas       monstruos de Lorencia, portales y /move: que sirve y que esta roto
-#   bash ~/barriomu.sh spot        repone los monstruos de Lorencia que falten y pone el spot
-#                                  de las afueras (reinicia OpenMU)
+#   bash ~/barriomu.sh spot        Lorencia con el TRIPLE de monstruos en todas las salidas
+#                                  y el spot del sur (reinicia OpenMU); spot 1 = normal, spot 2 = doble
 #   bash ~/barriomu.sh spot quitar quita el spot de las afueras (reinicia OpenMU)
 #   bash ~/barriomu.sh joyas       muestra como caen Bless, Soul, Chaos, Life y Creation
 #   bash ~/barriomu.sh joyas 1     las hace caer con 1% por monstruo en todos los mapas (reinicia OpenMU)
@@ -298,8 +298,12 @@ SQL
   echo "rotos o ROTO = el portal no lleva a ningun lado. Para el spot: bash ~/barriomu.sh spot"
 }
 
-# Repone los monstruos originales de Lorencia que falten (los de OpenMU) y pone
-# el spot de las afueras. Las filas que crea tienen id ba000000-... (se pueden quitar).
+# Lorencia llena: las zonas de monstruos de OpenMU alrededor de la ciudad (todas las
+# salidas: norte, este, sur y oeste) con N veces sus monstruos (por defecto 3), y el
+# spot del sur. Repone las zonas que falten. Las filas que crea tienen id ba000000-...
+#   spot        triple de monstruos + spot
+#   spot 1|2|3  normal, doble o triple (el spot queda igual)
+#   spot quitar quita solo el spot del sur
 spot() {
   pg_ctl -D "$PGDATA" status >/dev/null 2>&1 || { echo "PostgreSQL esta apagado: bash ~/barriomu.sh prender"; return 1; }
   if [ "$1" = quitar ]; then
@@ -308,57 +312,67 @@ spot() {
     reiniciar_openmu
     return 0
   fi
+  local veces=${1:-3}
+  case "$veces" in 1|2|3) ;; *) echo "Usa: bash ~/barriomu.sh spot 1 (normal), 2 (doble) o 3 (triple)"; return 1 ;; esac
   local salida
-  salida=$(psql -U postgres -d openmu -tAq -v ON_ERROR_STOP=1 <<'SQL'
+  salida=$(psql -U postgres -d openmu -tAq -v ON_ERROR_STOP=1 -v veces="$veces" <<'SQL'
 UPDATE config."GameMapDefinition" SET "IsActive" = true WHERE "Number" = 0 AND NOT "IsActive";
-WITH lorencia AS (SELECT "Id" FROM config."GameMapDefinition" WHERE "Number" = 0 LIMIT 1),
--- id, monstruo, x1, x2, y1, y2, cuantos
-originales(id, num, x1, x2, y1, y2, q) AS (VALUES
-  ('ba000000-0000-4000-8000-000000000100'::uuid, 0, 135, 240, 20, 88, 45),
-  ('ba000000-0000-4000-8000-000000000101'::uuid, 3, 180, 226, 90, 244, 45),
-  ('ba000000-0000-4000-8000-000000000102'::uuid, 2, 180, 226, 90, 244, 40),
-  ('ba000000-0000-4000-8000-000000000103'::uuid, 2, 135, 240, 20, 88, 20),
-  ('ba000000-0000-4000-8000-000000000104'::uuid, 6, 95, 175, 168, 244, 20),
-  ('ba000000-0000-4000-8000-000000000105'::uuid, 14, 95, 175, 168, 244, 15),
-  ('ba000000-0000-4000-8000-000000000106'::uuid, 1, 8, 94, 11, 244, 45),
-  ('ba000000-0000-4000-8000-000000000107'::uuid, 4, 8, 94, 11, 244, 45),
-  ('ba000000-0000-4000-8000-000000000108'::uuid, 7, 8, 60, 11, 80, 15)
-),
--- El spot de BarrioMU, al sur de la ciudad, saliendo por abajo.
-spot(id, num, x1, x2, y1, y2, q) AS (VALUES
-  ('ba000000-0000-4000-8000-000000000200'::uuid, 7, 140, 170, 185, 215, 25),
-  ('ba000000-0000-4000-8000-000000000201'::uuid, 14, 140, 170, 185, 215, 25),
-  ('ba000000-0000-4000-8000-000000000202'::uuid, 6, 140, 170, 185, 215, 20)
-),
-faltan AS (
-  SELECT o.* FROM originales o
-  WHERE NOT EXISTS (
-    SELECT 1 FROM config."MonsterSpawnArea" s
-    JOIN config."MonsterDefinition" m ON m."Id" = s."MonsterDefinitionId"
-    WHERE s."GameMapId" = (SELECT "Id" FROM lorencia) AND m."Number" = o.num
-      AND s."Id"::text NOT LIKE 'ba000000-0000-4000-8000-0000000002%')
-),
-todo AS (SELECT * FROM faltan UNION ALL SELECT * FROM spot),
-nuevos AS (
-  INSERT INTO config."MonsterSpawnArea"
-    ("Id", "GameMapId", "MonsterDefinitionId", "X1", "X2", "Y1", "Y2", "Quantity", "Direction", "SpawnTrigger", "WaveNumber")
-  SELECT t.id, (SELECT "Id" FROM lorencia), m."Id", t.x1, t.x2, t.y1, t.y2, t.q, 0, 0, 0
-  FROM todo t JOIN config."MonsterDefinition" m ON m."Number" = t.num
-  ON CONFLICT ("Id") DO NOTHING
-  RETURNING "Id"
-)
-SELECT count(*) FILTER (WHERE "Id"::text LIKE '%0001__') || ' ' ||
-       count(*) FILTER (WHERE "Id"::text LIKE '%0002__') FROM nuevos;
-UPDATE config."MonsterDefinition" m SET "IsActive" = true
-WHERE NOT m."IsActive" AND m."Number" IN (0, 1, 2, 3, 4, 6, 7, 14) AND m."ObjectKind" = 0;
+CREATE TEMP TABLE lorencia AS SELECT "Id" FROM config."GameMapDefinition" WHERE "Number" = 0 LIMIT 1;
+-- Las zonas de OpenMU (Version075): id BarrioMU, monstruo, x1, x2, y1, y2, cuantos.
+CREATE TEMP TABLE originales(id uuid, num int, x1 int, x2 int, y1 int, y2 int, q int);
+INSERT INTO originales VALUES
+  ('ba000000-0000-4000-8000-000000000100', 0, 135, 240, 20, 88, 45),   -- Bull Fighter, norte
+  ('ba000000-0000-4000-8000-000000000101', 3, 180, 226, 90, 244, 45),  -- Spider, este
+  ('ba000000-0000-4000-8000-000000000102', 2, 180, 226, 90, 244, 40),  -- Budge Dragon, este
+  ('ba000000-0000-4000-8000-000000000103', 2, 135, 240, 20, 88, 20),   -- Budge Dragon, norte
+  ('ba000000-0000-4000-8000-000000000104', 6, 95, 175, 168, 244, 20),  -- Lich, sur
+  ('ba000000-0000-4000-8000-000000000105', 14, 95, 175, 168, 244, 15), -- Skeleton, sur
+  ('ba000000-0000-4000-8000-000000000106', 1, 8, 94, 11, 244, 45),     -- Hound, oeste
+  ('ba000000-0000-4000-8000-000000000107', 4, 8, 94, 11, 244, 45),     -- Elite Bull Fighter, oeste
+  ('ba000000-0000-4000-8000-000000000108', 7, 8, 60, 11, 80, 15);      -- Giant, noroeste
+-- La zona que ya esta en la base (la de OpenMU o la que puso BarrioMU antes).
+CREATE TEMP TABLE hay AS
+SELECT DISTINCT ON (o.id) o.id AS original, s."Id" AS fila
+FROM originales o
+JOIN config."MonsterDefinition" m ON m."Number" = o.num AND m."ObjectKind" = 0
+JOIN config."MonsterSpawnArea" s ON s."MonsterDefinitionId" = m."Id" AND s."GameMapId" = (SELECT "Id" FROM lorencia)
+ AND s."X1" = o.x1 AND s."X2" = o.x2 AND s."Y1" = o.y1 AND s."Y2" = o.y2 AND s."SpawnTrigger" = 0
+ORDER BY o.id, (s."Id" = o.id) DESC;
+UPDATE config."MonsterSpawnArea" s SET "Quantity" = o.q * :veces
+FROM hay h JOIN originales o ON o.id = h.original WHERE s."Id" = h.fila;
+INSERT INTO config."MonsterSpawnArea"
+  ("Id", "GameMapId", "MonsterDefinitionId", "X1", "X2", "Y1", "Y2", "Quantity", "Direction", "SpawnTrigger", "WaveNumber")
+SELECT o.id, (SELECT "Id" FROM lorencia), m."Id", o.x1, o.x2, o.y1, o.y2, o.q * :veces, 0, 0, 0
+FROM originales o JOIN config."MonsterDefinition" m ON m."Number" = o.num AND m."ObjectKind" = 0
+WHERE o.id NOT IN (SELECT original FROM hay)
+ON CONFLICT ("Id") DO UPDATE SET "Quantity" = EXCLUDED."Quantity";
+-- El spot del sur, saliendo por abajo de la ciudad.
+INSERT INTO config."MonsterSpawnArea"
+  ("Id", "GameMapId", "MonsterDefinitionId", "X1", "X2", "Y1", "Y2", "Quantity", "Direction", "SpawnTrigger", "WaveNumber")
+SELECT t.id, (SELECT "Id" FROM lorencia), m."Id", 140, 170, 185, 215, t.q, 0, 0, 0
+FROM (VALUES ('ba000000-0000-4000-8000-000000000200'::uuid, 7, 25),
+             ('ba000000-0000-4000-8000-000000000201'::uuid, 14, 25),
+             ('ba000000-0000-4000-8000-000000000202'::uuid, 6, 20)) AS t(id, num, q)
+JOIN config."MonsterDefinition" m ON m."Number" = t.num AND m."ObjectKind" = 0
+ON CONFLICT ("Id") DO NOTHING;
+UPDATE config."MonsterDefinition" SET "IsActive" = true
+WHERE NOT "IsActive" AND "ObjectKind" = 0 AND "Number" IN (0, 1, 2, 3, 4, 6, 7, 14);
+SELECT 'repuestas ' || (SELECT count(*) FROM originales WHERE id NOT IN (SELECT original FROM hay));
+SELECT 'total ' || coalesce(sum(s."Quantity"), 0) FROM config."MonsterSpawnArea" s
+JOIN config."MonsterDefinition" m ON m."Id" = s."MonsterDefinitionId"
+WHERE s."GameMapId" = (SELECT "Id" FROM lorencia) AND m."ObjectKind" = 0 AND s."SpawnTrigger" = 0;
 SQL
 ) || { echo "No se pudo (revisa el mensaje de arriba)."; return 1; }
-  set -- $(echo "$salida" | grep -E '^[0-9]+ [0-9]+$' | tail -1)
-  echo "Monstruos originales de Lorencia repuestos: ${1:-0} zonas (0 = ya estaban)."
-  echo "Spot de las afueras: ${2:-0} zonas nuevas (0 = ya estaba)."
-  echo "Spot: al sur de Lorencia, x 140-170, y 185-215: 25 Gigantes, 25 Esqueletos, 20 Lich."
+  local nombre="la cantidad normal"
+  [ "$veces" = 2 ] && nombre="el doble"
+  [ "$veces" = 3 ] && nombre="el triple"
+  echo "Zonas de Lorencia que faltaban y se repusieron: $(echo "$salida" | sed -n 's/^repuestas //p')"
+  echo "Lorencia con $nombre de monstruos en todas las salidas (norte, este, sur y oeste):"
+  echo "  Bull Fighter, Hound, Budge Dragon (dragon bebe), Spider (arana), Elite Bull Fighter, Lich, Gigante, Esqueleto."
+  echo "Spot del sur (x 140-170, y 185-215): 25 Gigantes, 25 Esqueletos, 20 Lich."
+  echo "Monstruos en Lorencia en total: $(echo "$salida" | sed -n 's/^total //p')"
   reiniciar_openmu
-  echo "Listo. Entra a Lorencia y sal por el sur de la ciudad."
+  echo "Listo. Entra a Lorencia y sal por cualquier lado de la ciudad."
 }
 
 # Joyas que caen de los monstruos: Bless (14,13), Soul (14,14), Chaos (12,15),

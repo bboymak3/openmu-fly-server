@@ -119,8 +119,9 @@ Se usa en **Termux normal** (`~ $`), **no** dentro de Ubuntu.
 | `bash ~/barriomu.sh npcs` | Lista los NPCs de las ciudades en la base y cuántos NPCs/monstruos están apagados |
 | `bash ~/barriomu.sh npcs activar` | Vuelve a prender todos los NPCs y monstruos apagados (reinicia OpenMU) |
 | `bash ~/barriomu.sh mapas` | Solo mira: monstruos de cada mapa, los de Lorencia, los portales entre mapas y los destinos de /move (dice cuáles están rotos o llevan a un mapa apagado) |
-| `bash ~/barriomu.sh spot` | Repone los monstruos originales de Lorencia que falten y pone el **spot de las afueras** (al sur, x 140-170, y 185-215: 25 Gigantes, 25 Esqueletos, 20 Lich). No duplica si se corre otra vez. Reinicia OpenMU |
-| `bash ~/barriomu.sh spot quitar` | Quita el spot de las afueras (deja los monstruos originales). Reinicia OpenMU |
+| `bash ~/barriomu.sh spot` | Lorencia con el **triple** de monstruos en todas las salidas de la ciudad (norte, este, sur y oeste: Bull Fighter, Hound, Budge Dragon, Spider, Elite Bull Fighter, Lich, Gigante, Esqueleto) y el **spot del sur** (x 140-170, y 185-215: 25 Gigantes, 25 Esqueletos, 20 Lich). Repone las zonas que falten, no duplica. Unos 940 monstruos. Reinicia OpenMU |
+| `bash ~/barriomu.sh spot 1` / `spot 2` | Lo mismo con la cantidad normal (unos 360) o el doble |
+| `bash ~/barriomu.sh spot quitar` | Quita solo el spot del sur. Reinicia OpenMU |
 | `bash ~/barriomu.sh joyas` | Muestra con qué porcentaje caen Bless, Soul, Chaos, Life y Creation y en cuántos mapas |
 | `bash ~/barriomu.sh joyas 1` | Las hace caer con 1% por monstruo (o el número que pongas, hasta 10) en todos los mapas. ALTOBARINAS y el buff de Fortuna lo duplican. Reinicia OpenMU |
 | `bash ~/barriomu.sh reset-db` | ⚠️ **BORRA TODA LA BASE** y la crea de nuevo (pide escribir `SI`) |
