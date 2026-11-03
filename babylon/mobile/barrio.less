@@ -230,3 +230,13 @@
 
 .barrio-potion-q { bottom: @bar + 62px; }
 .barrio-potion-w { bottom: @bar + 4px; }
+
+// ---- with an item window open, the combat wheel steps aside -----------------
+// (it sits where the inventory opens; the finger would hit a skill, not the item)
+.mu-mobile body:has(.inventory, .vault, .npc-shop, .trade) {
+  .barrio-combat,
+  .mobile-skill-pad,
+  .barrio-targets {
+    display: none;
+  }
+}

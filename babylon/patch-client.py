@@ -147,6 +147,92 @@ PATCHES = [
         "import { Session } from '../modules/session';\n",
         "import { Session } from '../modules/session';\nimport { CharSelect } from '../modules/character_select';\n",
     ),
+    # Los nombres de los jugadores (y el propio) siempre arriba, no solo con el mouse encima.
+    (
+        "src/ecs/systems/nameTagSystem.ts",
+        "      if (hovered && isBalloonTarget(world, hovered)) showName(hovered);\n",
+        "      if (hovered && isBalloonTarget(world, hovered)) showName(hovered);\n\n"
+        "      // BarrioMU: every player in view keeps its name up, the hero's too.\n"
+        "      for (const entity of named.entities) {\n"
+        "        if (\n"
+        "          entity.playerAnimation &&\n"
+        "          entity.objectNameInWorld &&\n"
+        "          !entity.dying &&\n"
+        "          !entity.objOutOfScope &&\n"
+        "          (entity.worldIndex === undefined || entity.worldIndex === world.mapIndex)\n"
+        "        ) {\n"
+        "          showName(entity);\n"
+        "        }\n"
+        "      }\n",
+    ),
+    # La barra de vida sobre la cabeza tambien para el propio personaje, con o sin party.
+    (
+        "versions/shared/ui/hud/party_bars/index.tsx",
+        "  if (!Social.inParty) return null;\n",
+        "",
+    ),
+    (
+        "versions/shared/ui/hud/party_bars/index.tsx",
+        "  return (\n    <div className=\"party-bars\">\n",
+        "  // BarrioMU: the hero's own bar, always.\n"
+        "  if (heroName) steps.set(heroName, Math.max(0, Math.min(STEPS, Math.ceil(Hero.hpPercent * STEPS))));\n\n"
+        "  return (\n    <div className=\"party-bars\">\n",
+    ),
+    # En el celular la descripcion del item sale arriba del dedo (el dedo tapa lo de abajo).
+    (
+        "versions/shared/ui/components/item_tooltip/placement.ts",
+        "): Placement {\n  let left = x - width / 2;\n  let top = y + BELOW_CURSOR;\n",
+        "): Placement {\n"
+        "  // BarrioMU: on a phone the finger is the cursor and covers what is under it.\n"
+        "  if (typeof document !== 'undefined' && document.documentElement.classList.contains('mu-mobile')) {\n"
+        "    const FINGER = 48;\n"
+        "    let fl = x - width / 2;\n"
+        "    let ft = y - FINGER - height;\n"
+        "    if (ft < MARGIN) ft = y + FINGER;\n"
+        "    if (ft + height > viewport.height - MARGIN) ft = viewport.height - MARGIN - height;\n"
+        "    if (ft < MARGIN) ft = MARGIN;\n"
+        "    if (fl + width > viewport.width - MARGIN) fl = viewport.width - MARGIN - width;\n"
+        "    if (fl < MARGIN) fl = MARGIN;\n"
+        "    return { left: Math.round(fl), top: Math.round(ft) };\n"
+        "  }\n"
+        "  let left = x - width / 2;\n  let top = y + BELOW_CURSOR;\n",
+    ),
+
+    # Salir un rato a otra app (WhatsApp) no debe tumbar la partida:
+    # el proxy manda pings (el navegador los contesta aunque la pagina este en segundo plano)
+    # y espera 4 minutos antes de dar la conexion por muerta.
+    (
+        "proxy/main.ts",
+        "  websocket: {\n    sendPings: false,\n",
+        "  websocket: {\n    // BarrioMU: pings keep a phone's socket alive while the player is in another app.\n"
+        "    sendPings: true,\n    idleTimeout: 240,\n",
+    ),
+    # La reconexion automatica no gasta intentos mientras el juego esta en segundo plano:
+    # espera a que el jugador vuelva y reconecta en ese momento.
+    (
+        "src/modules/session/sessionResume.ts",
+        "  private schedule(): void {\n",
+        "  private waitingForPage = false;\n\n"
+        "  private schedule(): void {\n"
+        "    // BarrioMU: a phone pauses the network of a page in the background; dialing then only\n"
+        "    // spends the attempts. Wait for the player to come back, then dial at once.\n"
+        "    if (typeof document !== 'undefined' && document.hidden) {\n"
+        "      runInAction(() => {\n"
+        "        if (this.step === 'idle') this.step = 'connecting';\n"
+        "      });\n"
+        "      if (this.waitingForPage) return;\n"
+        "      this.waitingForPage = true;\n"
+        "      const onVisible = () => {\n"
+        "        if (document.hidden) return;\n"
+        "        document.removeEventListener('visibilitychange', onVisible);\n"
+        "        this.waitingForPage = false;\n"
+        "        if (this.active) this.schedule();\n"
+        "      };\n"
+        "      document.addEventListener('visibilitychange', onVisible);\n"
+        "      return;\n"
+        "    }\n",
+    ),
+
 ]
 
 for path, old, new in PATCHES:

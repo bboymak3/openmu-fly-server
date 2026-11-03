@@ -33,7 +33,9 @@ export ALLOW_TARGETS
 PIDS=()
 trap 'kill "${PIDS[@]}" 2>/dev/null' EXIT
 
-(cd proxy && exec ./bun proxy/main.ts) &
+# server.json del mundo (lo sirve el proxy): si al reconectar la sesion vieja sigue abierta,
+# el cliente vuelve a intentar (OpenMU cierra la vieja), y el MU Helper se vuelve a prender.
+(cd proxy && MU_RETRY_LOGIN_WHEN_CONNECTED=on MU_HELPER_AFTER_RECONNECT=on exec ./bun proxy/main.ts) &
 PIDS+=($!)
 
 if [ -d register ]; then

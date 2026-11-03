@@ -30,7 +30,7 @@ M=$C/versions/shared/ui/hud/mobile_controls
 cp babylon/mobile/chatButton.tsx babylon/mobile/fullscreenButton.tsx babylon/mobile/zoomButtons.tsx $M/
 # HUD de celular de BarrioMU: rueda de combate (ataque, 4 habilidades, soltar,
 # recoger, lista de objetivos, circulo de alcance), joystick y pociones.
-cp babylon/mobile/combatPad.tsx babylon/mobile/joystick.tsx babylon/mobile/potionButtons.tsx $M/
+cp babylon/mobile/combatPad.tsx babylon/mobile/joystick.tsx babylon/mobile/potionButtons.tsx babylon/mobile/touchHover.ts $M/
 cp babylon/mobile/barrioJoystick.ts $C/src/controllers/interface/
 cat babylon/mobile/chatButton.less >> $M/style.less
 cat babylon/mobile/barrio.less >> $M/style.less
@@ -42,5 +42,8 @@ sed -i "s#^import { SkillPad } from './skillPad';#&\nimport { CombatPad } from '
 grep -c '<CombatPad />' $M/index.tsx
 grep -c '<Joystick />' $M/index.tsx
 grep -c '<PotionButtons />' $M/index.tsx
+# El dedo como cursor sobre los items (mantener = descripcion, toque = agarrar)
+sed -i "s#^import { SkillPad } from './skillPad';#&\nimport './touchHover';#" $M/index.tsx
+grep -c "import './touchHover'" $M/index.tsx
 # Otros cambios de texto (espanol por defecto, ...)
 python3 babylon/patch-client.py $C
