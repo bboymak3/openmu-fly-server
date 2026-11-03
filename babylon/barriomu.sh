@@ -12,6 +12,7 @@
 #   bash ~/barriomu.sh panel on    prende el panel de admin (reinicia OpenMU)
 #   bash ~/barriomu.sh panel off   lo apaga para ahorrar memoria (reinicia OpenMU)
 #   bash ~/barriomu.sh resets      activa los resets de BarrioMU (reinicia OpenMU)
+#   bash ~/barriomu.sh resets estado  dice si los resets estan prendidos
 #   bash ~/barriomu.sh gm CUENTA   hace GM una cuenta (para el panel admin; con la cuenta fuera del juego)
 #   bash ~/barriomu.sh cloudflare  guarda el token de Cloudflare del panel admin
 #   bash ~/barriomu.sh npcs        lista los NPCs de las ciudades y cuantos estan apagados
@@ -144,6 +145,12 @@ RESET_CONFIG='{"RequiredLevel":400,"ResetLimit":null,"LevelAfterReset":1,"Requir
 
 resets() {
   pg_ctl -D "$PGDATA" status >/dev/null 2>&1 || { echo "PostgreSQL esta apagado: bash ~/barriomu.sh prender"; return 1; }
+  if [ "$1" = estado ]; then
+    psql -U postgres -d openmu -P pager=off -c "SELECT \"IsActive\" AS activo, \"CustomConfiguration\" AS configuracion FROM config.\"PlugInConfiguration\" WHERE \"TypeId\" = '$RESET_PLUGIN'"
+    echo "activo = t: los resets estan prendidos. Sin filas o activo = f: bash ~/barriomu.sh resets"
+    grep -h "ResetFeature\|Reset" "$LOGS"/openmu*.log 2>/dev/null | tail -5
+    return 0
+  fi
   echo "Activando resets..."
   psql -U postgres -d openmu -v ON_ERROR_STOP=1 -q <<SQL || { echo "No se pudo activar."; return 1; }
 UPDATE config."PlugInConfiguration"
@@ -481,7 +488,7 @@ case "$1" in
   reset-db) reset_db ;;
   arranque) arranque ;;
   panel) panel "$2" ;;
-  resets) resets ;;
+  resets) resets "$2" ;;
   gm) gm "$2" ;;
   cloudflare) cloudflare ;;
   npcs) npcs "$2" ;;
@@ -489,5 +496,5 @@ case "$1" in
   spot) spot "$2" ;;
   joyas) joyas "$2" ;;
   vigilar) vigilar ;;
-  *) sed -n '2,28p' "$0" | sed 's/^# \{0,1\}//' ;;
+  *) sed -n '2,29p' "$0" | sed 's/^# \{0,1\}//' ;;
 esac

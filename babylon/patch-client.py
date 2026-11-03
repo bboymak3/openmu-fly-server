@@ -233,6 +233,17 @@ PATCHES = [
         "    }\n",
     ),
 
+    # Las habilidades del panel del celular no se borran al entrar: antes se "limpiaban" contra
+    # la lista de habilidades cuando todavia no habia llegado (vacia) y se perdian todas.
+    (
+        "versions/shared/ui/hud/mobile_controls/skillPad.tsx",
+        "  useEffect(() => {\n    MobileSkillSlots.prune(learned.map(s => s.number));\n  }, [learned]);\n",
+        "  useEffect(() => {\n"
+        "    // BarrioMU: only against a skill list that has arrived; an empty one wiped the pad on every login.\n"
+        "    if (learned.length) MobileSkillSlots.prune(learned.map(s => s.number));\n"
+        "  }, [learned]);\n",
+    ),
+
 ]
 
 for path, old, new in PATCHES:
