@@ -68,6 +68,73 @@ PATCHES = [
         "}\n\n"
         "function syncMoved(): void {\n",
     ),
+    # ---- HUD de celular de BarrioMU (babylon/mobile/barrio.less y compania) ----
+    # Botones chicos: el menu de arriba y la columna de la izquierda.
+    (
+        "versions/shared/ui/hud/mobile_controls/consts.ts",
+        "export const MENU_SCALE = 1.4;",
+        "export const MENU_SCALE = 1.05;\n\n/** BarrioMU: the small buttons of the left column (move, chat, full screen, zoom). */\nexport const SMALL_SCALE = 1.15;",
+    ),
+    (
+        "versions/shared/ui/hud/mobile_controls/moveButton.tsx",
+        "import { SLOT_SCALE, SKILLBOX_SPRITE, SKILLBOX_USE_SPRITE, BOX_WIDTH, BOX_HEIGHT } from './consts';",
+        "import { SMALL_SCALE, SKILLBOX_SPRITE, SKILLBOX_USE_SPRITE, BOX_WIDTH, BOX_HEIGHT } from './consts';",
+    ),
+    (
+        "versions/shared/ui/hud/mobile_controls/moveButton.tsx",
+        "          scale={SLOT_SCALE}\n",
+        "          scale={SMALL_SCALE}\n",
+    ),
+    (
+        "versions/shared/ui/hud/mobile_controls/moveButton.tsx",
+        "const GLYPH = 34;",
+        "const GLYPH = 26;",
+    ),
+    # 4 habilidades en el arco (eran 3).
+    (
+        "src/modules/options/mobileSkillSlots.ts",
+        "export const MOBILE_SKILL_SLOTS = 3;",
+        "export const MOBILE_SKILL_SLOTS = 4;",
+    ),
+    # Al lanzar una habilidad tambien se ve el circulo de alcance.
+    (
+        "versions/shared/ui/hud/mobile_controls/skillPad.tsx",
+        "import { MobileButton, ScaledFrame } from './mobileButton';\n",
+        "import { MobileButton, ScaledFrame } from './mobileButton';\nimport { showCombatRing } from './combatPad';\n",
+    ),
+    (
+        "versions/shared/ui/hud/mobile_controls/skillPad.tsx",
+        "function castSkill(number: number): void {\n",
+        "function castSkill(number: number): void {\n  showCombatRing();\n",
+    ),
+    # El joystick camina igual que W/A/S/D (aunque esa opcion este apagada).
+    (
+        "src/ecs/systems/playerControllerSystem.ts",
+        "import { pickGround } from '../../controllers/terrain/terrainPick';\n",
+        "import { pickGround } from '../../controllers/terrain/terrainPick';\nimport { BarrioJoystick } from '../../controllers/interface/barrioJoystick';\n",
+    ),
+    (
+        "src/ecs/systems/playerControllerSystem.ts",
+        "      if (keys.has(WALK_KEYS.left)) strafe--;\n    }\n",
+        "      if (keys.has(WALK_KEYS.left)) strafe--;\n    }\n\n"
+        "    // BarrioMU: the phone joystick steers the same walk.\n"
+        "    if (\n"
+        "      BarrioJoystick.active &&\n"
+        "      playerEntity &&\n"
+        "      camera &&\n"
+        "      !playerEntity.dying &&\n"
+        "      AppState.uiState === UIState.World\n"
+        "    ) {\n"
+        "      forward = BarrioJoystick.forward;\n"
+        "      strafe = BarrioJoystick.strafe;\n"
+        "    }\n",
+    ),
+    # Los botones del MU Helper con nombre, para moverlos en el celular (barrio.less).
+    (
+        "versions/shared/ui/hud/mu_helper_buttons/index.tsx",
+        "    <div\n      style={{\n        position: 'absolute',\n        top,\n",
+        "    <div\n      className=\"mu-helper-buttons\"\n      style={{\n        position: 'absolute',\n        top,\n",
+    ),
 ]
 
 for path, old, new in PATCHES:
