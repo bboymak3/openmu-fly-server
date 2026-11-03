@@ -135,6 +135,18 @@ PATCHES = [
         "    <div\n      style={{\n        position: 'absolute',\n        top,\n",
         "    <div\n      className=\"mu-helper-buttons\"\n      style={{\n        position: 'absolute',\n        top,\n",
     ),
+    # El vigilante (scripts/vigilante.js) lee la pantalla actual y elige el personaje.
+    (
+        "src/app/boot.tsx",
+        "(window as any).__modules = { Hero, Session, Bag, Merchant };\n",
+        "(window as any).__modules = { Hero, Session, Bag, Merchant };\n"
+        "(window as any).__barrio = { AppState, UIState, CharSelect };\n",
+    ),
+    (
+        "src/app/boot.tsx",
+        "import { Session } from '../modules/session';\n",
+        "import { Session } from '../modules/session';\nimport { CharSelect } from '../modules/character_select';\n",
+    ),
 ]
 
 for path, old, new in PATCHES:

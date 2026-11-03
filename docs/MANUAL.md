@@ -123,6 +123,22 @@ Se usa en **Termux normal** (`~ $`), **no** dentro de Ubuntu.
 - El **vigilante** revisa cada 5 minutos y vuelve a prender lo que se haya caído.
 - Los registros (logs) están en `~/barriomu-logs/`.
 
+### El vigilante de afuera (GitHub Actions)
+
+Cada hora (minuto 17) GitHub entra al juego por `mu.makeseo.app` como un jugador:
+elige BarrioMU, inicia sesión con la cuenta del vigilante, entra con su personaje,
+cuenta los NPCs de alrededor, camina un poco y se va (`scripts/vigilante.js`,
+`.github/workflows/vigilante.yml`).
+
+- Si algo falla abre un **issue** "🔴 BarrioMU con problemas" que te llega a la app
+  de GitHub. Mientras siga fallando solo pone al día ese issue (no suena cada hora).
+  Cuando vuelve a funcionar comenta "✅ Volvió a funcionar" y lo cierra.
+- Las capturas de cada paso quedan en la ejecución (Actions → Vigilante de BarrioMU → artefacto `vigilante-capturas`).
+- Necesita dos secretos del repo (Settings → Secrets and variables → Actions):
+  `VIGIA_USUARIO` y `VIGIA_CLAVE`, de una cuenta solo para el vigilante con **un personaje**
+  (que no sea GM). La clave nunca se escribe en el código.
+- Para probarlo a mano: Actions → Vigilante de BarrioMU → Run workflow.
+
 Para bajar la última versión del script:
 
 ```bash
