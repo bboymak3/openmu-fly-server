@@ -14,6 +14,7 @@
 #   bash ~/barriomu.sh resets      activa los resets de BarrioMU (reinicia OpenMU)
 #   bash ~/barriomu.sh gm CUENTA   hace GM una cuenta (para el panel admin; con la cuenta fuera del juego)
 #   bash ~/barriomu.sh cloudflare  guarda el token de Cloudflare del panel admin
+#   bash ~/barriomu.sh npcs        lista los NPCs de las ciudades que hay en la base
 #
 # Al prender tambien arranca un vigilante que cada 5 minutos revisa que todo
 # siga prendido y vuelve a prender lo que se haya caido.
@@ -191,6 +192,24 @@ cloudflare() {
   echo "Listo: token guardado. El panel admin ya puede ver las visitas y borrar la cache."
 }
 
+# Diagnostico: los NPCs (no monstruos) de Lorencia, Devias, Noria y Elbeland en la
+# base, con su posicion y si estan activos. El plugin BarrioTownNpcsPlugIn crea en
+# el juego los que falten, pero esto dice si faltaban en la configuracion.
+npcs() {
+  pg_ctl -D "$PGDATA" status >/dev/null 2>&1 || { echo "PostgreSQL esta apagado: bash ~/barriomu.sh prender"; return 1; }
+  psql -U postgres -d openmu -P pager=off <<'SQL'
+SELECT g."Number" AS mapa, m."Number" AS npc, m."Designation" AS nombre,
+       s."X1" AS x, s."Y1" AS y, m."IsActive" AS activo,
+       CASE WHEN m."MerchantStoreId" IS NOT NULL THEN 'tienda' ELSE '' END AS tienda
+FROM config."MonsterSpawnArea" s
+JOIN config."MonsterDefinition" m ON m."Id" = s."MonsterDefinitionId"
+JOIN config."GameMapDefinition" g ON g."Id" = s."GameMapId"
+WHERE g."Number" IN (0, 2, 3, 51) AND m."ObjectKind" <> 0
+ORDER BY g."Number", m."Number";
+SQL
+  echo "Mapas: 0 Lorencia, 2 Devias, 3 Noria, 51 Elbeland. activo = f quiere decir apagado en el panel de OpenMU."
+}
+
 arranque() {
   mkdir -p "$HOME/.termux/boot"
   cat >"$HOME/.termux/boot/barriomu" <<'BOOT'
@@ -255,6 +274,7 @@ case "$1" in
   resets) resets ;;
   gm) gm "$2" ;;
   cloudflare) cloudflare ;;
+  npcs) npcs ;;
   vigilar) vigilar ;;
-  *) sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//' ;;
+  *) sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//' ;;
 esac
