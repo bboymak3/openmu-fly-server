@@ -152,7 +152,10 @@ resets() {
     return 0
   fi
   echo "Activando resets..."
-  psql -U postgres -d openmu -v ON_ERROR_STOP=1 -q <<SQL || { echo "No se pudo activar."; return 1; }
+  # OpenMU se apaga ANTES de escribir: asi no puede pisar la configuracion al cerrarse.
+  stop_watchdog
+  stop_openmu
+  psql -U postgres -d openmu -v ON_ERROR_STOP=1 -q <<SQL || { echo "No se pudo activar."; start_openmu ""; start_watchdog; return 1; }
 UPDATE config."PlugInConfiguration"
    SET "IsActive" = true,
        "CustomConfiguration" = (coalesce(nullif("CustomConfiguration", ''), '{}')::jsonb || '$RESET_CONFIG'::jsonb)::text
@@ -161,13 +164,17 @@ INSERT INTO config."PlugInConfiguration" ("Id", "GameConfigurationId", "TypeId",
 SELECT gen_random_uuid(), (SELECT "Id" FROM config."GameConfiguration" LIMIT 1), '$RESET_PLUGIN', true, '$RESET_CONFIG'
  WHERE NOT EXISTS (SELECT 1 FROM config."PlugInConfiguration" WHERE "TypeId" = '$RESET_PLUGIN');
 SQL
-  echo "Listo. Reiniciando OpenMU para que lo lea (los jugadores se desconectan un momento)..."
-  stop_watchdog
-  stop_openmu
+  echo "Listo. Prendiendo OpenMU para que lo lea..."
   start_openmu ""
   wait_port 44405 OpenMU 600
   start_watchdog
-  echo "Resets activos: en el juego escribe /reset (nivel 400)."
+  local activo
+  activo=$(psql -U postgres -d openmu -tAq -c "SELECT \"IsActive\" FROM config.\"PlugInConfiguration\" WHERE \"TypeId\" = '$RESET_PLUGIN'")
+  if [ "$activo" = t ]; then
+    echo "Resets activos: en el juego escribe /reset (nivel 400 y 1.000.000 de zen por cada reset)."
+  else
+    echo "OJO: OpenMU dejo los resets apagados. Manda foto de: bash ~/barriomu.sh resets estado"
+  fi
 }
 
 # El panel admin (barriomu.makeseo.app/admin.html) solo deja entrar cuentas GM.
