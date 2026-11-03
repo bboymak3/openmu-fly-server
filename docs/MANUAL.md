@@ -116,6 +116,8 @@ Se usa en **Termux normal** (`~ $`), **no** dentro de Ubuntu.
 | `bash ~/barriomu.sh resets` | Activa o reaplica la configuración de resets (reinicia OpenMU) |
 | `bash ~/barriomu.sh gm CUENTA` | Hace GM una cuenta, para entrar al panel admin (con la cuenta fuera del juego) |
 | `bash ~/barriomu.sh cloudflare` | Guarda en la tablet el token de Cloudflare del panel admin |
+| `bash ~/barriomu.sh npcs` | Lista los NPCs de las ciudades en la base y cuántos NPCs/monstruos están apagados |
+| `bash ~/barriomu.sh npcs activar` | Vuelve a prender todos los NPCs y monstruos apagados (reinicia OpenMU) |
 | `bash ~/barriomu.sh reset-db` | ⚠️ **BORRA TODA LA BASE** y la crea de nuevo (pide escribir `SI`) |
 
 - El **vigilante** revisa cada 5 minutos y vuelve a prender lo que se haya caído.
@@ -408,6 +410,7 @@ bash ~/barriomu.sh prender
 | Después de un corte de luz no prende solo | Instala **Termux:Boot** y corre `bash ~/barriomu.sh arranque` una vez |
 | La landing no muestra los cambios | Cloudflare Pages → Implementaciones: debe haber una de **Producción** (rama main) en **success** |
 | El instalador de PC no actualiza | El jugador puede descargar el instalador de nuevo e instalar encima (no pierde nada) |
+| No hay NPCs (tiendas, baúl, eventos) | `bash ~/barriomu.sh npcs`; si hay apagados, `bash ~/barriomu.sh npcs activar`. Las tiendas y el baúl de las 4 ciudades los crea igual el plugin de NPCs de las ciudades |
 | Sin espacio en la tablet | Borra respaldos viejos y `~/openmu.zip`, `~/instalar-babylon.sh` |
 
 ### Diagnóstico de la conexión
