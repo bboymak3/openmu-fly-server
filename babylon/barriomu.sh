@@ -16,6 +16,10 @@
 #   bash ~/barriomu.sh cloudflare  guarda el token de Cloudflare del panel admin
 #   bash ~/barriomu.sh npcs        lista los NPCs de las ciudades y cuantos estan apagados
 #   bash ~/barriomu.sh npcs activar  vuelve a prender todos los NPCs y monstruos (reinicia OpenMU)
+#   bash ~/barriomu.sh mapas       monstruos de Lorencia, portales y /move: que sirve y que esta roto
+#   bash ~/barriomu.sh spot        repone los monstruos de Lorencia que falten y pone el spot
+#                                  de las afueras (reinicia OpenMU)
+#   bash ~/barriomu.sh spot quitar quita el spot de las afueras (reinicia OpenMU)
 #
 # Al prender tambien arranca un vigilante que cada 5 minutos revisa que todo
 # siga prendido y vuelve a prender lo que se haya caido.
@@ -232,6 +236,129 @@ SQL
   echo "Si hay NPCs apagados, prendelos con: bash ~/barriomu.sh npcs activar"
 }
 
+# Reinicia solo OpenMU (los jugadores se desconectan un momento).
+reiniciar_openmu() {
+  echo "Reiniciando OpenMU (los jugadores se desconectan un momento)..."
+  stop_watchdog
+  stop_openmu
+  start_openmu ""
+  wait_port 44405 OpenMU 600
+  start_watchdog
+}
+
+# Solo mira: monstruos de las ciudades, portales (puertas entre mapas) y /move.
+mapas() {
+  pg_ctl -D "$PGDATA" status >/dev/null 2>&1 || { echo "PostgreSQL esta apagado: bash ~/barriomu.sh prender"; return 1; }
+  psql -U postgres -d openmu -P pager=off <<'SQL'
+\echo '== Monstruos por mapa (zonas, cuantos, cuantos apagados) =='
+SELECT g."Number" AS mapa, g."IsActive" AS mapa_activo,
+       count(s."Id") AS zonas,
+       coalesce(sum(s."Quantity"), 0) AS monstruos,
+       coalesce(sum(s."Quantity") FILTER (WHERE NOT s.activo), 0) AS apagados
+FROM config."GameMapDefinition" g
+LEFT JOIN (
+  SELECT a."Id", a."GameMapId", a."Quantity", m."IsActive" AS activo
+  FROM config."MonsterSpawnArea" a
+  JOIN config."MonsterDefinition" m ON m."Id" = a."MonsterDefinitionId"
+  WHERE m."ObjectKind" = 0 AND a."SpawnTrigger" = 0
+) s ON s."GameMapId" = g."Id"
+WHERE g."Number" IN (0, 2, 3, 4, 7, 8, 10, 33, 51, 56, 57)
+GROUP BY g."Number", g."IsActive" ORDER BY g."Number";
+\echo '== Monstruos de Lorencia =='
+SELECT m."Number" AS num, m."Designation" AS monstruo, s."Quantity" AS cuantos,
+       s."X1" || '-' || s."X2" AS x, s."Y1" || '-' || s."Y2" AS y, m."IsActive" AS activo,
+       CASE WHEN s."Id"::text LIKE 'ba000000-%' THEN 'BarrioMU' ELSE '' END AS origen
+FROM config."MonsterSpawnArea" s
+JOIN config."MonsterDefinition" m ON m."Id" = s."MonsterDefinitionId"
+JOIN config."GameMapDefinition" g ON g."Id" = s."GameMapId"
+WHERE g."Number" = 0 AND m."ObjectKind" = 0 ORDER BY m."Number";
+\echo '== Portales (puertas entre mapas) =='
+SELECT g."Number" AS desde_mapa, count(e.*) AS portales,
+       count(*) FILTER (WHERE x."Id" IS NULL OR d."Id" IS NULL) AS rotos,
+       count(*) FILTER (WHERE d."IsActive" = false) AS a_mapa_apagado,
+       string_agg(DISTINCT d."Number"::text, ',') AS llevan_a
+FROM config."EnterGate" e
+JOIN config."GameMapDefinition" g ON g."Id" = e."GameMapDefinitionId"
+LEFT JOIN config."ExitGate" x ON x."Id" = e."TargetGateId"
+LEFT JOIN config."GameMapDefinition" d ON d."Id" = x."MapId"
+GROUP BY g."Number" ORDER BY g."Number";
+\echo '== /move (mapa M) =='
+SELECT w."Index" AS n, w."Name" AS destino, w."LevelRequirement" AS nivel, w."Costs" AS zen,
+       d."Number" AS mapa,
+       CASE WHEN x."Id" IS NULL OR d."Id" IS NULL THEN 'ROTO'
+            WHEN NOT d."IsActive" THEN 'MAPA APAGADO' ELSE 'ok' END AS estado
+FROM config."WarpInfo" w
+LEFT JOIN config."ExitGate" x ON x."Id" = w."GateId"
+LEFT JOIN config."GameMapDefinition" d ON d."Id" = x."MapId"
+ORDER BY w."Index";
+SQL
+  echo "Mapas: 0 Lorencia, 2 Devias, 3 Noria, 4 Losttower, 7 Atlans, 8 Tarkan, 10 Icarus, 33 Aida, 51 Elbeland, 56 Swamp, 57 Raklion."
+  echo "rotos o ROTO = el portal no lleva a ningun lado. Para el spot: bash ~/barriomu.sh spot"
+}
+
+# Repone los monstruos originales de Lorencia que falten (los de OpenMU) y pone
+# el spot de las afueras. Las filas que crea tienen id ba000000-... (se pueden quitar).
+spot() {
+  pg_ctl -D "$PGDATA" status >/dev/null 2>&1 || { echo "PostgreSQL esta apagado: bash ~/barriomu.sh prender"; return 1; }
+  if [ "$1" = quitar ]; then
+    psql -U postgres -d openmu -tAq -c "DELETE FROM config.\"MonsterSpawnArea\" WHERE \"Id\"::text LIKE 'ba000000-0000-4000-8000-0000000002%'"
+    echo "Spot quitado."
+    reiniciar_openmu
+    return 0
+  fi
+  local salida
+  salida=$(psql -U postgres -d openmu -tAq -v ON_ERROR_STOP=1 <<'SQL'
+UPDATE config."GameMapDefinition" SET "IsActive" = true WHERE "Number" = 0 AND NOT "IsActive";
+WITH lorencia AS (SELECT "Id" FROM config."GameMapDefinition" WHERE "Number" = 0 LIMIT 1),
+-- id, monstruo, x1, x2, y1, y2, cuantos
+originales(id, num, x1, x2, y1, y2, q) AS (VALUES
+  ('ba000000-0000-4000-8000-000000000100'::uuid, 0, 135, 240, 20, 88, 45),
+  ('ba000000-0000-4000-8000-000000000101'::uuid, 3, 180, 226, 90, 244, 45),
+  ('ba000000-0000-4000-8000-000000000102'::uuid, 2, 180, 226, 90, 244, 40),
+  ('ba000000-0000-4000-8000-000000000103'::uuid, 2, 135, 240, 20, 88, 20),
+  ('ba000000-0000-4000-8000-000000000104'::uuid, 6, 95, 175, 168, 244, 20),
+  ('ba000000-0000-4000-8000-000000000105'::uuid, 14, 95, 175, 168, 244, 15),
+  ('ba000000-0000-4000-8000-000000000106'::uuid, 1, 8, 94, 11, 244, 45),
+  ('ba000000-0000-4000-8000-000000000107'::uuid, 4, 8, 94, 11, 244, 45),
+  ('ba000000-0000-4000-8000-000000000108'::uuid, 7, 8, 60, 11, 80, 15)
+),
+-- El spot de BarrioMU, al sur de la ciudad, saliendo por abajo.
+spot(id, num, x1, x2, y1, y2, q) AS (VALUES
+  ('ba000000-0000-4000-8000-000000000200'::uuid, 7, 140, 170, 185, 215, 25),
+  ('ba000000-0000-4000-8000-000000000201'::uuid, 14, 140, 170, 185, 215, 25),
+  ('ba000000-0000-4000-8000-000000000202'::uuid, 6, 140, 170, 185, 215, 20)
+),
+faltan AS (
+  SELECT o.* FROM originales o
+  WHERE NOT EXISTS (
+    SELECT 1 FROM config."MonsterSpawnArea" s
+    JOIN config."MonsterDefinition" m ON m."Id" = s."MonsterDefinitionId"
+    WHERE s."GameMapId" = (SELECT "Id" FROM lorencia) AND m."Number" = o.num
+      AND s."Id"::text NOT LIKE 'ba000000-0000-4000-8000-0000000002%')
+),
+todo AS (SELECT * FROM faltan UNION ALL SELECT * FROM spot),
+nuevos AS (
+  INSERT INTO config."MonsterSpawnArea"
+    ("Id", "GameMapId", "MonsterDefinitionId", "X1", "X2", "Y1", "Y2", "Quantity", "Direction", "SpawnTrigger", "WaveNumber")
+  SELECT t.id, (SELECT "Id" FROM lorencia), m."Id", t.x1, t.x2, t.y1, t.y2, t.q, 0, 0, 0
+  FROM todo t JOIN config."MonsterDefinition" m ON m."Number" = t.num
+  ON CONFLICT ("Id") DO NOTHING
+  RETURNING "Id"
+)
+SELECT count(*) FILTER (WHERE "Id"::text LIKE '%0001__') || ' ' ||
+       count(*) FILTER (WHERE "Id"::text LIKE '%0002__') FROM nuevos;
+UPDATE config."MonsterDefinition" m SET "IsActive" = true
+WHERE NOT m."IsActive" AND m."Number" IN (0, 1, 2, 3, 4, 6, 7, 14) AND m."ObjectKind" = 0;
+SQL
+) || { echo "No se pudo (revisa el mensaje de arriba)."; return 1; }
+  set -- $(echo "$salida" | grep -E '^[0-9]+ [0-9]+$' | tail -1)
+  echo "Monstruos originales de Lorencia repuestos: ${1:-0} zonas (0 = ya estaban)."
+  echo "Spot de las afueras: ${2:-0} zonas nuevas (0 = ya estaba)."
+  echo "Spot: al sur de Lorencia, x 140-170, y 185-215: 25 Gigantes, 25 Esqueletos, 20 Lich."
+  reiniciar_openmu
+  echo "Listo. Entra a Lorencia y sal por el sur de la ciudad."
+}
+
 arranque() {
   mkdir -p "$HOME/.termux/boot"
   cat >"$HOME/.termux/boot/barriomu" <<'BOOT'
@@ -297,6 +424,8 @@ case "$1" in
   gm) gm "$2" ;;
   cloudflare) cloudflare ;;
   npcs) npcs "$2" ;;
+  mapas) mapas ;;
+  spot) spot "$2" ;;
   vigilar) vigilar ;;
-  *) sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//' ;;
+  *) sed -n '2,26p' "$0" | sed 's/^# \{0,1\}//' ;;
 esac
