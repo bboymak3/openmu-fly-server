@@ -11,7 +11,10 @@ juega desde el navegador en **https://mu.makeseo.app** o con el instalador de PC
 - Cliente: [OpenMu Client Babylon](https://github.com/Ignies/OpenMu-Client-Babylon)
   con el logo y la lista de servidores de BarrioMU. Version **lite** para el
   celular (se instala como app con el logo) y version **completa** para PC
-  (`BarrioMU-Setup.exe`, con actualizacion automatica).
+  (`BarrioMU-Setup.exe`, con actualizacion automatica). En el celular tiene
+  controles propios: joystick para caminar, rueda de combate (ataca al enemigo
+  mas cercano, 4 habilidades, soltar objetivo, circulo de alcance y lista de
+  objetivos), botones grandes de pociones Q/W y boton de recoger.
 - Internet: Cloudflare Tunnel, sin abrir puertos ni IP publica. Los graficos
   del celular quedan en la cache de Cloudflare (regla de cache + Tiered Cache).
 
@@ -21,6 +24,15 @@ juega desde el navegador en **https://mu.makeseo.app** o con el instalador de PC
 |---|---|---|
 | MIJAGUA | Si | Normal |
 | ALTOBARINAS | No | Doble |
+
+- **Lorencia llena**: el triple de monstruos en todas las salidas de la ciudad
+  (Bull Fighter, Hound, Budge Dragon, Spider, Elite Bull Fighter, Lich, Gigante,
+  Esqueleto) y un spot al sur (x 140-170, y 185-215) con Gigantes, Esqueletos y Lich.
+- **Joyas**: Bless, Soul, Chaos, Life y Creation caen con 1% por monstruo en
+  todos los mapas (el doble en ALTOBARINAS o con el buff de Fortuna).
+- **Set gratis**: cada personaje nuevo recibe en la bolsa el set basico de su clase.
+- **Vigilante**: cada hora GitHub entra al juego como un jugador y avisa en la
+  app de GitHub (issue) si algo falla.
 
 ## Direcciones
 
@@ -68,6 +80,13 @@ bash ~/barriomu.sh arranque    # prender solo al encender la tablet (Termux:Boot
 bash ~/barriomu.sh reset-db    # BORRA la base y crea barrio01..barrio10
 bash ~/barriomu.sh panel on|off # panel de admin bajo demanda
 bash ~/barriomu.sh resets      # activa los resets (nivel 400, sin limite)
+bash ~/barriomu.sh gm CUENTA   # hace GM una cuenta (panel admin)
+bash ~/barriomu.sh cloudflare  # guarda el token de Cloudflare del panel admin
+bash ~/barriomu.sh npcs [activar] # NPCs de las ciudades / prende los apagados
+bash ~/barriomu.sh mapas       # monstruos, portales y /move: que sirve y que no
+bash ~/barriomu.sh spot [1|2|3] # Lorencia normal, doble o triple (por defecto 3) + spot
+bash ~/barriomu.sh spot quitar # quita el spot del sur
+bash ~/barriomu.sh joyas [N]   # ver la caida de joyas / ponerla en N% por monstruo
 ```
 
 El script se descarga con:
@@ -86,6 +105,7 @@ originales no rompa el servidor.
 | `build-arm64.yml` | OpenMU para linux-arm64, con los cambios de `openmu-barrio/` | `openmu-arm64` |
 | `build-babylon.yml` | Cliente, proxy y registro, con el logo de `babylon/branding/` | `babylon-arm64` |
 | `build-pc.yml` | Instalador de Windows (`desktop/`) con el cliente y los graficos completos | `barriomu-pc` |
+| `vigilante.yml` | Cada hora (minuto 17) entra al juego con `scripts/vigilante.js`; abre o cierra un issue `vigilante`. Secretos `VIGIA_USUARIO` y `VIGIA_CLAVE` | - |
 
 Cambios sobre OpenMU (`openmu-barrio/`):
 
@@ -102,6 +122,11 @@ Cambios sobre OpenMU (`openmu-barrio/`):
 - NPCs en Lorencia, frente a la fuente: Guerrero (David, +20% ataque y magia, 30 min)
   y Fortuna (Delgado, doble EXP y doble drop, 45 min, cada 3 horas). Lo que queda de los
   buffs se guarda en `~/openmu/data/buffs-npc.json`.
+- NPCs de las ciudades (tiendas, baul, misiones...) de Lorencia, Devias, Noria y
+  Elbeland: si faltan en la base se crean al entrar el primer jugador
+  (`BarrioTownNpcsPlugIn`).
+- Set gratis al crear personaje, en la bolsa (`BarrioStarterSetPlugIn`): Pad (DW),
+  Leather (DK, DL; MG sin casco; RF sin guantes), Vine (Elf), Mistery (Summoner).
 - Últimos ganadores de Blood Castle, Devil Square y Chaos Castle en la landing:
   la API los lee de `data."MiniGameRankingEntry"`, donde OpenMU ya los guarda.
 
@@ -113,6 +138,8 @@ Cambios sobre OpenMU (`openmu-barrio/`):
 | `babylon/barriomu.sh` | Prender, apagar y vigilar todo |
 | `babylon/iniciar-cliente.sh` | Arranca proxy, pagina y registro (lo usa barriomu.sh) |
 | `babylon/servir.ts` | Servidor web minimo de la pagina y el registro |
+| `scripts/vigilante.js` | El vigilante: entra al juego con Playwright y revisa |
+| `babylon/mobile/` | Controles del celular (joystick, rueda de combate, pociones) |
 | `babylon/diagnostico.sh` | Prueba OpenMU, proxy y Cloudflare por separado |
 | `babylon/branding/` | Logo, iconos y lista de servidores |
 | `openmu-barrio/` | Cambios de BarrioMU sobre OpenMU |
