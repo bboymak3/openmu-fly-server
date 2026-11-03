@@ -31,6 +31,9 @@ juega desde el navegador en **https://mu.makeseo.app** o con el instalador de PC
 - **Joyas**: Bless, Soul, Chaos, Life y Creation caen con 1% por monstruo en
   todos los mapas (el doble en ALTOBARINAS o con el buff de Fortuna).
 - **Set gratis**: cada personaje nuevo recibe en la bolsa el set basico de su clase.
+- **Referidos (Invita y gana)**: link propio en Mi cuenta; cuando un amigo llega a
+  nivel 200 ganan los dos (1, 3, 5 y 10 amigos: joyas, zen, alas de 1ra y de 3ra),
+  pedidos desde la web al baul. Maximo 10 por mes y 8 por casa. Ranking de reclutadores.
 - **Vigilante**: cada hora GitHub entra al juego como un jugador y avisa en la
   app de GitHub (issue) si algo falla.
 
@@ -140,6 +143,7 @@ Cambios sobre OpenMU (`openmu-barrio/`):
 | `babylon/servir.ts` | Servidor web minimo de la pagina y el registro |
 | `scripts/vigilante.js` | El vigilante: entra al juego con Playwright y revisa |
 | `babylon/mobile/` | Controles del celular (joystick, rueda de combate, pociones) |
+| `babylon/api/referidos.ts` | Sistema de referidos (link, premios al baul, ranking) |
 | `babylon/diagnostico.sh` | Prueba OpenMU, proxy y Cloudflare por separado |
 | `babylon/branding/` | Logo, iconos y lista de servidores |
 | `openmu-barrio/` | Cambios de BarrioMU sobre OpenMU |

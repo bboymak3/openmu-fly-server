@@ -204,6 +204,44 @@
   loadWinners();
   setInterval(loadWinners, 5 * 60000);
 
+
+  // ---------- Referidos ----------
+  // ?ref=CODIGO: se recuerda para activarlo en Mi cuenta despues de crear la cuenta.
+  const REF_KEY = "barriomu.ref";
+  (async () => {
+    let code = null;
+    try {
+      code = new URLSearchParams(location.search).get("ref");
+      if (code) localStorage.setItem(REF_KEY, code.trim().toUpperCase());
+      else code = localStorage.getItem(REF_KEY);
+    } catch {}
+    if (!code) return;
+    let who = null;
+    try {
+      who = await api("/referidos/codigo?c=" + encodeURIComponent(code));
+    } catch {}
+    if (who && !who.valid) return;
+    const banner = $("#ref-banner");
+    banner.innerHTML = `🎁 ${who?.name ? `<b>${esc(who.name)}</b> te invitó a BarrioMU.` : "Te invitaron a BarrioMU."} <a data-link="register" href="${cfg.register}" target="_blank" rel="noopener">1) Crea tu cuenta</a> · <a href="cuenta.html">2) Entra a Mi cuenta</a> y tu invitación se activa sola.`;
+    banner.hidden = false;
+  })();
+
+  async function loadRecruiters() {
+    const row = r => `<tr><td class="rank">${["🥇", "🥈", "🥉"][r.rank - 1] ?? r.rank}</td><td><strong>${esc(r.name)}</strong></td><td class="num">${r.count}</td></tr>`;
+    const empty = '<tr><td colspan="3" class="skeleton">Todavía nadie. ¡Sé el primero en invitar!</td></tr>';
+    try {
+      const data = await api("/referidos/ranking");
+      $("#ref-month").innerHTML = data.month.length ? data.month.slice(0, 10).map(row).join("") : empty;
+      $("#ref-total").innerHTML = data.total.length ? data.total.slice(0, 10).map(row).join("") : empty;
+    } catch {
+      const off = '<tr><td colspan="3" class="skeleton">El servidor está fuera de línea.</td></tr>';
+      $("#ref-month").innerHTML = off;
+      $("#ref-total").innerHTML = off;
+    }
+  }
+  loadRecruiters();
+  setInterval(loadRecruiters, 5 * 60000);
+
   // ---------- Rankings ----------
   const RANKINGS = {
     level: {

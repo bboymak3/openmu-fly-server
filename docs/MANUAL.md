@@ -338,6 +338,37 @@ desbloquear el personaje (lo manda a su ciudad), Reset, Master Reset y cambiar l
 
 ## 9. Cloudflare: túnel, caché y Pages
 
+### Referidos (Invita y gana)
+
+Código: `babylon/api/referidos.ts` (API), `web/cuenta.html` / `cuenta.js` (Mi cuenta) y la
+sección `#referidos` de la landing. Los datos van en el esquema `barrio` de la base de OpenMU
+(tablas `referral_code`, `referral` y `referral_claim`); la API las crea sola la primera vez.
+
+- **Link**: cada cuenta tiene un código de 6 letras y su link `https://barriomu.makeseo.app/?ref=CODIGO`.
+  Está arriba de todo en **Mi cuenta**, con botones para copiar, WhatsApp y compartir.
+- **Invitado**: si llega con el link, la página lo recuerda; al entrar a Mi cuenta la invitación
+  se activa sola. También puede escribir el código. Solo cuentas de **menos de 30 días** que
+  todavía no llegaron a nivel 200, y una sola vez.
+- **Meta**: cuenta cuando un personaje del invitado llega a **nivel 200** (o hace un reset).
+- **Topes**: máximo **10 invitados por mes** por jugador (los demás cuentan el mes siguiente) y
+  **8 cuentas invitadas por casa** (misma conexión; la IP se guarda cifrada).
+- **Premios** (para pedirlos: fuera del juego y con el **baúl vacío**; llegan al baúl):
+
+| Amigos en nivel 200 | Premio |
+|---|---|
+| 1 | 5 Bless + 5 Soul |
+| 3 | 10 Chaos + 10.000.000 de zen |
+| 5 | Alas de 1ra de la clase que elija (Heaven, Satan, Elf, Curse, Cape of Lord, Cape of Fighter) |
+| 10 | Alas de 3ra de la clase que elija (Eternal, Storm, Illusion, Ruin, Emperor, Dimension, Overrule) |
+| El invitado, al llegar a nivel 200 | 3 Bless + 3 Soul + 5.000.000 de zen |
+
+- **Ranking**: "Reclutadores del mes" y "De todos los tiempos" en la landing, con el nombre del
+  mejor personaje de cada cuenta (nunca el usuario). El premio del primero del mes lo da el staff a mano.
+- Para cambiar premios o reglas: los números están arriba de `babylon/api/referidos.ts`
+  (`GOAL_LEVEL`, `MONTH_LIMIT`, `HOUSE_LIMIT`, `NEW_ACCOUNT_DAYS`, `MILESTONES`, `WELCOME`).
+- Ver quién invitó a quién (Termux normal):
+  `psql -U postgres -d openmu -c 'select * from barrio.referral order by linked_at desc limit 30'`
+
 ### Túnel "barriomu"
 El token del túnel está guardado en la tablet en `~/.barriomu-token`. **Nunca lo compartas.**
 Rutas del túnel (Cloudflare Zero Trust → Networks → Tunnels → barriomu → Public hostnames):
