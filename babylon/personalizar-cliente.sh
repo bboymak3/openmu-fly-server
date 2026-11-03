@@ -28,10 +28,19 @@ M=$C/versions/shared/ui/hud/mobile_controls
 # Y uno de pantalla completa (no hay F11), debajo del de chat.
 # Y dos de zoom de la camara (alejar / acercar), a la derecha de pantalla completa.
 cp babylon/mobile/chatButton.tsx babylon/mobile/fullscreenButton.tsx babylon/mobile/zoomButtons.tsx $M/
+# HUD de celular de BarrioMU: rueda de combate (ataque, 4 habilidades, soltar,
+# recoger, lista de objetivos, circulo de alcance), joystick y pociones.
+cp babylon/mobile/combatPad.tsx babylon/mobile/joystick.tsx babylon/mobile/potionButtons.tsx $M/
+cp babylon/mobile/barrioJoystick.ts $C/src/controllers/interface/
 cat babylon/mobile/chatButton.less >> $M/style.less
+cat babylon/mobile/barrio.less >> $M/style.less
 sed -i "s#^import { MoveButton } from './moveButton';#&\nimport { ChatButton } from './chatButton';\nimport { FullscreenButton } from './fullscreenButton';\nimport { ZoomButtons } from './zoomButtons';#; s#<MoveButton />#&\n      <ChatButton />\n      <FullscreenButton />\n      <ZoomButtons />#" $M/index.tsx
 grep -c ChatButton $M/index.tsx
 grep -c FullscreenButton $M/index.tsx
 grep -c ZoomButtons $M/index.tsx
+sed -i "s#^import { SkillPad } from './skillPad';#&\nimport { CombatPad } from './combatPad';\nimport { Joystick } from './joystick';\nimport { PotionButtons } from './potionButtons';#; s#      <MoveButton />#      <CombatPad />\n&#; s#      <SkillPad />#&\n      <Joystick />\n      <PotionButtons />#" $M/index.tsx
+grep -c '<CombatPad />' $M/index.tsx
+grep -c '<Joystick />' $M/index.tsx
+grep -c '<PotionButtons />' $M/index.tsx
 # Otros cambios de texto (espanol por defecto, ...)
 python3 babylon/patch-client.py $C

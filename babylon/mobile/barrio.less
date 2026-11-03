@@ -1,0 +1,232 @@
+// ============================================================================
+// BarrioMU: phone HUD like the drawing (combat wheel right, joystick and
+// potions left, the existing buttons smaller in a column). Appended to
+// mobile_controls/style.less, after chatButton.less, so it wins over both.
+// ============================================================================
+
+// Box of a small button: 32x38 sheet at SMALL_SCALE 1.15 (consts.ts).
+@small-h: 44px;
+@small-gap: 6px;
+@col-left: 8px;
+@col-top: 8px;
+@bar: 70px; // the bottom bar plus a little air
+
+.mobile-controls {
+  .barrio-attack,
+  .barrio-round,
+  .barrio-target,
+  .barrio-potion,
+  .barrio-joystick {
+    pointer-events: auto;
+    cursor: pointer;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+}
+
+// ---- left column: move, chat, full screen, zoom (smaller) -------------------
+
+.mobile-controls .mobile-move-button { top: @col-top; left: @col-left; }
+.mobile-controls .mobile-chat-button { top: @col-top + (@small-h + @small-gap) * 1; left: @col-left; }
+.mobile-controls .mobile-fullscreen-button { top: @col-top + (@small-h + @small-gap) * 2; left: @col-left; }
+.mobile-controls .mobile-zoom-button { top: @col-top + (@small-h + @small-gap) * 3; left: @col-left; }
+.mobile-controls .mobile-zoom-button.mobile-zoom-out { top: @col-top + (@small-h + @small-gap) * 3; left: @col-left; }
+.mobile-controls .mobile-zoom-button.mobile-zoom-in { top: @col-top + (@small-h + @small-gap) * 4; left: @col-left; }
+.mobile-controls .mobile-chat-button .mobile-chat-glyph { font-size: 22px; }
+.mobile-controls .mobile-fullscreen-button .mobile-fullscreen-glyph { width: 20px; height: 20px; }
+.mobile-controls .mobile-fullscreen-button .mobile-fullscreen-glyph.is-full { width: 14px; height: 14px; }
+.mobile-controls .mobile-zoom-button .mobile-zoom-glyph { font-size: 26px; }
+
+// ---- top right: the menu (smaller, MENU_SCALE), then event timers and MU Helper
+
+.mobile-controls .mobile-menu-cluster { top: @col-top; right: @col-left; gap: 5px; }
+.mu-mobile .event-timers { top: 58px !important; }
+.mu-mobile .mu-helper-buttons { top: 106px !important; }
+
+// ---- target list, top left beside the column --------------------------------
+
+.barrio-targets {
+  position: absolute;
+  top: @col-top;
+  left: @col-left + 37px + 8px;
+  min-width: 130px;
+  max-width: 38vw;
+  background: rgba(8, 10, 20, 0.72);
+  border: 1px solid rgba(90, 120, 170, 0.6);
+  border-radius: 4px;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 16px;
+  color: #dfe6f5;
+
+  .barrio-targets-title {
+    padding: 2px 8px;
+    background: rgba(40, 60, 100, 0.85);
+    color: #fff;
+  }
+
+  .barrio-target {
+    margin: 3px;
+    padding: 3px 8px;
+    background: rgba(60, 40, 40, 0.7);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    &.is-held { background: rgba(150, 30, 30, 0.9); color: #fff; }
+  }
+}
+
+// ---- reach ring --------------------------------------------------------------
+
+.barrio-range-ring {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+
+  path {
+    fill: rgba(255, 40, 40, 0.05);
+    stroke: rgba(255, 45, 45, 0.85);
+    stroke-width: 2.5px;
+    stroke-linejoin: round;
+  }
+}
+
+// ---- right: the combat wheel (attack, ✕, ✋) and the 4 skills in an arc -------
+
+.mobile-controls .mobile-skill-pad,
+.barrio-combat {
+  position: absolute;
+  right: 10px;
+  bottom: @bar;
+  width: 260px;
+  height: 240px;
+  pointer-events: none;
+}
+
+.mobile-controls .mobile-skill-pad {
+  display: block;
+
+  .mobile-target-label {
+    position: absolute;
+    top: 0;
+    right: 0;
+  }
+
+  .mobile-skill-slots { display: block; }
+
+  // 51x61 slots (SLOT_SCALE 1.6) around the attack button.
+  .mobile-skill-slot { position: absolute; }
+  .mobile-skill-slot:nth-child(1) { right: 150px; bottom: 0; }
+  .mobile-skill-slot:nth-child(2) { right: 146px; bottom: 70px; }
+  .mobile-skill-slot:nth-child(3) { right: 92px; bottom: 116px; }
+  .mobile-skill-slot:nth-child(4) { right: 30px; bottom: 104px; }
+}
+
+.barrio-attack {
+  position: absolute;
+  right: 56px;
+  bottom: 6px;
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 40% 35%, #5a4628, #1b140c 70%);
+  border: 3px solid #e2b45c;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.7), inset 0 0 12px rgba(255, 210, 120, 0.25);
+
+  .barrio-attack-glyph { font-size: 40px; line-height: 1; filter: drop-shadow(0 2px 2px #000); }
+
+  &.is-pressed { transform: scale(0.94); border-color: #ffd98a; }
+}
+
+.barrio-round {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  line-height: 1;
+  color: #fff;
+  background: rgba(20, 16, 12, 0.85);
+  border: 2px solid #8a6f45;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
+
+  &.is-pressed { transform: scale(0.92); }
+}
+
+.barrio-cancel { right: 2px; bottom: 30px; color: #ff6b6b; border-color: #b33; }
+.barrio-pickup { right: 210px; bottom: 8px; }
+
+// ---- left bottom: joystick and the two potions -------------------------------
+
+.barrio-joystick {
+  position: absolute;
+  left: 56px;
+  bottom: @bar;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle, rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.35));
+  border: 2px solid rgba(255, 255, 255, 0.35);
+
+  .barrio-joystick-knob {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 35%, rgba(240, 225, 190, 0.85), rgba(170, 150, 110, 0.75));
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+    pointer-events: none;
+  }
+}
+
+.barrio-potion {
+  position: absolute;
+  left: 186px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: rgba(20, 16, 12, 0.85);
+  border: 2px solid #8a6f45;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.6);
+
+  &.is-empty { opacity: 0.5; }
+
+  // The item icon draws at inventory size; keep it inside the round button
+  // and out of the way of the joystick beside it.
+  overflow: hidden;
+  .item-icon,
+  img {
+    max-width: 38px;
+    max-height: 38px;
+    pointer-events: none;
+  }
+
+  .barrio-potion-count {
+    position: absolute;
+    right: 2px;
+    bottom: 2px;
+    min-width: 18px;
+    padding: 0 3px;
+    border-radius: 9px;
+    font-size: 11px;
+    line-height: 16px;
+    text-align: center;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.8);
+  }
+}
+
+.barrio-potion-q { bottom: @bar + 62px; }
+.barrio-potion-w { bottom: @bar + 4px; }

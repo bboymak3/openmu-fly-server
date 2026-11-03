@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { MobileButton, ScaledFrame } from './mobileButton';
-import { SLOT_SCALE, SKILLBOX_SPRITE, SKILLBOX_USE_SPRITE, BOX_WIDTH, BOX_HEIGHT } from './consts';
+import { SMALL_SCALE, SKILLBOX_SPRITE, SKILLBOX_USE_SPRITE, BOX_WIDTH, BOX_HEIGHT } from './consts';
 
 /**
  * BarrioMU: full screen on a phone, where there is no F11. The browser only
@@ -35,7 +35,7 @@ export const FullscreenButton = () => {
           file={pressed || full ? SKILLBOX_USE_SPRITE : SKILLBOX_SPRITE}
           width={BOX_WIDTH}
           height={BOX_HEIGHT}
-          scale={SLOT_SCALE}
+          scale={SMALL_SCALE}
         >
           <div className={`mobile-fullscreen-glyph${full ? ' is-full' : ''}`} />
         </ScaledFrame>
