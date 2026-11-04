@@ -47,7 +47,10 @@ instalador de Windows.
 - **Tienda de puntos**: matar monstruos dorados de las invasiones y jefes (Icarus, Kalima,
   Crywolf, Kanturu, Raklion, Land of Trials) da puntos. El **Cambista** de Lorencia te dice
   cuántos tienes y en **Mi cuenta → Tienda de puntos** se cambian por Bless, Soul, Chaos y
-  lo que el admin prenda (alas de 1ra, armas +15…), que llega al baúl.
+  lo que el admin prenda (alas de 1ra y 2da, plumas, mascotas, armas +15…), que llega al
+  baúl. También dan **5 puntos por cada hora jugada** (desde nivel 50).
+- **Comandos de chat** para repartir puntos: `/addstr`, `/addagi`, `/addvit`, `/addene`,
+  `/addcmd` seguidos de la cantidad.
 
 **Celular** (solo en el teléfono; la PC queda igual)
 - **Joystick** para caminar sin tocar el piso.
@@ -170,6 +173,8 @@ Cloudflare**, y en el celular cierra el juego del todo y vuelve a abrirlo. Actua
 ```bash
 bash ~/barriomu.sh resets         # activa los resets: nivel 400, sin límite (reinicia OpenMU)
 bash ~/barriomu.sh resets estado  # dice si los resets están prendidos
+bash ~/barriomu.sh extras         # 5 puntos de la tienda por hora jugada y /addstr /addagi /addvit /addene /addcmd (reinicia OpenMU)
+bash ~/barriomu.sh extras estado  # dice si están prendidos
 bash ~/barriomu.sh gm CUENTA      # hace GM una cuenta (para el panel admin); con la cuenta fuera del juego
 bash ~/barriomu.sh npcs           # lista los NPCs de las ciudades y cuántos están apagados
 bash ~/barriomu.sh npcs activar   # prende todos los NPCs y monstruos apagados (reinicia OpenMU)

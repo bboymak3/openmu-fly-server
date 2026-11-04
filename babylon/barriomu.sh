@@ -13,6 +13,7 @@
 #   bash ~/barriomu.sh panel off   lo apaga para ahorrar memoria (reinicia OpenMU)
 #   bash ~/barriomu.sh resets      activa los resets de BarrioMU (reinicia OpenMU)
 #   bash ~/barriomu.sh resets estado  dice si los resets estan prendidos
+#   bash ~/barriomu.sh extras      prende puntos por hora jugada y /addstr /addagi... (reinicia OpenMU)
 #   bash ~/barriomu.sh gm CUENTA   hace GM una cuenta (para el panel admin; con la cuenta fuera del juego)
 #   bash ~/barriomu.sh cloudflare  guarda el token de Cloudflare del panel admin
 #   bash ~/barriomu.sh npcs        lista los NPCs de las ciudades y cuantos estan apagados
@@ -434,6 +435,46 @@ SQL
   echo "Para subirlas, por ejemplo a 1% por monstruo: bash ~/barriomu.sh joyas 1"
 }
 
+# Sistemas de OpenMU que vienen apagados y BarrioMU usa:
+#   - Goblin Points por tiempo jugado (los puntos de la tienda): 5 cada hora, desde nivel 50
+#   - /addstr /addagi /addvit /addene /addcmd: repartir puntos desde el chat
+# OpenMU se apaga antes de escribir, como en `resets`.
+PLAYTIME_PLUGIN="29a6d015-a94b-4f96-a638-6134ddc9ed0c"
+PLAYTIME_CONFIG='{"Interval":"01:00:00","Points":5,"MinimumLevel":50,"IncludeOfflineLeveling":false}'
+ADDSTAT_PLUGINS="21b15d95-ba2f-40a3-ab7d-8bd886faeae5 43156a52-03ee-42c0-88bf-ca9665dc8e1e 370ce86c-e382-4e0f-93f4-ad75fa079129 a597b6e7-9395-4cf4-8439-a1d60134b63e efe421fb-be79-4656-af39-d22a105d1455"
+
+plugin_on() {
+  local id=$1 config=${2:-} setcfg=""
+  [ -n "$config" ] && setcfg=", \"CustomConfiguration\" = '$config'"
+  psql -U postgres -d openmu -v ON_ERROR_STOP=1 -q <<SQL
+UPDATE config."PlugInConfiguration" SET "IsActive" = true $setcfg
+ WHERE "TypeId" = '$id';
+INSERT INTO config."PlugInConfiguration" ("Id", "GameConfigurationId", "TypeId", "IsActive", "CustomConfiguration")
+SELECT gen_random_uuid(), (SELECT "Id" FROM config."GameConfiguration" LIMIT 1), '$id', true, NULLIF('$config', '')
+ WHERE NOT EXISTS (SELECT 1 FROM config."PlugInConfiguration" WHERE "TypeId" = '$id');
+SQL
+}
+
+extras() {
+  pg_ctl -D "$PGDATA" status >/dev/null 2>&1 || { echo "PostgreSQL esta apagado: bash ~/barriomu.sh prender"; return 1; }
+  if [ "$1" = estado ]; then
+    psql -U postgres -d openmu -P pager=off -c "SELECT \"TypeId\" AS plugin, \"IsActive\" AS activo, \"CustomConfiguration\" AS config FROM config.\"PlugInConfiguration\" WHERE \"TypeId\" IN ('$PLAYTIME_PLUGIN', $(printf "'%s'," $ADDSTAT_PLUGINS | sed 's/,$//'))"
+    return 0
+  fi
+  echo "Prendiendo los extras de OpenMU..."
+  stop_watchdog
+  stop_openmu
+  plugin_on "$PLAYTIME_PLUGIN" "$PLAYTIME_CONFIG" || { echo "No se pudo."; start_openmu ""; start_watchdog; return 1; }
+  for id in $ADDSTAT_PLUGINS; do plugin_on "$id" || true; done
+  echo "Listo. Prendiendo OpenMU..."
+  start_openmu ""
+  wait_port 44405 OpenMU 600
+  start_watchdog
+  echo "Activos:"
+  echo "  - 5 puntos de la tienda por cada hora jugada (desde nivel 50)"
+  echo "  - /addstr /addagi /addvit /addene /addcmd CANTIDAD para repartir puntos desde el chat"
+}
+
 arranque() {
   mkdir -p "$HOME/.termux/boot"
   cat >"$HOME/.termux/boot/barriomu" <<'BOOT'
@@ -502,6 +543,7 @@ case "$1" in
   mapas) mapas ;;
   spot) spot "$2" ;;
   joyas) joyas "$2" ;;
+  extras) extras "$2" ;;
   vigilar) vigilar ;;
-  *) sed -n '2,29p' "$0" | sed 's/^# \{0,1\}//' ;;
+  *) sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//' ;;
 esac
