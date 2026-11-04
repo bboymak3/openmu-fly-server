@@ -4,6 +4,16 @@
   Cache-Control: public, max-age=300
 /config.js
   Cache-Control: public, max-age=300
+# Paginas, codigo y estilos: el navegador pregunta siempre si hay version nueva
+# (si no, mezcla el HTML nuevo con codigo viejo y quedan secciones en "Cargando…").
+/
+  Cache-Control: no-cache
+/index.html
+  Cache-Control: no-cache
+/app.js
+  Cache-Control: no-cache
+/styles.css
+  Cache-Control: no-cache
 /*
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
@@ -14,3 +24,6 @@
   Cache-Control: no-store
 /cuenta*
   Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://mu-api.makeseo.app; frame-ancestors 'none'; base-uri 'none'; form-action 'self'
+/tienda*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://mu-api.makeseo.app; frame-ancestors 'none'; base-uri 'none'; form-action 'self'
+  Cache-Control: no-cache

@@ -535,3 +535,5 @@ td.bad { color: var(--red); }
 .mk-collect { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px; margin-bottom: 10px; border-radius: 12px; border: 1px solid var(--gold); background: rgba(232, 183, 92, 0.08); }
 .mk-collect b { color: var(--gold-2); }
 .mk-collect[hidden], .mk-pane[hidden] { display: none; }
+.shop-banner { box-shadow: 0 0 28px rgba(232, 183, 92, 0.45); }
+.shop-grid-2 { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
