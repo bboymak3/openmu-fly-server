@@ -111,7 +111,9 @@ async function main() {
     await page.waitForSelector('.ws-start, .ws-world, .servers-page, .login-page', { timeout: 120000 }).catch(() => {});
     if (await page.locator('.ws-start').count()) {
       await captura('empezar');
-      await page.click('.ws-start');
+      // El boton tiene una animacion que no para: Playwright nunca lo ve "quieto". Se toca directo.
+      await page.waitForTimeout(1500);
+      await page.locator('.ws-start').click({ force: true, timeout: 15000 }).catch(() => page.evaluate(() => document.querySelector('.ws-start')?.click()));
       anotar('Botón Empezar tocado');
     }
     await page.waitForSelector('.ws-world, .servers-page, .login-page', { timeout: 60000 }).catch(() => {});
@@ -122,10 +124,10 @@ async function main() {
         await captura('mundo-apagado');
         await fallar(`el mundo ${MUNDO} sale como no disponible (servidor apagado o sin conexión)`);
       }
-      await tarjeta.click();
+      await tarjeta.click({ force: true });
       await page.waitForSelector('.ws-enter:not([disabled])', { timeout: 30000 });
       await captura('mundos');
-      await page.click('.ws-enter');
+      await page.locator('.ws-enter').click({ force: true });
       anotar(`Mundo ${MUNDO} elegido`);
     }
 
