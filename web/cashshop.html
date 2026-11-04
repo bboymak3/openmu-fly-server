@@ -11,9 +11,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20261104d" />
-  <script src="config.js?v=20261104d"></script>
-  <script src="cashshop.js?v=20261104d" defer></script>
+  <link rel="stylesheet" href="styles.css?v=20261104e" />
+  <script src="config.js?v=20261104e"></script>
+  <script src="cashshop.js?v=20261104e" defer></script>
 </head>
 <body>
   <header class="top">
@@ -37,11 +37,16 @@
 
     <section class="card ref cs-account">
       <div id="cs-guest">
-        <p class="ref-lead">Entra con tu usuario y clave del juego para comprar.</p>
+        <h2 class="cs-login-title">🔑 Entra para comprar</h2>
+        <p class="ref-lead">Usa el mismo <b>usuario y clave del juego</b>.</p>
         <form id="cs-login" class="cs-login" autocomplete="on">
-          <input name="username" required minlength="4" maxlength="10" placeholder="Usuario" autocomplete="username" autocapitalize="off" spellcheck="false" aria-label="Usuario" />
-          <input name="password" type="password" required minlength="4" maxlength="10" placeholder="Clave" autocomplete="current-password" aria-label="Clave" />
-          <button class="btn btn-gold btn-small" type="submit">Entrar</button>
+          <label>Usuario
+            <input name="username" required minlength="4" maxlength="10" autocomplete="username" autocapitalize="off" spellcheck="false" />
+          </label>
+          <label>Clave
+            <input name="password" type="password" required minlength="4" maxlength="10" autocomplete="current-password" />
+          </label>
+          <button class="btn btn-gold btn-big cs-login-btn" type="submit">🔑 Entrar con mi cuenta</button>
         </form>
         <p class="form-msg" id="cs-login-msg" role="alert"></p>
       </div>

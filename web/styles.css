@@ -544,8 +544,13 @@ td.bad { color: var(--red); }
 .shop-switch a.is-active { background: linear-gradient(180deg, var(--gold-2), var(--gold)); color: #1b1305; border-color: transparent; }
 
 /* Cash Shop */
-.cs-login { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.cs-login input { flex: 1 1 120px; min-width: 0; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--card-border); background: rgba(0, 0, 0, 0.35); color: inherit; font: inherit; }
+.cs-login-title { margin: 0 0 4px; font-family: var(--display); color: var(--gold-2); font-size: 1.5rem; text-align: center; }
+#cs-guest .ref-lead { text-align: center; }
+.cs-login { display: grid; gap: 12px; max-width: 420px; margin: 0 auto; }
+.cs-login label { display: grid; gap: 6px; font-weight: 700; }
+.cs-login input { width: 100%; padding: 14px 14px; border-radius: 12px; border: 1px solid var(--card-border); background: rgba(0, 0, 0, 0.35); color: inherit; font: inherit; font-size: 1.05rem; }
+.cs-login-btn { width: 100%; justify-content: center; font-size: 1.15rem; padding-top: 16px; padding-bottom: 16px; }
+#cs-login-msg { text-align: center; }
 .cs-wallet { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; justify-content: space-between; font-size: 1.05rem; }
 .cs-wallet b { color: var(--gold-2); }
 .cs-lines { margin: 18px 0 14px; }

@@ -50,6 +50,7 @@
   let shop = { lines: [], items: [], wcoinc: null };
   let me = null; // { account, online }
   let line = "todo";
+  let loadError = "";
 
   function renderAccount() {
     $("#cs-guest").hidden = !!me;
@@ -92,7 +93,9 @@
 
   function renderItems() {
     const list = shop.items.filter(it => line === "todo" || it.line === line);
-    $("#cs-items").innerHTML = list.length ? list.map(card).join("") : '<p class="skeleton">Nada a la venta aquí por ahora.</p>';
+    $("#cs-items").innerHTML = list.length
+      ? list.map(card).join("")
+      : `<p class="skeleton">${esc(loadError || "Nada a la venta aquí por ahora.")}</p>`;
   }
 
   function render() {
@@ -102,21 +105,29 @@
   }
 
   async function load() {
-    try {
-      if (store.get()) {
-        const [who, mine] = await Promise.all([call("/me"), call("/me/cashshop")]);
+    // Primero la cuenta; si el Cash Shop con sesion falla, igual se ve el catalogo publico.
+    if (store.get()) {
+      try {
+        const who = await call("/me");
         me = { account: who.account, online: who.online };
-        shop = mine;
-      } else {
+      } catch (e) {
         me = null;
-        shop = { ...(await call("/cashshop")), wcoinc: null };
+        if (store.get()) $("#cs-login-msg").textContent = e.message;
       }
-      render();
-    } catch (e) {
-      if (!shop.items.length) $("#cs-items").innerHTML = `<p class="skeleton">${esc(e.message)}</p>`;
-      else toast(e.message, true);
-      renderAccount();
     }
+    loadError = "";
+    try {
+      shop = me ? await call("/me/cashshop") : { ...(await call("/cashshop")), wcoinc: null };
+    } catch (e) {
+      try {
+        shop = { ...(await call("/cashshop")), wcoinc: null };
+      } catch {
+        // sin catalogo: se dice abajo
+      }
+      if (!shop.items.length) loadError = "El Cash Shop todavía no está listo en el servidor (se está actualizando). Vuelve en un rato.";
+      else toast(e.message, true);
+    }
+    render();
   }
 
   $("#cs-lines").addEventListener("click", e => {
@@ -177,9 +188,11 @@
     $("#cs-login-msg").textContent = "";
     try {
       const res = await call("/auth/login", { method: "POST", body: { username: f.username.value.trim(), password: f.password.value } });
+      if (!res.token) throw new Error("No se pudo entrar. Intenta de nuevo.");
       store.set(res.token);
       f.reset();
       await load();
+      if (me) toast(`¡Hola ${me.account}! Ya puedes comprar.`);
     } catch (err) {
       $("#cs-login-msg").textContent = err.message;
     } finally {
