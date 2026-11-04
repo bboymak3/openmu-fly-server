@@ -398,6 +398,21 @@ la sección `#tienda` de Mi cuenta y la de `web/admin.html`.
 - **Cambio**: WCoinC → WCoinP a la tasa del admin (por defecto **1 WCoinC = 2 WCoinP**), solo en ese
   sentido. Panel admin → **Economía**.
 
+### Cash Shop (con WCoinC)
+La tienda que traía el cliente, recreada en la web: **https://barriomu.makeseo.app/cashshop.html**
+(botón "💎 Cash Shop" en la portada, en el menú y en Mi cuenta).
+
+- Tres categorías: **Alas** (Elf, Heaven, Satan, Cape of Lord), **Items de misión** (Scroll of
+  Emperor, Broken Sword, Tear of Elf, Soul Shard of Wizard, Devil's Eye/Key +1, Symbol of Kundun +1)
+  y el **Cofre sorpresa**: una pieza de armadura al azar. Común 70% (+0 a +4), raro 23,5% (+5 a +9),
+  épico 6% (excelente +3 a +9, 1-2 opciones), legendario 0,5% (excelente +10 a +12, 2-3 opciones).
+- Se paga con **WCoinC**. Cada item tiene un **límite por día y por cuenta** (alas 1, misión 5 o 10,
+  cofre 12). El jugador entra con su usuario y clave en la misma página y compra directo.
+- Hay que estar **fuera del juego** y con espacio en el baúl. Lo comprado llega al **baúl**.
+- Panel admin → **💎 Cash Shop**: prender/apagar cada item, precio y límite diario, y las últimas
+  compras (con lo que salió de cada cofre).
+- Tablas: `barrio.cash_shop` (catálogo), `barrio.cash_daily` (compras del día), `barrio.cash_log`.
+
 ### La Plaza (comercio entre jugadores, con WCoinP)
 
 Código: `babylon/api/mercado.ts` y la sección `#mercado` de Mi cuenta ("La Plaza").

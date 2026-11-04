@@ -18,6 +18,7 @@ import { readMasterResets } from "./masterReset";
 import { handleAdmin } from "./admin";
 import { handleReferidos } from "./referidos";
 import { handleTienda } from "./tienda";
+import { handleCashShop } from "./cashshop";
 import { handleMercado } from "./mercado";
 
 const PORT = Number(process.env.PORT || 3400);
@@ -283,6 +284,8 @@ Bun.serve({
     if (referidos) return referidos;
     const tienda = await handleTienda(req, url, cors, sql);
     if (tienda) return tienda;
+    const cash = await handleCashShop(req, url, cors, sql);
+    if (cash) return cash;
     const mercado = await handleMercado(req, url, cors, sql);
     if (mercado) return mercado;
     const panel = await handlePanel(req, url, cors, sql);

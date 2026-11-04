@@ -27,3 +27,6 @@
 /tienda*
   Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://mu-api.makeseo.app; frame-ancestors 'none'; base-uri 'none'; form-action 'self'
   Cache-Control: no-cache
+/cashshop*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://mu-api.makeseo.app; frame-ancestors 'none'; base-uri 'none'; form-action 'self'
+  Cache-Control: no-cache

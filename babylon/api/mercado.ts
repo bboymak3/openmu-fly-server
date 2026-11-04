@@ -13,7 +13,7 @@
 
 import type { Sql } from "postgres";
 import { PanelError, body, json, offlineTransaction, requireOffline, session } from "./panel";
-import { economy, ensureSettings, freeSlot, occupy, saveEconomy, vaultOf, vaultUsage } from "./economia";
+import { cleanName, economy, ensureSettings, freeSlot, occupy, saveEconomy, vaultOf, vaultUsage } from "./economia";
 
 const MAX_PRICE = 100_000_000;
 const MAX_ACTIVE_PER_SELLER = 20;
@@ -39,6 +39,10 @@ function ensureTables(sql: Sql): Promise<void> {
         closed_at timestamptz)`;
     await sql`create index if not exists market_state on barrio.market_listing (state)`;
     await sql`create index if not exists market_seller on barrio.market_listing (seller)`;
+    // Ventas publicadas antes de limpiar los nombres de OpenMU (con sus traducciones pegadas).
+    for (const row of await sql`select id, label from barrio.market_listing where label like '%||%'`) {
+      await sql`update barrio.market_listing set label = ${cleanName(row.label)} where id = ${row.id}`;
+    }
   })().catch(error => {
     ready = null;
     throw error;
@@ -72,7 +76,7 @@ const ITEM_VIEW = (sql: Sql) => sql`
   exists (select 1 from data."ItemItemOfItemSet" a where a."ItemId" = i."Id") as ancient`;
 
 function itemLabel(r: { name: string; level: number; options?: number; ancient?: boolean; skill?: boolean }): string {
-  const parts = [`${r.name}${r.level ? ` +${r.level}` : ""}`];
+  const parts = [`${cleanName(r.name)}${r.level ? ` +${r.level}` : ""}`];
   if (r.ancient) parts.push("Ancient");
   if (r.skill) parts.push("Skill");
   if (r.options) parts.push(`${r.options} ${r.options === 1 ? "opcion" : "opciones"}`);

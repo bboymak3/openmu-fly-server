@@ -93,3 +93,18 @@ export function occupy(used: boolean[], slot: number, w: number, h: number): voi
     for (let x = col; x < col + w && x < VAULT_COLUMNS; x++) used[y * VAULT_COLUMNS + x] = true;
   }
 }
+
+/**
+ * OpenMU guarda los nombres de los items con sus traducciones juntas:
+ * "Invisibility Cloak||de=Umhang der Unsichtbarkeit||zh-CN=...||@src=...||@stamp=48d7dc44".
+ * Se queda con el nombre (lo primero). Si despues del ultimo pedazo viene algo nuestro
+ * (" +8 · Skill", de las etiquetas que ya se guardaron asi), se conserva.
+ */
+export function cleanName(raw: string | null | undefined): string {
+  const text = String(raw ?? "");
+  if (!text.includes("||")) return text;
+  const parts = text.split("||");
+  const last = parts[parts.length - 1];
+  const space = last.indexOf(" ");
+  return parts[0].trim() + (space >= 0 ? last.slice(space) : "");
+}

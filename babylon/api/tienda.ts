@@ -11,7 +11,7 @@ import type { Sql } from "postgres";
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { PanelError, body, json, offlineTransaction, requireOffline, session } from "./panel";
-import { economy, freeSlot, occupy, vaultOf, vaultUsage } from "./economia";
+import { cleanName, economy, freeSlot, occupy, vaultOf, vaultUsage } from "./economia";
 
 const POINTS_FILE = process.env.POINTS_FILE ?? `${process.env.HOME ?? "/root"}/openmu/data/puntos.json`;
 
@@ -321,7 +321,7 @@ export async function adminAddItem(req: Request, sql: Sql) {
   }
   const [def] = await sql`select "Name" as name from config."ItemDefinition" where "Group" = ${group} and "Number" = ${number} limit 1`;
   if (!def) throw new PanelError(404, `No existe el item ${group},${number} en OpenMU.`);
-  const label = (typeof b.label === "string" && b.label.trim()) || `${def.name}${level ? ` +${level}` : ""}`;
+  const label = (typeof b.label === "string" && b.label.trim()) || `${cleanName(def.name)}${level ? ` +${level}` : ""}`;
   const currency = isCurrency(b.currency, SHOP_CURRENCIES) ? b.currency : "puntos";
   const [row] = await sql`
     insert into barrio.points_shop (item_group, item_number, item_level, label, price, enabled, max_qty, currency, sort)
