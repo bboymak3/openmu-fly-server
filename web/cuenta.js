@@ -118,9 +118,18 @@
       </div>`;
   }
 
+  // Links como cuenta.html#tienda: el panel arranca oculto, asi que se salta a la seccion al mostrarlo.
+  let jumped = false;
+  function jumpToHash() {
+    if (jumped || !/^#[a-z]+$/.test(location.hash)) return;
+    jumped = true;
+    requestAnimationFrame(() => document.querySelector(location.hash)?.scrollIntoView({ block: "start" }));
+  }
+
   function render() {
     $("#login-view").hidden = true;
     $("#panel-view").hidden = false;
+    jumpToHash();
     $("#account-name").textContent = data.account;
     $("#online-notice").hidden = data.online !== true;
     const locked = data.online === true;

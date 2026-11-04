@@ -335,7 +335,9 @@ salen en los rankings.
 Carpeta `web/` del repo. Es HTML, CSS y JS, sin compilar. Secciones: portada con botones
 (Jugar, Crear cuenta, Descargar para PC), **Empieza en 3 pasos**, **Dos formas de jugar**
 (teléfono y PC), **Versión para computadora** (paso a paso), estado del servidor, eventos y
-últimos ganadores, rankings (Nivel, PvP, Guilds), noticias y reglas.
+últimos ganadores, rankings (Nivel, PvP, Guilds), **Invita y gana**, **Tienda y monedas**
+(cómo se ganan puntos, WCoinC y WCoinP), **La Plaza**, noticias y reglas. Los botones de Tienda
+y La Plaza llevan a `cuenta.html#tienda` y `cuenta.html#mercado` (salta a la sección al entrar).
 
 | Para cambiar… | Edita |
 |---|---|
