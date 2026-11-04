@@ -29,6 +29,7 @@ import {
 } from "./panel";
 import { readMasterResets } from "./masterReset";
 import { adminMarket, adminSaveEconomy } from "./mercado";
+import { adminCashShop, adminSaveCashShop } from "./cashshop";
 import { adminAddItem, adminDeleteItem, adminGivePoints, adminSaveItems, adminSaveMonsters, adminShop } from "./tienda";
 
 const LEVEL = "560931ad-0901-4342-b7f4-fd2e2fcc0563";
@@ -361,6 +362,7 @@ const ACTIONS: Record<string, string> = {
   "/admin/tienda/guardar": "Cambio la tienda",
   "/admin/tienda/agregar": "Agrego un item a la tienda",
   "/admin/tienda/quitar": "Quito un item de la tienda",
+  "/admin/cashshop/guardar": "Cambio el Cash Shop",
   "/admin/puntos/monstruos": "Cambio los puntos por monstruo",
   "/admin/puntos/dar": "Dio o quito monedas",
   "/admin/economia/guardar": "Cambio la tasa o el impuesto",
@@ -419,6 +421,8 @@ export async function handleAdmin(
     "/admin/tienda/guardar": ["POST", () => (session(req), adminSaveItems(req, sql))],
     "/admin/tienda/agregar": ["POST", () => (session(req), adminAddItem(req, sql))],
     "/admin/tienda/quitar": ["POST", () => (session(req), adminDeleteItem(req, sql))],
+    "/admin/cashshop": ["GET", () => (session(req), adminCashShop(sql))],
+    "/admin/cashshop/guardar": ["POST", () => (session(req), adminSaveCashShop(req, sql))],
     "/admin/puntos/monstruos": ["POST", () => (session(req), adminSaveMonsters(req))],
     "/admin/puntos/dar": ["POST", () => adminGivePoints(req, sql, session(req).accountId)],
     "/admin/economia": ["GET", () => (session(req), adminMarket(sql))],

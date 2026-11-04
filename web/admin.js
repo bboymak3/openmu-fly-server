@@ -199,6 +199,7 @@
     try {
       const stats = call("/admin/stats");
       loadShop();
+      loadCash();
       loadEconomy();
       loadAudit();
       render(await stats);
@@ -257,6 +258,44 @@
   $("#purge").addEventListener("click", () => purge(false));
   $("#purge-all").addEventListener("click", () => purge(true));
 
+
+  // ---------- Cash Shop ----------
+  const LINE_NAME = { alas: "🪽 Alas", mision: "📜 Misión", cofre: "🎁 Cofre" };
+  async function loadCash() {
+    try {
+      const d = await call("/admin/cashshop");
+      $("#cash-items").innerHTML = d.items.map(it => `
+        <tr data-id="${it.id}">
+          <td><input type="checkbox" class="cash-on" ${it.enabled ? "checked" : ""} aria-label="A la venta" /></td>
+          <td><strong>${esc(it.label)}</strong><br /><small class="muted">${LINE_NAME[it.line] ?? esc(it.line)}</small></td>
+          <td class="num"><input type="number" class="cash-price" min="1" value="${it.price}" inputmode="numeric" /></td>
+          <td class="num"><input type="number" class="cash-cap" min="1" max="1000" value="${it.dailyCap}" inputmode="numeric" /></td>
+        </tr>`).join("");
+      $("#cash-recent").innerHTML = d.recent.length
+        ? d.recent.map(r => `<tr><td><small>${new Date(r.at).toLocaleString("es", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</small></td><td>${esc(r.login ?? "—")}</td><td>${esc(r.detail)}</td><td class="num">💎 ${r.price}</td></tr>`).join("")
+        : '<tr><td class="skeleton">Nadie compró todavía.</td></tr>';
+    } catch (e) {
+      $("#cash-items").innerHTML = `<tr><td colspan="4" class="skeleton">${esc(e.message)}</td></tr>`;
+    }
+  }
+
+  $("#cash-save").addEventListener("click", async e => {
+    const items = [...document.querySelectorAll("#cash-items tr[data-id]")].map(tr => ({
+      id: Number(tr.dataset.id),
+      enabled: tr.querySelector(".cash-on").checked,
+      price: Number(tr.querySelector(".cash-price").value),
+      dailyCap: Number(tr.querySelector(".cash-cap").value),
+    }));
+    e.target.disabled = true;
+    try {
+      toast((await call("/admin/cashshop/guardar", { method: "POST", body: { items } })).message);
+      await loadCash();
+    } catch (err) {
+      toast(err.message, true);
+    } finally {
+      e.target.disabled = false;
+    }
+  });
 
   // ---------- Tienda de puntos ----------
   let shopData = null;

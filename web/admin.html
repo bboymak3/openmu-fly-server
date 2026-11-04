@@ -10,9 +10,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20261104b" />
-  <script src="config.js?v=20261104b"></script>
-  <script src="admin.js?v=20261104b" defer></script>
+  <link rel="stylesheet" href="styles.css?v=20261104c" />
+  <script src="config.js?v=20261104c"></script>
+  <script src="admin.js?v=20261104c" defer></script>
 </head>
 <body>
   <header class="top">
@@ -99,6 +99,19 @@
       </form>
       <div class="tiles" id="eco-tiles"></div>
       <div class="card table-wrap"><table class="ranking"><thead><tr><th>Venta</th><th>Vendedor</th><th>Comprador</th><th class="num">Precio</th><th class="num">Impuesto</th></tr></thead><tbody id="eco-recent"></tbody></table></div>
+
+      <!-- Cash Shop -->
+      <h2 class="admin-h2" id="cashshop">💎 Cash Shop (WCoinC)</h2>
+      <p class="muted">La tienda que traía el cliente: alas, items de misión y el cofre sorpresa. Se paga con <b>WCoinC</b> en <a href="cashshop.html">cashshop.html</a> y llega al baúl. El límite es por cuenta y por día.</p>
+      <div class="card table-wrap">
+        <table class="ranking shop-admin">
+          <thead><tr><th>A la venta</th><th>Item</th><th class="num">Precio 💎</th><th class="num">Límite/día</th></tr></thead>
+          <tbody id="cash-items"><tr><td colspan="4" class="skeleton">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+      <div class="shop-actions"><button class="btn btn-gold" id="cash-save" type="button">💾 Guardar Cash Shop</button></div>
+      <h3 class="admin-h3">Últimas compras del Cash Shop</h3>
+      <div class="card table-wrap"><table class="ranking"><tbody id="cash-recent"></tbody></table></div>
 
       <!-- Tienda de puntos -->
       <h2 class="admin-h2" id="tienda">🪙 Tienda de puntos</h2>
