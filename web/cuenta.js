@@ -567,7 +567,7 @@
           <div class="ref-reward-what">🔷 ${fmt(l.price)} WCoinP<br /><small class="muted">Vende ${esc(l.seller ?? "—")}</small></div>
           ${l.mine ? '<span class="ref-lock">Es tuyo</span>' : `<button class="btn btn-gold btn-small" data-mk-buy="${l.id}" ${locked || mk.wcoinp < l.price ? "disabled" : ""}>Comprar</button>`}
         </div>`).join("")
-      : `<p class="skeleton">${q ? "Nada con ese nombre." : "Todavía nadie vende nada. ¡Sé el primero!"}</p>`;
+      : `<p class="skeleton">${q ? "Nada con ese nombre." : "Todavía nadie vende nada en la Plaza. ¡Sé el primero!"}</p>`;
     $("#mk-vault").innerHTML = mk.vault.length
       ? mk.vault.map(v => `<option value="${v.id}">${esc(v.label)}</option>`).join("")
       : '<option value="">Tu baúl está vacío</option>';
@@ -646,7 +646,7 @@
 
   $("#mk-mine").addEventListener("click", e => {
     const btn = e.target.closest("button[data-mk-withdraw]");
-    if (btn && confirm("¿Retirar este item del mercado? Vuelve a tu baúl.")) mkAct("/me/mercado/retirar", { id: Number(btn.dataset.mkWithdraw) }, btn);
+    if (btn && confirm("¿Retirar este item de la Plaza? Vuelve a tu baúl.")) mkAct("/me/mercado/retirar", { id: Number(btn.dataset.mkWithdraw) }, btn);
   });
   $("#mk-collect-btn").addEventListener("click", e => mkAct("/me/mercado/cobrar", {}, e.target));
 

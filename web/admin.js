@@ -372,7 +372,7 @@
       $("#eco-tiles").innerHTML = tile("🟢 A la venta", d.stats.active) + tile("✅ Ventas", d.stats.sold) + tile("🔷 Movido", d.stats.volume) + tile("🏛 Impuestos", d.stats.taxes);
       $("#eco-recent").innerHTML = d.recent.length
         ? d.recent.map(r => `<tr><td>${esc(r.label)}</td><td>${esc(r.seller ?? "—")}</td><td>${esc(r.buyer ?? "—")}</td><td class="num">${r.price}</td><td class="num">${r.tax}</td></tr>`).join("")
-        : '<tr><td colspan="5" class="skeleton">Todavía no hay ventas en el mercado.</td></tr>';
+        : '<tr><td colspan="5" class="skeleton">Todavía no hay ventas en la Plaza.</td></tr>';
     } catch (e) {
       $("#eco-recent").innerHTML = `<tr><td colspan="5" class="skeleton">${esc(e.message)}</td></tr>`;
     }

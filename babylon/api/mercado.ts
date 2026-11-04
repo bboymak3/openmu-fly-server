@@ -1,4 +1,4 @@
-// BarrioMU: mercado entre jugadores, con WCoinP.
+// BarrioMU: "La Plaza", el mercado entre jugadores, con WCoinP.
 //
 // - Vender: el jugador elige un item de su baul y le pone precio en WCoinP. El item sale del
 //   baul a un baul de custodia del servidor (un ItemStorage que no es de ninguna cuenta, asi
@@ -250,7 +250,7 @@ export async function adminSaveEconomy(req: Request, sql: Sql) {
   const tax = intIn(b.tax, 0, 90);
   if (!rate || tax === null) throw new PanelError(400, "La tasa va de 1 a 100 y el impuesto de 0 a 90%.");
   await saveEconomy(sql, rate, tax);
-  return { ok: true, message: `Listo: 1 WCoinC = ${rate} WCoinP, impuesto del mercado ${tax}%.` };
+  return { ok: true, message: `Listo: 1 WCoinC = ${rate} WCoinP, impuesto de la Plaza ${tax}%.` };
 }
 
 /** Rutas del mercado del jugador; null si la ruta no es de aqui. */
