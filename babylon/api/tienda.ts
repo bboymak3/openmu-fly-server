@@ -172,6 +172,16 @@ async function shop(req: Request, sql: Sql) {
   };
 }
 
+/** Catalogo publico (pagina tienda.html): lo que esta a la venta, sin datos de ninguna cuenta. */
+async function catalog(_req: Request, sql: Sql) {
+  await ensureTables(sql);
+  const items = await sql`
+    select id, label, price, max_qty as "maxQty", item_level as level, currency
+    from barrio.points_shop where enabled order by sort, id`;
+  const { rate, tax } = await economy(sql);
+  return { rate, tax, items, monsters: monsterTable().filter(m => m.points > 0) };
+}
+
 async function buy(req: Request, sql: Sql) {
   const s = session(req);
   const b = await body(req);
@@ -377,6 +387,7 @@ export async function adminGivePoints(req: Request, sql: Sql, adminAccountId: st
 /** Rutas de la tienda del jugador; null si la ruta no es de aqui. */
 export async function handleTienda(req: Request, url: URL, cors: Record<string, string>, sql: Sql): Promise<Response | null> {
   const routes: Record<string, [string, (req: Request, sql: Sql) => Promise<unknown>]> = {
+    "/tienda": ["GET", catalog],
     "/me/tienda": ["GET", shop],
     "/me/tienda/comprar": ["POST", buy],
     "/me/monedas/convertir": ["POST", convert],

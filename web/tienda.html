@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Tienda en línea · BarrioMU</title>
+  <meta name="description" content="Tienda en línea de BarrioMU: joyas y alas con los puntos que ganas jugando o con WCoinC. Lo que compras llega a tu baúl." />
+  <meta name="theme-color" content="#0b0a0f" />
+  <link rel="icon" type="image/png" href="assets/favicon.png" />
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=20261104b" />
+  <script src="config.js?v=20261104b"></script>
+  <script src="tienda.js?v=20261104b" defer></script>
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="index.html">
+      <img src="assets/logo.webp" alt="" width="40" height="40" />
+      <span>BARRIO<b>MU</b></span>
+    </a>
+    <nav class="menu-inline">
+      <a href="index.html">Inicio</a>
+      <a class="btn btn-small btn-gold" data-link="play" href="#">Jugar</a>
+    </nav>
+  </header>
+
+  <main class="section account">
+    <h1 class="title">🛒 Tienda en línea</h1>
+    <p class="subtitle">Joyas y alas con los <b>puntos</b> que ganas jugando o con <b>WCoinC</b>. Lo que compras llega a tu <b>baúl</b>.</p>
+
+    <section class="card ref shop">
+      <div class="ref-head"><h2>🪙 Con puntos</h2></div>
+      <p class="ref-rule small" id="shop-note" hidden></p>
+      <div class="shop-grid shop-grid-2" id="items-puntos"><p class="skeleton">Cargando…</p></div>
+    </section>
+
+    <section class="card ref shop" id="box-wcoinc" hidden>
+      <div class="ref-head"><h2>💎 Con WCoinC</h2></div>
+      <div class="shop-grid shop-grid-2" id="items-wcoinc"></div>
+    </section>
+
+    <section class="card ref">
+      <div class="ref-head"><h2>¿Cómo compro?</h2></div>
+      <ol class="ref-steps">
+        <li><span class="start-num">1</span><div><h4>Junta puntos</h4><p>Mata <b>monstruos dorados</b> y <b>jefes</b>, y gana <b>5 puntos por hora</b> jugando desde nivel 50. El <b>Cambista</b> de Lorencia te dice cuántos tienes.</p></div></li>
+        <li><span class="start-num">2</span><div><h4>Sal del juego</h4><p>Cierra la sesión del personaje y deja espacio libre en tu <b>baúl</b>.</p></div></li>
+        <li><span class="start-num">3</span><div><h4>Compra en Mi cuenta</h4><p>Toca <b>Comprar</b> en cualquier item: entras a <b>Mi cuenta</b> y lo compras ahí.</p></div></li>
+      </ol>
+      <div class="ref-cta"><a class="btn btn-gold btn-big" href="cuenta.html#tienda">🔑 Entrar a Mi cuenta para comprar</a></div>
+      <details class="shop-how">
+        <summary>¿Cuántos puntos da cada monstruo?</summary>
+        <div class="table-wrap"><table class="ranking"><tbody id="monsters"><tr><td class="skeleton">Cargando…</td></tr></tbody></table></div>
+      </details>
+    </section>
+
+    <section class="card ref">
+      <div class="ref-head"><h2>💎 Las monedas</h2></div>
+      <div class="table-wrap">
+        <table class="ranking ref-table">
+          <thead><tr><th>Moneda</th><th>Para qué sirve</th></tr></thead>
+          <tbody>
+            <tr><td>🪙 Puntos</td><td>Se ganan jugando. Sirven en esta tienda.</td></tr>
+            <tr><td>💎 WCoinC</td><td>Las entrega el staff en eventos y premios. Sirven en esta tienda.</td></tr>
+            <tr><td>🔷 WCoinP</td><td>Para comerciar con otros jugadores en La Plaza. Se sacan cambiando WCoinC (1 WCoinC = <span id="rate">2</span> WCoinP).</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="ref-cta"><a class="btn btn-ghost btn-big" href="cuenta.html#mercado">🏪 Ir a La Plaza</a></div>
+    </section>
+  </main>
+</body>
+</html>

@@ -338,6 +338,11 @@ Carpeta `web/` del repo. Es HTML, CSS y JS, sin compilar. Secciones: portada con
 últimos ganadores, rankings (Nivel, PvP, Guilds), **Invita y gana**, **Tienda y monedas**
 (cómo se ganan puntos, WCoinC y WCoinP), **La Plaza**, noticias y reglas. Los botones de Tienda
 y La Plaza llevan a `cuenta.html#tienda` y `cuenta.html#mercado` (salta a la sección al entrar).
+- **Tienda en línea** (`tienda.html`, botón "🛒 Visita nuestra tienda en línea" en la portada y en el menú):
+  se ve sin iniciar sesión. Muestra lo que está a la venta (API pública `GET /tienda`) y cada
+  "Comprar" lleva a Mi cuenta. Si la tablet no responde, muestra los precios de referencia.
+- Los HTML piden `styles.css`, `config.js` y el código con `?v=FECHA`: al cambiar el código o los
+  estilos, **subir ese número en los 4 HTML** para que ningún navegador mezcle versiones viejas.
 
 | Para cambiar… | Edita |
 |---|---|
