@@ -268,10 +268,11 @@
           <td><input type="checkbox" class="shop-on" ${it.enabled ? "checked" : ""} aria-label="A la venta" /></td>
           <td><strong>${esc(it.label)}</strong><br /><small class="muted">${it.group}/${it.number}${it.level ? " +" + it.level : ""}</small></td>
           <td class="num"><input type="number" class="shop-price" min="1" value="${it.price}" inputmode="numeric" /></td>
+          <td><select class="shop-currency ref-select"><option value="puntos" ${it.currency !== "wcoinc" ? "selected" : ""}>🪙 Puntos</option><option value="wcoinc" ${it.currency === "wcoinc" ? "selected" : ""}>💎 WCoinC</option></select></td>
           <td class="num"><input type="number" class="shop-max" min="1" max="50" value="${it.maxQty}" inputmode="numeric" /></td>
           <td><button class="btn btn-ghost btn-small shop-del" type="button" title="Quitar de la tienda">✕</button></td>
         </tr>`).join("")
-      : '<tr><td colspan="5" class="skeleton">La tienda está vacía.</td></tr>';
+      : '<tr><td colspan="6" class="skeleton">La tienda está vacía.</td></tr>';
     $("#shop-monsters").innerHTML = d.monsters.map(m => `
       <tr data-number="${m.number}">
         <td><strong>${esc(m.name)}</strong> <small class="muted">#${m.number}</small></td>
@@ -279,10 +280,10 @@
         <td class="num"><input type="number" class="monster-points" min="0" value="${m.points}" inputmode="numeric" /></td>
       </tr>`).join("");
     $("#shop-top").innerHTML = d.top.length
-      ? d.top.map(r => `<tr><td>${esc(r.account)}</td><td class="num">${r.points}</td></tr>`).join("")
+      ? d.top.map(r => `<tr><td>${esc(r.account)}</td><td class="num">🪙 ${r.points}</td><td class="num">💎 ${r.wcoinc}</td><td class="num">🔷 ${r.wcoinp}</td></tr>`).join("")
       : '<tr><td class="skeleton">Nadie tiene puntos todavía.</td></tr>';
     $("#shop-log").innerHTML = d.log.length
-      ? d.log.map(r => `<tr><td><small>${when(r.at)}</small></td><td>${esc(r.account ?? "—")}</td><td>${esc(r.detail ?? r.kind)}</td><td class="num ${r.points < 0 ? "bad" : "ok"}">${r.points > 0 ? "+" : ""}${r.points}</td></tr>`).join("")
+      ? d.log.map(r => `<tr><td><small>${when(r.at)}</small></td><td>${esc(r.account ?? "—")}</td><td>${esc(r.detail ?? r.kind)}</td><td class="num ${r.points < 0 ? "bad" : "ok"}">${r.points > 0 ? "+" : ""}${r.points} ${{ puntos: "🪙", wcoinc: "💎", wcoinp: "🔷" }[r.currency] ?? ""}</td></tr>`).join("")
       : '<tr><td class="skeleton">Sin movimientos.</td></tr>';
   }
 
@@ -290,7 +291,7 @@
     try {
       renderShop(await call("/admin/tienda"));
     } catch (e) {
-      $("#shop-items").innerHTML = `<tr><td colspan="5" class="skeleton">${esc(e.message)}</td></tr>`;
+      $("#shop-items").innerHTML = `<tr><td colspan="6" class="skeleton">${esc(e.message)}</td></tr>`;
     }
   }
 
@@ -315,6 +316,7 @@
       enabled: tr.querySelector(".shop-on").checked,
       price: Number(tr.querySelector(".shop-price").value),
       maxQty: Number(tr.querySelector(".shop-max").value),
+      currency: tr.querySelector(".shop-currency").value,
     }));
     shopCall("/admin/tienda/guardar", { items }, e.target);
   });
@@ -334,7 +336,7 @@
     const f = e.target;
     const ok = await shopCall("/admin/tienda/agregar", {
       group: Number(f.group.value), number: Number(f.number.value), level: Number(f.level.value || 0),
-      price: Number(f.price.value), maxQty: Number(f.maxQty.value || 1), label: f.label.value,
+      price: Number(f.price.value), maxQty: Number(f.maxQty.value || 1), label: f.label.value, currency: f.currency.value,
     }, f.querySelector("button"));
     if (ok) f.reset();
   });
@@ -351,8 +353,9 @@
     e.preventDefault();
     const f = e.target;
     const points = Number(f.points.value);
-    if (!confirm(`¿${points < 0 ? "Quitar" : "Dar"} ${Math.abs(points)} puntos a ${f.account.value}?`)) return;
-    const ok = await shopCall("/admin/puntos/dar", { account: f.account.value.trim(), points }, f.querySelector("button"));
+    const coin = f.currency.options[f.currency.selectedIndex].text;
+    if (!confirm(`¿${points < 0 ? "Quitar" : "Dar"} ${Math.abs(points)} ${coin} a ${f.account.value}?`)) return;
+    const ok = await shopCall("/admin/puntos/dar", { account: f.account.value.trim(), points, currency: f.currency.value }, f.querySelector("button"));
     if (ok) f.reset();
   });
 

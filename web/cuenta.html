@@ -101,9 +101,18 @@
       <!-- Tienda de puntos -->
       <section class="card ref shop" id="tienda">
         <div class="ref-head">
-          <h2>🪙 Tienda de puntos</h2>
-          <span class="shop-points">Tienes <b id="shop-points">—</b> puntos</span>
+          <h2>🪙 Tienda</h2>
         </div>
+        <div class="wallet">
+          <div><span>🪙 Puntos</span><b id="shop-points">—</b></div>
+          <div><span>💎 WCoinC</span><b id="shop-wcoinc">—</b></div>
+          <div><span>🔷 WCoinP</span><b id="shop-wcoinp">—</b></div>
+        </div>
+        <form class="ref-enter convert" id="convert-form">
+          <input name="amount" type="number" min="1" placeholder="WCoinC a cambiar" inputmode="numeric" />
+          <button class="btn btn-ghost" type="submit">💎 → 🔷 Cambiar a WCoinP (1:1)</button>
+        </form>
+        <p class="ref-rule small">WCoinP es la moneda para comerciar entre jugadores.</p>
         <p class="ref-lead">Gana puntos matando <b>monstruos dorados</b> de las invasiones y <b>jefes</b> (Kundun, Icarus, Balgass, Selupan, Kanturu…). En Lorencia, el <b>Cambista</b> te dice cuántos tienes.</p>
         <p class="ref-rule">Para comprar: <b>sal del juego</b>. Lo comprado llega a tu <b>baúl</b> (necesita espacio libre).</p>
         <div class="shop-grid" id="shop-items"><p class="skeleton">Cargando…</p></div>

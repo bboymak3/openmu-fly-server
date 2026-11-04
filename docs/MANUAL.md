@@ -384,9 +384,15 @@ la sección `#tienda` de Mi cuenta y la de `web/admin.html`.
   agregar items (grupo / número / nivel); quitar; dar o quitar puntos a una cuenta (fuera del
   juego); quién tiene más puntos y los últimos movimientos.
 - El catálogo está en `barrio.points_shop` y los movimientos en `barrio.points_log`.
+- **Monedas**: además de los puntos, cada cuenta tiene **WCoinC** (la da el admin desde el panel →
+  "Dar o quitar monedas"; un item de la tienda puede costar puntos o WCoinC) y **WCoinP** (la moneda
+  para comerciar entre jugadores). En Mi cuenta → Tienda el jugador cambia WCoinC por WCoinP 1:1,
+  fuera del juego. Todo queda en `barrio.points_log`.
 - **Puntos por tiempo jugado y comandos /add…**: `bash ~/barriomu.sh extras` prende el plugin de
   OpenMU `GoblinPointsForPlayTimePlugIn` (5 puntos cada hora, desde nivel 50) y los comandos
-  `/addstr`, `/addagi`, `/addvit`, `/addene`, `/addcmd`. `bash ~/barriomu.sh extras estado` lo muestra.
+  `/addstr`, `/addagi`, `/addvit`, `/addene`, `/addcmd`; también `/openware` (abre el baúl en cualquier
+  lugar), `/resetstats` (vuelve a repartir los puntos por 1.000.000 de zen) y los anuncios del servidor
+  cada 20 minutos. `bash ~/barriomu.sh extras estado` lo muestra.
 - Catálogo inicial a la venta: Bless 10, Soul 10, Chaos 15, Life 25, Creation 30, alas de 1ra 300 y
   de 2da 800. Cargados y apagados: Guardian, Harmony, Gemstone, Loch's Feather, Feather y Flame of
   Condor, Guardian Angel, Imp, Uniria, Dinorant, Fenrir y armas básicas +15.
