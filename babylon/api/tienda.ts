@@ -10,7 +10,7 @@
 import type { Sql } from "postgres";
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import { PanelError, body, json, requireOffline, session } from "./panel";
+import { PanelError, body, json, offlineTransaction, requireOffline, session } from "./panel";
 import { economy, freeSlot, occupy, vaultOf, vaultUsage } from "./economia";
 
 const POINTS_FILE = process.env.POINTS_FILE ?? `${process.env.HOME ?? "/root"}/openmu/data/puntos.json`;
@@ -192,8 +192,7 @@ async function buy(req: Request, sql: Sql) {
   const currency: Currency = isCurrency(item.currency, SHOP_CURRENCIES) ? item.currency : "puntos";
   const { column, name: coin } = CURRENCIES[currency];
 
-  await requireOffline(s.login);
-  return sql.begin(async tx => {
+  return offlineTransaction(sql, s.login, async tx => {
     const vault = await vaultOf(tx, s.accountId);
     const [account] = await tx`select ${tx(column)} as points from data."Account" where "Id" = ${s.accountId}`;
     if (!account) throw new PanelError(404, "No se encontro la cuenta.");
@@ -229,8 +228,7 @@ async function convert(req: Request, sql: Sql) {
   if (!amount) throw new PanelError(400, "Escribe cuantas WCoinC quieres cambiar.");
   await ensureTables(sql);
   const { rate } = await economy(sql);
-  await requireOffline(s.login);
-  return sql.begin(async tx => {
+  return offlineTransaction(sql, s.login, async tx => {
     const [account] = await tx`select "WCoinC" as c, "WCoinP" as p from data."Account" where "Id" = ${s.accountId} for update`;
     if (!account) throw new PanelError(404, "No se encontro la cuenta.");
     if (account.c < amount) throw new PanelError(400, `Solo tienes ${account.c} WCoinC.`);
@@ -367,12 +365,13 @@ export async function adminGivePoints(req: Request, sql: Sql, adminAccountId: st
   await ensureTables(sql);
   const [account] = await sql`select "Id"::text as id, "LoginName" as login from data."Account" where lower("LoginName") = lower(${login})`;
   if (!account) throw new PanelError(404, "No existe esa cuenta.");
-  await requireOffline(account.login);
-  const [row] = await sql`
-    update data."Account" set ${sql(column)} = greatest(0, ${sql(column)} + ${points})
-    where "Id" = ${account.id} returning ${sql(column)} as total`;
-  await sql`insert into barrio.points_log (account, kind, detail, points, by_account, currency) values (${account.id}, 'admin', ${`Dados por el admin (${coin})`}, ${points}, ${adminAccountId}, ${currency})`;
-  return { ok: true, message: `Listo: ${account.login} ahora tiene ${row.total} ${coin}.` };
+  return offlineTransaction(sql, account.login, async tx => {
+    const [row] = await tx`
+      update data."Account" set ${tx(column)} = greatest(0, ${tx(column)} + ${points})
+      where "Id" = ${account.id} returning ${tx(column)} as total`;
+    await tx`insert into barrio.points_log (account, kind, detail, points, by_account, currency) values (${account.id}, 'admin', ${`Dados por el admin (${coin})`}, ${points}, ${adminAccountId}, ${currency})`;
+    return { ok: true, message: `Listo: ${account.login} ahora tiene ${row.total} ${coin}.` };
+  });
 }
 
 /** Rutas de la tienda del jugador; null si la ruta no es de aqui. */

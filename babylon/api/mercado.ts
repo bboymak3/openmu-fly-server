@@ -12,7 +12,7 @@
 // transacciones.
 
 import type { Sql } from "postgres";
-import { PanelError, body, json, requireOffline, session } from "./panel";
+import { PanelError, body, json, offlineTransaction, requireOffline, session } from "./panel";
 import { economy, ensureSettings, freeSlot, occupy, saveEconomy, vaultOf, vaultUsage } from "./economia";
 
 const MAX_PRICE = 100_000_000;
@@ -131,8 +131,7 @@ async function sell(req: Request, sql: Sql) {
   const price = intIn(b.price, 1, MAX_PRICE);
   if (!itemId || !price) throw new PanelError(400, "Elige un item de tu baul y un precio en WCoinP.");
   const escrow = await escrowStorage(sql);
-  await requireOffline(s.login);
-  return sql.begin(async tx => {
+  return offlineTransaction(sql, s.login, async tx => {
     const vault = await vaultOf(tx, s.accountId);
     const [{ n }] = await tx`select count(*)::int as n from barrio.market_listing where seller = ${s.accountId} and state = 'active'`;
     if (n >= MAX_ACTIVE_PER_SELLER) throw new PanelError(400, `Ya tienes ${MAX_ACTIVE_PER_SELLER} items a la venta. Espera a que se vendan o retira alguno.`);
@@ -169,8 +168,7 @@ async function buy(req: Request, sql: Sql) {
   if (!id) throw new PanelError(400, "Falta la publicacion.");
   await ensureTables(sql);
   const { tax } = await economy(sql);
-  await requireOffline(s.login);
-  return sql.begin(async tx => {
+  return offlineTransaction(sql, s.login, async tx => {
     const [listing] = await tx`select * from barrio.market_listing where id = ${id} for update`;
     if (!listing || listing.state !== "active") throw new PanelError(409, "Ese item ya no esta a la venta.");
     if (listing.seller === s.accountId) throw new PanelError(400, "Es tu propio item: para sacarlo usa Retirar.");
@@ -194,8 +192,7 @@ async function withdraw(req: Request, sql: Sql) {
   const id = intIn(b.id, 1, 100_000_000);
   if (!id) throw new PanelError(400, "Falta la publicacion.");
   await ensureTables(sql);
-  await requireOffline(s.login);
-  return sql.begin(async tx => {
+  return offlineTransaction(sql, s.login, async tx => {
     const [listing] = await tx`select * from barrio.market_listing where id = ${id} and seller = ${s.accountId} for update`;
     if (!listing || listing.state !== "active") throw new PanelError(409, "Esa publicacion ya no esta activa.");
     const vault = await vaultOf(tx as unknown as Sql, s.accountId);
@@ -208,8 +205,7 @@ async function withdraw(req: Request, sql: Sql) {
 async function collect(req: Request, sql: Sql) {
   const s = session(req);
   await ensureTables(sql);
-  await requireOffline(s.login);
-  return sql.begin(async tx => {
+  return offlineTransaction(sql, s.login, async tx => {
     await tx`select 1 from data."Account" where "Id" = ${s.accountId} for update`;
     const rows = await tx`
       update barrio.market_listing set paid = true

@@ -195,6 +195,20 @@ export async function requireOffline(login: string): Promise<void> {
   if (wait > 0) throw new PanelError(409, `Saliste hace poco del juego. Espera ${Math.ceil(wait / 1000)} segundos.`);
 }
 
+/**
+ * Una transaccion con la cuenta fuera del juego: se revisa antes de empezar y otra vez justo
+ * antes de guardar. Si entro al juego en el medio, se deshace todo: OpenMU cargaria la copia
+ * vieja de la cuenta y al salir pisaria lo escrito aqui (asi se duplicarian items o monedas).
+ */
+export async function offlineTransaction<T>(sql: Sql, login: string, work: (tx: Sql) => Promise<T>): Promise<T> {
+  await requireOffline(login);
+  return (await sql.begin(async tx => {
+    const out = await work(tx as unknown as Sql);
+    await requireOffline(login);
+    return out;
+  })) as T;
+}
+
 async function login(req: Request, sql: Sql) {
   const b = await body(req);
   const username = typeof b.username === "string" ? b.username.trim() : "";
@@ -306,8 +320,7 @@ async function addPoints(req: Request, sql: Sql) {
   }
   if (total === 0) throw new PanelError(400, "No pusiste ningun punto.");
 
-  await requireOffline(s.login);
-  return sql.begin(async tx => {
+  return offlineTransaction(sql, s.login, async tx => {
     const c = await ownCharacter(tx, s.accountId, b.character);
     if (total > c.points) throw new PanelError(400, `Solo tienes ${c.points} puntos libres.`);
 
@@ -331,8 +344,7 @@ async function addPoints(req: Request, sql: Sql) {
 async function pkClear(req: Request, sql: Sql) {
   const s = session(req);
   const b = await body(req);
-  await requireOffline(s.login);
-  return sql.begin(async tx => {
+  return offlineTransaction(sql, s.login, async tx => {
     const c = await ownCharacter(tx, s.accountId, b.character);
     if (c.heroState <= HERO_NORMAL) throw new PanelError(400, `${c.name} no esta en estado PK.`);
     // Solo el estado PK: los asesinatos se quedan para el ranking PvP.
@@ -344,8 +356,7 @@ async function pkClear(req: Request, sql: Sql) {
 async function unstuck(req: Request, sql: Sql) {
   const s = session(req);
   const b = await body(req);
-  await requireOffline(s.login);
-  return sql.begin(async tx => {
+  return offlineTransaction(sql, s.login, async tx => {
     const c = await ownCharacter(tx, s.accountId, b.character);
     // El mapa de inicio de la clase (Lorencia, Noria o Elbeland) y su punto de aparicion.
     const [gate] = await tx`
@@ -369,9 +380,7 @@ async function reset(req: Request, sql: Sql) {
   const cfg = await resetConfig(sql);
   if (!cfg) throw new PanelError(400, "Los resets no estan activos en BarrioMU.");
   if (!cfg.simple) throw new PanelError(400, "Este reset se hace dentro del juego: escribe /reset.");
-  await requireOffline(s.login);
-
-  return sql.begin(async tx => {
+  return offlineTransaction(sql, s.login, async tx => {
     const c = await ownCharacter(tx, s.accountId, b.character);
     const [info] = await tx`
       select coalesce(lv."Value", 0)::int as level, coalesce(rs."Value", 0)::int as resets,
@@ -439,9 +448,7 @@ async function masterReset(req: Request, sql: Sql) {
   const cfg = await resetConfig(sql);
   const requiredLevel = cfg?.RequiredLevel ?? 400;
   const levelAfterReset = cfg?.LevelAfterReset ?? 1;
-  await requireOffline(s.login);
-
-  return sql.begin(async tx => {
+  return offlineTransaction(sql, s.login, async tx => {
     const c = await ownCharacter(tx, s.accountId, b.character);
     const [info] = await tx`
       select coalesce(lv."Value", 0)::int as level, coalesce(rs."Value", 0)::int as resets,

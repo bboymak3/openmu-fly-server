@@ -4,3 +4,13 @@
   Cache-Control: public, max-age=300
 /config.js
   Cache-Control: public, max-age=300
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+/admin*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://mu-api.makeseo.app; frame-ancestors 'none'; base-uri 'none'; form-action 'self'
+  Cache-Control: no-store
+/cuenta*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://mu-api.makeseo.app; frame-ancestors 'none'; base-uri 'none'; form-action 'self'
