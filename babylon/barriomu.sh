@@ -13,7 +13,7 @@
 #   bash ~/barriomu.sh panel off   lo apaga para ahorrar memoria (reinicia OpenMU)
 #   bash ~/barriomu.sh resets      activa los resets de BarrioMU (reinicia OpenMU)
 #   bash ~/barriomu.sh resets estado  dice si los resets estan prendidos
-#   bash ~/barriomu.sh extras      prende puntos por hora jugada y /addstr /addagi... (reinicia OpenMU)
+#   bash ~/barriomu.sh extras      prende puntos por hora, /addstr..., /openware, /resetstats y anuncios (reinicia OpenMU)
 #   bash ~/barriomu.sh gm CUENTA   hace GM una cuenta (para el panel admin; con la cuenta fuera del juego)
 #   bash ~/barriomu.sh cloudflare  guarda el token de Cloudflare del panel admin
 #   bash ~/barriomu.sh npcs        lista los NPCs de las ciudades y cuantos estan apagados
@@ -442,6 +442,16 @@ SQL
 PLAYTIME_PLUGIN="29a6d015-a94b-4f96-a638-6134ddc9ed0c"
 PLAYTIME_CONFIG='{"Interval":"01:00:00","Points":5,"MinimumLevel":50,"IncludeOfflineLeveling":false}'
 ADDSTAT_PLUGINS="21b15d95-ba2f-40a3-ab7d-8bd886faeae5 43156a52-03ee-42c0-88bf-ca9665dc8e1e 370ce86c-e382-4e0f-93f4-ad75fa079129 a597b6e7-9395-4cf4-8439-a1d60134b63e efe421fb-be79-4656-af39-d22a105d1455"
+#   - /openware: abre el baul desde cualquier lugar (ahi llegan la tienda y los referidos)
+OPENWARE_PLUGIN="62027b6b-d8e7-4ddb-a16b-7070d1bc4a56"
+#   - Reset de estadisticas: /resetstats, 1.000.000 de zen
+STATRESET_PLUGIN="0f1e2d3c-4b5a-6978-8c7d-6e5f4a3b2c1d"
+STATRESET_CMD_PLUGIN="a1b2c3d4-e5f6-7890-abcd-ef1234567891"
+STATRESET_CONFIG='{"RequiredLevel":1,"RequiredMoney":1000000,"ChatCommandEnabled":true,"MoveHome":true,"LogOut":true}'
+#   - Anuncios del servidor cada 20 minutos
+ANNOUNCE_PLUGIN="2d6c9e4a-7b3e-4f8c-9e1d-8a4b6f0c2e7d"
+ANNOUNCE_CONFIG='{"Interval":"00:20:00","Messages":[{"Text":"Puntos por monstruos dorados y jefes: cambialos en barriomu.makeseo.app > Mi cuenta > Tienda"},{"Text":"Invita a tus panas con tu link de Mi cuenta: cuando lleguen a nivel 200 ganan los dos"},{"Text":"Buffs gratis en Lorencia: habla con Guerrero y Fortuna. El Cambista te dice tus puntos"},{"Text":"Escribe /openware para abrir tu baul en cualquier lugar"},{"Text":"Reparte puntos con /addstr /addagi /addvit /addene /addcmd y la cantidad"}]}'
+
 
 plugin_on() {
   local id=$1 config=${2:-} setcfg=""
@@ -458,14 +468,16 @@ SQL
 extras() {
   pg_ctl -D "$PGDATA" status >/dev/null 2>&1 || { echo "PostgreSQL esta apagado: bash ~/barriomu.sh prender"; return 1; }
   if [ "$1" = estado ]; then
-    psql -U postgres -d openmu -P pager=off -c "SELECT \"TypeId\" AS plugin, \"IsActive\" AS activo, \"CustomConfiguration\" AS config FROM config.\"PlugInConfiguration\" WHERE \"TypeId\" IN ('$PLAYTIME_PLUGIN', $(printf "'%s'," $ADDSTAT_PLUGINS | sed 's/,$//'))"
+    psql -U postgres -d openmu -P pager=off -c "SELECT \"TypeId\" AS plugin, \"IsActive\" AS activo, \"CustomConfiguration\" AS config FROM config.\"PlugInConfiguration\" WHERE \"TypeId\" IN ('$PLAYTIME_PLUGIN', $(printf "'%s'," $ADDSTAT_PLUGINS $OPENWARE_PLUGIN $STATRESET_PLUGIN $STATRESET_CMD_PLUGIN $ANNOUNCE_PLUGIN | sed 's/,$//'))"
     return 0
   fi
   echo "Prendiendo los extras de OpenMU..."
   stop_watchdog
   stop_openmu
   plugin_on "$PLAYTIME_PLUGIN" "$PLAYTIME_CONFIG" || { echo "No se pudo."; start_openmu ""; start_watchdog; return 1; }
-  for id in $ADDSTAT_PLUGINS; do plugin_on "$id" || true; done
+  for id in $ADDSTAT_PLUGINS $OPENWARE_PLUGIN $STATRESET_CMD_PLUGIN; do plugin_on "$id" || true; done
+  plugin_on "$STATRESET_PLUGIN" "$STATRESET_CONFIG" || true
+  plugin_on "$ANNOUNCE_PLUGIN" "$ANNOUNCE_CONFIG" || true
   echo "Listo. Prendiendo OpenMU..."
   start_openmu ""
   wait_port 44405 OpenMU 600
@@ -473,6 +485,9 @@ extras() {
   echo "Activos:"
   echo "  - 5 puntos de la tienda por cada hora jugada (desde nivel 50)"
   echo "  - /addstr /addagi /addvit /addene /addcmd CANTIDAD para repartir puntos desde el chat"
+  echo "  - /openware abre el baul en cualquier lugar"
+  echo "  - /resetstats vuelve a repartir los puntos (1.000.000 de zen)"
+  echo "  - anuncios del servidor cada 20 minutos"
 }
 
 arranque() {

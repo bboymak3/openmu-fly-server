@@ -49,8 +49,11 @@ instalador de Windows.
   cuántos tienes y en **Mi cuenta → Tienda de puntos** se cambian por Bless, Soul, Chaos y
   lo que el admin prenda (alas de 1ra y 2da, plumas, mascotas, armas +15…), que llega al
   baúl. También dan **5 puntos por cada hora jugada** (desde nivel 50).
-- **Comandos de chat** para repartir puntos: `/addstr`, `/addagi`, `/addvit`, `/addene`,
-  `/addcmd` seguidos de la cantidad.
+- **Monedas**: 🪙 puntos (del juego), 💎 **WCoinC** (la da el admin; sirve en la tienda) y
+  🔷 **WCoinP** (para comerciar entre jugadores; se obtiene cambiando WCoinC 1:1 en Mi cuenta).
+- **Comandos de chat**: `/addstr`, `/addagi`, `/addvit`, `/addene`, `/addcmd` + cantidad para
+  repartir puntos, `/openware` abre el baúl en cualquier lugar y `/resetstats` reparte de nuevo
+  (1.000.000 de zen). Anuncios del servidor cada 20 minutos.
 
 **Celular** (solo en el teléfono; la PC queda igual)
 - **Joystick** para caminar sin tocar el piso.
@@ -173,7 +176,7 @@ Cloudflare**, y en el celular cierra el juego del todo y vuelve a abrirlo. Actua
 ```bash
 bash ~/barriomu.sh resets         # activa los resets: nivel 400, sin límite (reinicia OpenMU)
 bash ~/barriomu.sh resets estado  # dice si los resets están prendidos
-bash ~/barriomu.sh extras         # 5 puntos de la tienda por hora jugada y /addstr /addagi /addvit /addene /addcmd (reinicia OpenMU)
+bash ~/barriomu.sh extras         # puntos por hora, /addstr..., /openware, /resetstats y anuncios (reinicia OpenMU)
 bash ~/barriomu.sh extras estado  # dice si están prendidos
 bash ~/barriomu.sh gm CUENTA      # hace GM una cuenta (para el panel admin); con la cuenta fuera del juego
 bash ~/barriomu.sh npcs           # lista los NPCs de las ciudades y cuántos están apagados

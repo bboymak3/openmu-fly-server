@@ -466,17 +466,26 @@
 
   // ---------- Tienda de puntos ----------
   let shop = null;
+  const COINS = {
+    puntos: { key: "points", icon: "🪙", name: "puntos" },
+    wcoinc: { key: "wcoinc", icon: "💎", name: "WCoinC" },
+    wcoinp: { key: "wcoinp", icon: "🔷", name: "WCoinP" },
+  };
 
   function renderShop() {
     const locked = data?.online === true;
     $("#shop-points").textContent = Number(shop.points).toLocaleString("es");
+    $("#shop-wcoinc").textContent = Number(shop.wcoinc).toLocaleString("es");
+    $("#shop-wcoinp").textContent = Number(shop.wcoinp).toLocaleString("es");
+    $("#convert-form button").disabled = locked || !shop.wcoinc;
     $("#shop-items").innerHTML = shop.items.length
       ? shop.items.map(it => {
-          const can = shop.points >= it.price;
+          const coin = COINS[it.currency] ?? COINS.puntos;
+          const can = (shop[coin.key] ?? 0) >= it.price;
           return `
         <div class="ref-reward shop-item ${can ? "is-ready" : "is-locked"}" data-id="${it.id}">
           <div class="ref-reward-at">${esc(it.label)}</div>
-          <div class="ref-reward-what">🪙 ${Number(it.price).toLocaleString("es")} puntos</div>
+          <div class="ref-reward-what">${coin.icon} ${Number(it.price).toLocaleString("es")} ${coin.name}</div>
           <div class="shop-buy">
             ${it.maxQty > 1 ? `<input type="number" class="shop-qty" min="1" max="${it.maxQty}" value="1" inputmode="numeric" aria-label="Cantidad" />` : ""}
             <button class="btn btn-gold btn-small" data-buy="${it.id}" ${locked || !can ? "disabled" : ""}>Comprar</button>
@@ -498,6 +507,24 @@
     }
   }
 
+  $("#convert-form").addEventListener("submit", async e => {
+    e.preventDefault();
+    const amount = Number(e.target.amount.value);
+    if (!amount || amount < 1) return toast("Escribe cuántas WCoinC quieres cambiar.", true);
+    if (!confirm(`¿Cambiar ${amount} WCoinC por ${amount} WCoinP?\n\nNo se puede deshacer. Debes estar fuera del juego.`)) return;
+    const btn = e.target.querySelector("button");
+    btn.disabled = true;
+    try {
+      const res = await call("/me/monedas/convertir", { method: "POST", body: { amount } });
+      e.target.reset();
+      toast(res.message);
+      await loadShop();
+    } catch (err) {
+      toast(err.message, true);
+      btn.disabled = false;
+    }
+  });
+
   $("#shop-items").addEventListener("click", async e => {
     const btn = e.target.closest("button[data-buy]");
     if (!btn) return;
@@ -505,7 +532,8 @@
     const item = shop.items.find(i => i.id === Number(btn.dataset.buy));
     const qty = Number(box.querySelector(".shop-qty")?.value || 1);
     if (!item || qty < 1) return;
-    if (!confirm(`¿Comprar ${qty} x ${item.label} por ${(item.price * qty).toLocaleString("es")} puntos?\n\nLlega a tu baúl. Recuerda estar fuera del juego.`)) return;
+    const coinName = (COINS[item.currency] ?? COINS.puntos).name;
+    if (!confirm(`¿Comprar ${qty} x ${item.label} por ${(item.price * qty).toLocaleString("es")} ${coinName}?\n\nLlega a tu baúl. Recuerda estar fuera del juego.`)) return;
     btn.disabled = true;
     try {
       const res = await call("/me/tienda/comprar", { method: "POST", body: { id: item.id, qty } });

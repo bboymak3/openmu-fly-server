@@ -19,6 +19,21 @@ const VAULT_COLUMNS = 8;
 const VAULT_ROWS = 15;
 const MAX_QTY = 50;
 
+/**
+ * Las monedas de la cuenta en OpenMU. Puntos: los que da el juego (dorados, jefes, horas
+ * jugadas). WCoinC: la da el admin, sirve en la tienda y se cambia 1:1 por WCoinP. WCoinP: la
+ * moneda para comerciar entre jugadores.
+ */
+export const CURRENCIES = {
+  puntos: { column: "GoblinPoints", name: "puntos" },
+  wcoinc: { column: "WCoinC", name: "WCoinC" },
+  wcoinp: { column: "WCoinP", name: "WCoinP" },
+} as const;
+type Currency = keyof typeof CURRENCIES;
+const SHOP_CURRENCIES: Currency[] = ["puntos", "wcoinc"];
+const isCurrency = (v: unknown, allowed: readonly Currency[] = Object.keys(CURRENCIES) as Currency[]): v is Currency =>
+  typeof v === "string" && (allowed as readonly string[]).includes(v);
+
 /** Monstruos que dan puntos, con los puntos por defecto (los mismos de BarrioPointsPlugIn.cs). */
 export const MONSTERS: { number: number; name: string; points: number; kind: string }[] = [
   { number: 43, name: "Golden Budge Dragon", points: 1, kind: "Invasión dorada" },
@@ -117,6 +132,8 @@ function ensureTables(sql: Sql): Promise<void> {
         points int not null,
         by_account uuid,
         at timestamptz not null default now())`;
+    await sql`alter table barrio.points_shop add column if not exists currency text not null default 'puntos'`;
+    await sql`alter table barrio.points_log add column if not exists currency text not null default 'puntos'`;
     const [{ n }] = await sql`select count(*)::int as n from barrio.points_shop`;
     if (n === 0) {
       let sort = 0;
@@ -142,11 +159,18 @@ const intIn = (v: unknown, min: number, max: number): number | null =>
 async function shop(req: Request, sql: Sql) {
   const s = session(req);
   await ensureTables(sql);
-  const [account] = await sql`select "GoblinPoints" as points from data."Account" where "Id" = ${s.accountId}`;
+  const [account] = await sql`
+    select "GoblinPoints" as points, "WCoinC" as wcoinc, "WCoinP" as wcoinp from data."Account" where "Id" = ${s.accountId}`;
   const items = await sql`
-    select id, label, price, max_qty as "maxQty", item_level as level
+    select id, label, price, max_qty as "maxQty", item_level as level, currency
     from barrio.points_shop where enabled order by sort, id`;
-  return { points: account?.points ?? 0, items, monsters: monsterTable().filter(m => m.points > 0) };
+  return {
+    points: account?.points ?? 0,
+    wcoinc: account?.wcoinc ?? 0,
+    wcoinp: account?.wcoinp ?? 0,
+    items,
+    monsters: monsterTable().filter(m => m.points > 0),
+  };
 }
 
 /** El primer hueco del baul para un item de w x h, o -1. */
@@ -184,7 +208,7 @@ async function buy(req: Request, sql: Sql) {
   if (!id || !qty) throw new PanelError(400, "Elige un item y una cantidad valida.");
   await ensureTables(sql);
   const [item] = await sql`
-    select s.id, s.label, s.price, s.max_qty as "maxQty", s.item_level as level,
+    select s.id, s.label, s.price, s.max_qty as "maxQty", s.item_level as level, s.currency,
            d."Id"::text as def, d."Width" as w, d."Height" as h, d."Durability" as durability
     from barrio.points_shop s
     join config."ItemDefinition" d on d."Group" = s.item_group and d."Number" = s.item_number
@@ -193,13 +217,15 @@ async function buy(req: Request, sql: Sql) {
   if (!item) throw new PanelError(404, "Ese item ya no esta en la tienda.");
   if (qty > item.maxQty) throw new PanelError(400, `De ${item.label} puedes comprar hasta ${item.maxQty} de una vez.`);
   const total = item.price * qty;
+  const currency: Currency = isCurrency(item.currency, SHOP_CURRENCIES) ? item.currency : "puntos";
+  const { column, name: coin } = CURRENCIES[currency];
 
   await requireOffline(s.login);
   return sql.begin(async tx => {
     const [account] = await tx`
-      select "GoblinPoints" as points, "VaultId"::text as vault from data."Account" where "Id" = ${s.accountId} for update`;
+      select ${tx(column)} as points, "VaultId"::text as vault from data."Account" where "Id" = ${s.accountId} for update`;
     if (!account) throw new PanelError(404, "No se encontro la cuenta.");
-    if (account.points < total) throw new PanelError(400, `Te faltan ${total - account.points} puntos (tienes ${account.points}, cuesta ${total}).`);
+    if (account.points < total) throw new PanelError(400, `Te faltan ${total - account.points} ${coin} (tienes ${account.points}, cuesta ${total}).`);
 
     let vault = account.vault as string | null;
     if (!vault) {
@@ -226,12 +252,30 @@ async function buy(req: Request, sql: Sql) {
         insert into data."Item" ("Id", "DefinitionId", "Durability", "HasSkill", "ItemSlot", "ItemStorageId", "Level", "PetExperience", "SocketCount")
         values (gen_random_uuid(), ${item.def}, ${item.durability}, false, ${slot}, ${vault}, ${item.level}, 0, 0)`;
     }
-    await tx`update data."Account" set "GoblinPoints" = "GoblinPoints" - ${total} where "Id" = ${s.accountId}`;
-    await tx`insert into barrio.points_log (account, kind, detail, points) values (${s.accountId}, 'compra', ${`${qty} x ${item.label}`}, ${-total})`;
+    await tx`update data."Account" set ${tx(column)} = ${tx(column)} - ${total} where "Id" = ${s.accountId}`;
+    await tx`insert into barrio.points_log (account, kind, detail, points, currency) values (${s.accountId}, 'compra', ${`${qty} x ${item.label}`}, ${-total}, ${currency})`;
     return {
       ok: true,
-      message: `¡Listo! ${qty} x ${item.label} ya ${qty === 1 ? "esta" : "estan"} en tu baul. Te quedan ${account.points - total} puntos.`,
+      message: `¡Listo! ${qty} x ${item.label} ya ${qty === 1 ? "esta" : "estan"} en tu baul. Te quedan ${account.points - total} ${coin}.`,
     };
+  });
+}
+
+/** WCoinC -> WCoinP, 1 a 1, con la cuenta fuera del juego. */
+async function convert(req: Request, sql: Sql) {
+  const s = session(req);
+  const b = await body(req);
+  const amount = intIn(b.amount, 1, 10_000_000);
+  if (!amount) throw new PanelError(400, "Escribe cuantas WCoinC quieres cambiar.");
+  await ensureTables(sql);
+  await requireOffline(s.login);
+  return sql.begin(async tx => {
+    const [account] = await tx`select "WCoinC" as c, "WCoinP" as p from data."Account" where "Id" = ${s.accountId} for update`;
+    if (!account) throw new PanelError(404, "No se encontro la cuenta.");
+    if (account.c < amount) throw new PanelError(400, `Solo tienes ${account.c} WCoinC.`);
+    await tx`update data."Account" set "WCoinC" = "WCoinC" - ${amount}, "WCoinP" = "WCoinP" + ${amount} where "Id" = ${s.accountId}`;
+    await tx`insert into barrio.points_log (account, kind, detail, points, currency) values (${s.accountId}, 'cambio', ${`${amount} WCoinC a WCoinP`}, ${amount}, 'wcoinp')`;
+    return { ok: true, message: `Listo: cambiaste ${amount} WCoinC por ${amount} WCoinP. Ahora tienes ${account.c - amount} WCoinC y ${account.p + amount} WCoinP.` };
   });
 }
 
@@ -263,15 +307,16 @@ export async function adminShop(sql: Sql) {
   await ensureTables(sql);
   const items = await sql`
     select id, item_group as "group", item_number as number, item_level as level, label, price, enabled,
-           max_qty as "maxQty", sort
+           max_qty as "maxQty", sort, currency
     from barrio.points_shop order by sort, id`;
   const log = await sql`
-    select l.at, a."LoginName" as account, l.kind, l.detail, l.points
+    select l.at, a."LoginName" as account, l.kind, l.detail, l.points, l.currency
     from barrio.points_log l left join data."Account" a on a."Id" = l.account
     order by l.at desc limit 25`;
   const top = await sql`
-    select "LoginName" as account, "GoblinPoints" as points from data."Account"
-    where "GoblinPoints" > 0 order by "GoblinPoints" desc limit 10`;
+    select "LoginName" as account, "GoblinPoints" as points, "WCoinC" as wcoinc, "WCoinP" as wcoinp from data."Account"
+    where "GoblinPoints" > 0 or "WCoinC" > 0 or "WCoinP" > 0
+    order by "GoblinPoints" + "WCoinC" + "WCoinP" desc limit 15`;
   return { items, monsters: monsterTable(), log, top, file: POINTS_FILE };
 }
 
@@ -286,7 +331,8 @@ export async function adminSaveItems(req: Request, sql: Sql) {
     const price = intIn(it.price, 1, 10_000_000);
     const maxQty = intIn(it.maxQty, 1, MAX_QTY);
     if (!id || !price || !maxQty || typeof it.enabled !== "boolean") continue;
-    await sql`update barrio.points_shop set price = ${price}, enabled = ${it.enabled}, max_qty = ${maxQty} where id = ${id}`;
+    const currency = isCurrency(it.currency, SHOP_CURRENCIES) ? it.currency : "puntos";
+    await sql`update barrio.points_shop set price = ${price}, enabled = ${it.enabled}, max_qty = ${maxQty}, currency = ${currency} where id = ${id}`;
     n++;
   }
   return { ok: true, message: `Listo: ${n} items guardados.` };
@@ -306,9 +352,10 @@ export async function adminAddItem(req: Request, sql: Sql) {
   const [def] = await sql`select "Name" as name from config."ItemDefinition" where "Group" = ${group} and "Number" = ${number} limit 1`;
   if (!def) throw new PanelError(404, `No existe el item ${group},${number} en OpenMU.`);
   const label = (typeof b.label === "string" && b.label.trim()) || `${def.name}${level ? ` +${level}` : ""}`;
+  const currency = isCurrency(b.currency, SHOP_CURRENCIES) ? b.currency : "puntos";
   const [row] = await sql`
-    insert into barrio.points_shop (item_group, item_number, item_level, label, price, enabled, max_qty, sort)
-    values (${group}, ${number}, ${level}, ${label.slice(0, 80)}, ${price}, true, ${maxQty},
+    insert into barrio.points_shop (item_group, item_number, item_level, label, price, enabled, max_qty, currency, sort)
+    values (${group}, ${number}, ${level}, ${label.slice(0, 80)}, ${price}, true, ${maxQty}, ${currency},
             (select coalesce(max(sort), 0) + 1 from barrio.points_shop))
     on conflict (item_group, item_number, item_level) do nothing returning id`;
   if (!row) throw new PanelError(409, "Ese item (con ese nivel) ya esta en la tienda.");
@@ -351,17 +398,19 @@ export async function adminSaveMonsters(req: Request) {
 export async function adminGivePoints(req: Request, sql: Sql, adminAccountId: string) {
   const b = await body(req);
   const login = typeof b.account === "string" ? b.account.trim() : "";
-  const points = intIn(b.points, -1_000_000, 1_000_000);
-  if (!login || !points) throw new PanelError(400, "Escribe la cuenta y los puntos (negativo para quitar).");
+  const points = intIn(b.points, -10_000_000, 10_000_000);
+  const currency: Currency = isCurrency(b.currency) ? b.currency : "puntos";
+  const { column, name: coin } = CURRENCIES[currency];
+  if (!login || !points) throw new PanelError(400, "Escribe la cuenta y la cantidad (negativo para quitar).");
   await ensureTables(sql);
   const [account] = await sql`select "Id"::text as id, "LoginName" as login from data."Account" where lower("LoginName") = lower(${login})`;
   if (!account) throw new PanelError(404, "No existe esa cuenta.");
   await requireOffline(account.login);
   const [row] = await sql`
-    update data."Account" set "GoblinPoints" = greatest(0, "GoblinPoints" + ${points})
-    where "Id" = ${account.id} returning "GoblinPoints" as total`;
-  await sql`insert into barrio.points_log (account, kind, detail, points, by_account) values (${account.id}, 'admin', 'Dados por el admin', ${points}, ${adminAccountId})`;
-  return { ok: true, message: `Listo: ${account.login} ahora tiene ${row.total} puntos.` };
+    update data."Account" set ${sql(column)} = greatest(0, ${sql(column)} + ${points})
+    where "Id" = ${account.id} returning ${sql(column)} as total`;
+  await sql`insert into barrio.points_log (account, kind, detail, points, by_account, currency) values (${account.id}, 'admin', ${`Dados por el admin (${coin})`}, ${points}, ${adminAccountId}, ${currency})`;
+  return { ok: true, message: `Listo: ${account.login} ahora tiene ${row.total} ${coin}.` };
 }
 
 /** Rutas de la tienda del jugador; null si la ruta no es de aqui. */
@@ -369,6 +418,7 @@ export async function handleTienda(req: Request, url: URL, cors: Record<string, 
   const routes: Record<string, [string, (req: Request, sql: Sql) => Promise<unknown>]> = {
     "/me/tienda": ["GET", shop],
     "/me/tienda/comprar": ["POST", buy],
+    "/me/monedas/convertir": ["POST", convert],
   };
   const route = routes[url.pathname];
   if (!route) return null;

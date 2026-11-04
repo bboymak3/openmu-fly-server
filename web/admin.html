@@ -94,8 +94,8 @@
       <p class="muted">Lo que está <b>prendido</b> se ve en Mi cuenta → Tienda de puntos. Lo comprado llega al baúl del jugador.</p>
       <div class="card table-wrap">
         <table class="ranking shop-admin">
-          <thead><tr><th>A la venta</th><th>Item</th><th class="num">Precio</th><th class="num">Máx.</th><th></th></tr></thead>
-          <tbody id="shop-items"><tr><td colspan="5" class="skeleton">Cargando…</td></tr></tbody>
+          <thead><tr><th>A la venta</th><th>Item</th><th class="num">Precio</th><th>Moneda</th><th class="num">Máx.</th><th></th></tr></thead>
+          <tbody id="shop-items"><tr><td colspan="6" class="skeleton">Cargando…</td></tr></tbody>
         </table>
       </div>
       <div class="shop-actions"><button class="btn btn-gold" id="shop-save" type="button">💾 Guardar tienda</button></div>
@@ -106,6 +106,7 @@
         <label>Número <input name="number" type="number" min="0" max="511" required inputmode="numeric" /></label>
         <label>Nivel (+) <input name="level" type="number" min="0" max="15" value="0" inputmode="numeric" /></label>
         <label>Precio <input name="price" type="number" min="1" required inputmode="numeric" /></label>
+        <label>Moneda <select name="currency" class="ref-select"><option value="puntos">🪙 Puntos</option><option value="wcoinc">💎 WCoinC</option></select></label>
         <label>Máx. por compra <input name="maxQty" type="number" min="1" max="50" value="1" inputmode="numeric" /></label>
         <label class="wide">Nombre (opcional) <input name="label" maxlength="80" placeholder="Se usa el nombre de OpenMU" /></label>
         <button class="btn btn-gold" type="submit">➕ Agregar</button>
@@ -122,17 +123,18 @@
       </div>
       <div class="shop-actions"><button class="btn btn-gold" id="monsters-save" type="button">💾 Guardar puntos</button></div>
 
-      <h3 class="admin-h3">Dar o quitar puntos</h3>
+      <h3 class="admin-h3">Dar o quitar monedas</h3>
       <form class="card form shop-add" id="give-points">
         <label>Cuenta <input name="account" required maxlength="10" autocapitalize="off" /></label>
-        <label>Puntos <input name="points" type="number" required placeholder="50 o -50" inputmode="numeric" /></label>
+        <label>Cantidad <input name="points" type="number" required placeholder="50 o -50" inputmode="numeric" /></label>
+        <label>Moneda <select name="currency" class="ref-select"><option value="puntos">🪙 Puntos</option><option value="wcoinc">💎 WCoinC</option><option value="wcoinp">🔷 WCoinP</option></select></label>
         <button class="btn btn-gold" type="submit">Aplicar</button>
         <p class="muted small wide">La cuenta debe estar fuera del juego.</p>
       </form>
 
       <div class="shop-cols">
         <div>
-          <h3 class="admin-h3">Más puntos</h3>
+          <h3 class="admin-h3">Quién tiene más <small>(🪙 / 💎 / 🔷)</small></h3>
           <div class="card table-wrap"><table class="ranking"><tbody id="shop-top"></tbody></table></div>
         </div>
         <div>
