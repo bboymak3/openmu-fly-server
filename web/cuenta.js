@@ -173,6 +173,7 @@
       render();
       loadRef();
       loadShop();
+      loadMarket();
     } catch (e) {
       if (!$("#panel-view").hidden) toast(e.message, true);
       else showLogin(store.get() ? e.message : "");
@@ -478,6 +479,7 @@
     $("#shop-wcoinc").textContent = Number(shop.wcoinc).toLocaleString("es");
     $("#shop-wcoinp").textContent = Number(shop.wcoinp).toLocaleString("es");
     $("#convert-form button").disabled = locked || !shop.wcoinc;
+    $("#rate-label").textContent = `(1 = ${shop.rate ?? 2})`;
     $("#shop-items").innerHTML = shop.items.length
       ? shop.items.map(it => {
           const coin = COINS[it.currency] ?? COINS.puntos;
@@ -511,7 +513,8 @@
     e.preventDefault();
     const amount = Number(e.target.amount.value);
     if (!amount || amount < 1) return toast("Escribe cuántas WCoinC quieres cambiar.", true);
-    if (!confirm(`¿Cambiar ${amount} WCoinC por ${amount} WCoinP?\n\nNo se puede deshacer. Debes estar fuera del juego.`)) return;
+    const rate = shop?.rate ?? 2;
+    if (!confirm(`¿Cambiar ${amount} WCoinC por ${amount * rate} WCoinP?\n\nNo se puede deshacer: WCoinP no vuelve a WCoinC. Debes estar fuera del juego.`)) return;
     const btn = e.target.querySelector("button");
     btn.disabled = true;
     try {
@@ -544,6 +547,108 @@
       btn.disabled = false;
     }
   });
+
+
+  // ---------- Mercado ----------
+  let mk = null;
+  const fmt = n => Number(n).toLocaleString("es");
+  const STATES = { active: "🟢 A la venta", sold: "✅ Vendido", cancelled: "↩️ Retirado" };
+
+  function renderMarket() {
+    const locked = data?.online === true;
+    $("#mk-wcoinp").textContent = fmt(mk.wcoinp);
+    $("#mk-tax").textContent = mk.tax;
+    const q = $("#mk-search").value.trim().toLowerCase();
+    const list = mk.listings.filter(l => !q || l.label.toLowerCase().includes(q));
+    $("#mk-listings").innerHTML = list.length
+      ? list.map(l => `
+        <div class="ref-reward shop-item ${mk.wcoinp >= l.price && !l.mine ? "is-ready" : "is-locked"}">
+          <div class="ref-reward-at">${esc(l.label)}</div>
+          <div class="ref-reward-what">🔷 ${fmt(l.price)} WCoinP<br /><small class="muted">Vende ${esc(l.seller ?? "—")}</small></div>
+          ${l.mine ? '<span class="ref-lock">Es tuyo</span>' : `<button class="btn btn-gold btn-small" data-mk-buy="${l.id}" ${locked || mk.wcoinp < l.price ? "disabled" : ""}>Comprar</button>`}
+        </div>`).join("")
+      : `<p class="skeleton">${q ? "Nada con ese nombre." : "Todavía nadie vende nada. ¡Sé el primero!"}</p>`;
+    $("#mk-vault").innerHTML = mk.vault.length
+      ? mk.vault.map(v => `<option value="${v.id}">${esc(v.label)}</option>`).join("")
+      : '<option value="">Tu baúl está vacío</option>';
+    $("#mk-sell button").disabled = locked || !mk.vault.length;
+    updateNet();
+    $("#mk-collect").hidden = !mk.pending;
+    $("#mk-pending").textContent = fmt(mk.pending);
+    $("#mk-collect-btn").disabled = locked;
+    $("#mk-mine").innerHTML = mk.mine.length
+      ? mk.mine.map(m => `
+        <tr>
+          <td><strong>${esc(m.label)}</strong><br /><small class="muted">${STATES[m.state] ?? m.state}${m.state === "sold" ? ` · recibes ${fmt(m.proceeds)} (impuesto ${fmt(m.tax)})${m.paid ? " · cobrado" : ""}` : ""}</small></td>
+          <td class="num">🔷 ${fmt(m.price)}</td>
+          <td>${m.state === "active" ? `<button class="btn btn-ghost btn-small" data-mk-withdraw="${m.id}" ${locked ? "disabled" : ""}>Retirar</button>` : ""}</td>
+        </tr>`).join("")
+      : '<tr><td class="skeleton">Todavía no vendiste nada.</td></tr>';
+  }
+
+  function updateNet() {
+    const price = Number($("#mk-sell").price.value) || 0;
+    const tax = Math.floor((price * (mk?.tax ?? 25)) / 100);
+    $("#mk-net").textContent = price ? `Si se vende recibes ${fmt(price - tax)} WCoinP (impuesto ${fmt(tax)}).` : "";
+  }
+
+  async function loadMarket() {
+    try {
+      mk = await call("/me/mercado");
+      renderMarket();
+    } catch (e) {
+      $("#mk-listings").innerHTML = `<p class="skeleton">${esc(e.message)}</p>`;
+    }
+  }
+
+  async function mkAct(path, body, btn) {
+    if (btn) btn.disabled = true;
+    try {
+      const res = await call(path, { method: "POST", body });
+      toast(res.message);
+      await Promise.all([loadMarket(), loadShop()]);
+      return true;
+    } catch (e) {
+      toast(e.message, true);
+      if (btn) btn.disabled = false;
+      return false;
+    }
+  }
+
+  document.querySelectorAll("[data-mk]").forEach(tab =>
+    tab.addEventListener("click", () => {
+      document.querySelectorAll("[data-mk]").forEach(t => t.classList.toggle("is-active", t === tab));
+      document.querySelectorAll(".mk-pane").forEach(p => (p.hidden = p.dataset.pane !== tab.dataset.mk));
+    }),
+  );
+  $("#mk-search").addEventListener("input", () => mk && renderMarket());
+  $("#mk-sell").price.addEventListener("input", updateNet);
+
+  $("#mk-listings").addEventListener("click", e => {
+    const btn = e.target.closest("button[data-mk-buy]");
+    if (!btn) return;
+    const l = mk.listings.find(x => x.id === Number(btn.dataset.mkBuy));
+    if (l && confirm(`¿Comprar ${l.label} por ${fmt(l.price)} WCoinP?\n\nLlega a tu baúl. Debes estar fuera del juego.`)) {
+      mkAct("/me/mercado/comprar", { id: l.id }, btn);
+    }
+  });
+
+  $("#mk-sell").addEventListener("submit", async e => {
+    e.preventDefault();
+    const f = e.target;
+    const item = f.item.value;
+    const price = Number(f.price.value);
+    const label = f.item.options[f.item.selectedIndex]?.text ?? "";
+    if (!item || !price) return;
+    if (!confirm(`¿Publicar ${label} por ${fmt(price)} WCoinP?\n\nSale de tu baúl mientras está a la venta. Puedes retirarlo cuando quieras.`)) return;
+    if (await mkAct("/me/mercado/vender", { item, price }, f.querySelector("button"))) f.reset();
+  });
+
+  $("#mk-mine").addEventListener("click", e => {
+    const btn = e.target.closest("button[data-mk-withdraw]");
+    if (btn && confirm("¿Retirar este item del mercado? Vuelve a tu baúl.")) mkAct("/me/mercado/retirar", { id: Number(btn.dataset.mkWithdraw) }, btn);
+  });
+  $("#mk-collect-btn").addEventListener("click", e => mkAct("/me/mercado/cobrar", {}, e.target));
 
   // ---------- Inicio ----------
   if (store.get()) load();

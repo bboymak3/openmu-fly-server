@@ -386,8 +386,27 @@ la sección `#tienda` de Mi cuenta y la de `web/admin.html`.
 - El catálogo está en `barrio.points_shop` y los movimientos en `barrio.points_log`.
 - **Monedas**: además de los puntos, cada cuenta tiene **WCoinC** (la da el admin desde el panel →
   "Dar o quitar monedas"; un item de la tienda puede costar puntos o WCoinC) y **WCoinP** (la moneda
-  para comerciar entre jugadores). En Mi cuenta → Tienda el jugador cambia WCoinC por WCoinP 1:1,
-  fuera del juego. Todo queda en `barrio.points_log`.
+  para comerciar entre jugadores en el Mercado). En Mi cuenta → Tienda el jugador cambia WCoinC por
+  WCoinP, fuera del juego. Todo queda en `barrio.points_log`.
+- **Cambio**: WCoinC → WCoinP a la tasa del admin (por defecto **1 WCoinC = 2 WCoinP**), solo en ese
+  sentido. Panel admin → **Economía**.
+
+### Mercado (entre jugadores, con WCoinP)
+
+Código: `babylon/api/mercado.ts` y la sección `#mercado` de Mi cuenta.
+
+- **Vender**: el jugador elige un item de su baúl y le pone precio en WCoinP. El item sale del baúl a un
+  baúl de custodia del servidor (`barrio.settings` → `market_escrow`) y conserva todo: nivel, opciones,
+  excelentes, ancient. Máximo 20 a la venta por cuenta.
+- **Comprar**: otro jugador paga en WCoinP y el item llega a su baúl (primer hueco libre).
+- **Impuesto**: el vendedor recibe el precio menos el **impuesto** (por defecto **25%**, Panel admin →
+  Economía); el impuesto sale del juego. El vendedor cobra en **Mis ventas → Cobrar**.
+- **Retirar**: si nadie lo compró, vuelve a su baúl.
+- Se puede revender lo comprado en la tienda (paga el impuesto).
+- Todo fuera del juego. Las publicaciones están en `barrio.market_listing`.
+- **Panel admin → Economía**: tasa WCoinC→WCoinP, impuesto, cuántos items hay a la venta, ventas, WCoinP
+  movidos, impuestos cobrados y últimas ventas.
+
 - **Puntos por tiempo jugado y comandos /add…**: `bash ~/barriomu.sh extras` prende el plugin de
   OpenMU `GoblinPointsForPlayTimePlugIn` (5 puntos cada hora, desde nivel 50) y los comandos
   `/addstr`, `/addagi`, `/addvit`, `/addene`, `/addcmd`; también `/openware` (abre el baúl en cualquier

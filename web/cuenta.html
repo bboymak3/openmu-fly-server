@@ -110,7 +110,7 @@
         </div>
         <form class="ref-enter convert" id="convert-form">
           <input name="amount" type="number" min="1" placeholder="WCoinC a cambiar" inputmode="numeric" />
-          <button class="btn btn-ghost" type="submit">💎 → 🔷 Cambiar a WCoinP (1:1)</button>
+          <button class="btn btn-ghost" type="submit">💎 → 🔷 Cambiar a WCoinP <span id="rate-label"></span></button>
         </form>
         <p class="ref-rule small">WCoinP es la moneda para comerciar entre jugadores.</p>
         <p class="ref-lead">Gana puntos matando <b>monstruos dorados</b> de las invasiones y <b>jefes</b> (Kundun, Icarus, Balgass, Selupan, Kanturu…). En Lorencia, el <b>Cambista</b> te dice cuántos tienes.</p>
@@ -120,6 +120,40 @@
           <summary>¿Cuántos puntos da cada monstruo?</summary>
           <div class="table-wrap"><table class="ranking"><tbody id="shop-monsters"></tbody></table></div>
         </details>
+      </section>
+
+      <!-- Mercado entre jugadores -->
+      <section class="card ref market" id="mercado">
+        <div class="ref-head">
+          <h2>🏪 Mercado</h2>
+          <span class="shop-points">Tienes <b id="mk-wcoinp">—</b> 🔷 WCoinP</span>
+        </div>
+        <p class="ref-lead">Compra y vende items con otros jugadores usando <b>WCoinP</b>. El servidor cobra un impuesto de <b id="mk-tax">25</b>% al vendedor.</p>
+        <p class="ref-rule">Siempre <b>fuera del juego</b>. Lo que vendes sale de tu <b>baúl</b>; lo que compras llega a tu baúl.</p>
+        <div class="tabs mk-tabs" role="tablist">
+          <button class="tab is-active" data-mk="comprar" type="button">🛒 Comprar</button>
+          <button class="tab" data-mk="vender" type="button">💰 Vender</button>
+          <button class="tab" data-mk="mias" type="button">📋 Mis ventas</button>
+        </div>
+        <div class="mk-pane" data-pane="comprar">
+          <input class="mk-search" id="mk-search" placeholder="Buscar item…" />
+          <div class="shop-grid" id="mk-listings"><p class="skeleton">Cargando…</p></div>
+        </div>
+        <div class="mk-pane" data-pane="vender" hidden>
+          <form class="mk-sell" id="mk-sell">
+            <label>Item de tu baúl <select name="item" class="ref-select" id="mk-vault"></select></label>
+            <label>Precio en WCoinP <input name="price" type="number" min="1" required inputmode="numeric" /></label>
+            <p class="ref-rule small" id="mk-net"></p>
+            <button class="btn btn-gold" type="submit">Publicar</button>
+          </form>
+        </div>
+        <div class="mk-pane" data-pane="mias" hidden>
+          <div class="mk-collect" id="mk-collect" hidden>
+            <span>Por cobrar: <b id="mk-pending">0</b> 🔷 WCoinP</span>
+            <button class="btn btn-gold btn-small" id="mk-collect-btn" type="button">Cobrar</button>
+          </div>
+          <div class="table-wrap"><table class="ranking ref-friends"><tbody id="mk-mine"></tbody></table></div>
+        </div>
       </section>
 
       <div class="chars" id="chars"></div>

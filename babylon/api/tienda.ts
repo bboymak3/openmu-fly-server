@@ -11,12 +11,10 @@ import type { Sql } from "postgres";
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { PanelError, body, json, requireOffline, session } from "./panel";
+import { economy, freeSlot, occupy, vaultOf, vaultUsage } from "./economia";
 
 const POINTS_FILE = process.env.POINTS_FILE ?? `${process.env.HOME ?? "/root"}/openmu/data/puntos.json`;
 
-/** El baul de Season 6: 8 columnas por 15 filas. */
-const VAULT_COLUMNS = 8;
-const VAULT_ROWS = 15;
 const MAX_QTY = 50;
 
 /**
@@ -168,36 +166,10 @@ async function shop(req: Request, sql: Sql) {
     points: account?.points ?? 0,
     wcoinc: account?.wcoinc ?? 0,
     wcoinp: account?.wcoinp ?? 0,
+    rate: (await economy(sql)).rate,
     items,
     monsters: monsterTable().filter(m => m.points > 0),
   };
-}
-
-/** El primer hueco del baul para un item de w x h, o -1. */
-function freeSlot(used: boolean[], w: number, h: number): number {
-  for (let row = 0; row + h <= VAULT_ROWS; row++) {
-    for (let col = 0; col + w <= VAULT_COLUMNS; col++) {
-      let fits = true;
-      for (let y = row; y < row + h && fits; y++) {
-        for (let x = col; x < col + w; x++) {
-          if (used[y * VAULT_COLUMNS + x]) {
-            fits = false;
-            break;
-          }
-        }
-      }
-      if (fits) return row * VAULT_COLUMNS + col;
-    }
-  }
-  return -1;
-}
-
-function occupy(used: boolean[], slot: number, w: number, h: number) {
-  const row = Math.floor(slot / VAULT_COLUMNS);
-  const col = slot % VAULT_COLUMNS;
-  for (let y = row; y < row + h && y < VAULT_ROWS; y++) {
-    for (let x = col; x < col + w && x < VAULT_COLUMNS; x++) used[y * VAULT_COLUMNS + x] = true;
-  }
 }
 
 async function buy(req: Request, sql: Sql) {
@@ -222,23 +194,11 @@ async function buy(req: Request, sql: Sql) {
 
   await requireOffline(s.login);
   return sql.begin(async tx => {
-    const [account] = await tx`
-      select ${tx(column)} as points, "VaultId"::text as vault from data."Account" where "Id" = ${s.accountId} for update`;
+    const vault = await vaultOf(tx, s.accountId);
+    const [account] = await tx`select ${tx(column)} as points from data."Account" where "Id" = ${s.accountId}`;
     if (!account) throw new PanelError(404, "No se encontro la cuenta.");
     if (account.points < total) throw new PanelError(400, `Te faltan ${total - account.points} ${coin} (tienes ${account.points}, cuesta ${total}).`);
-
-    let vault = account.vault as string | null;
-    if (!vault) {
-      const [created] = await tx`insert into data."ItemStorage" ("Id", "Money") values (gen_random_uuid(), 0) returning "Id"::text as id`;
-      vault = created.id as string;
-      await tx`update data."Account" set "VaultId" = ${vault} where "Id" = ${s.accountId}`;
-    }
-    const inVault = await tx`
-      select i."ItemSlot" as slot, coalesce(d."Width", 1) as w, coalesce(d."Height", 1) as h
-      from data."Item" i left join config."ItemDefinition" d on d."Id" = i."DefinitionId"
-      where i."ItemStorageId" = ${vault}`;
-    const used = new Array<boolean>(VAULT_COLUMNS * VAULT_ROWS).fill(false);
-    for (const it of inVault) occupy(used, it.slot, it.w, it.h);
+    const used = await vaultUsage(tx, vault);
 
     for (let i = 0; i < qty; i++) {
       const slot = freeSlot(used, item.w || 1, item.h || 1);
@@ -261,21 +221,23 @@ async function buy(req: Request, sql: Sql) {
   });
 }
 
-/** WCoinC -> WCoinP, 1 a 1, con la cuenta fuera del juego. */
+/** WCoinC -> WCoinP a la tasa del admin (por defecto 1 a 2), con la cuenta fuera del juego. Solo en ese sentido. */
 async function convert(req: Request, sql: Sql) {
   const s = session(req);
   const b = await body(req);
   const amount = intIn(b.amount, 1, 10_000_000);
   if (!amount) throw new PanelError(400, "Escribe cuantas WCoinC quieres cambiar.");
   await ensureTables(sql);
+  const { rate } = await economy(sql);
   await requireOffline(s.login);
   return sql.begin(async tx => {
     const [account] = await tx`select "WCoinC" as c, "WCoinP" as p from data."Account" where "Id" = ${s.accountId} for update`;
     if (!account) throw new PanelError(404, "No se encontro la cuenta.");
     if (account.c < amount) throw new PanelError(400, `Solo tienes ${account.c} WCoinC.`);
-    await tx`update data."Account" set "WCoinC" = "WCoinC" - ${amount}, "WCoinP" = "WCoinP" + ${amount} where "Id" = ${s.accountId}`;
-    await tx`insert into barrio.points_log (account, kind, detail, points, currency) values (${s.accountId}, 'cambio', ${`${amount} WCoinC a WCoinP`}, ${amount}, 'wcoinp')`;
-    return { ok: true, message: `Listo: cambiaste ${amount} WCoinC por ${amount} WCoinP. Ahora tienes ${account.c - amount} WCoinC y ${account.p + amount} WCoinP.` };
+    const got = amount * rate;
+    await tx`update data."Account" set "WCoinC" = "WCoinC" - ${amount}, "WCoinP" = "WCoinP" + ${got} where "Id" = ${s.accountId}`;
+    await tx`insert into barrio.points_log (account, kind, detail, points, currency) values (${s.accountId}, 'cambio', ${`${amount} WCoinC a ${got} WCoinP`}, ${got}, 'wcoinp')`;
+    return { ok: true, message: `Listo: cambiaste ${amount} WCoinC por ${got} WCoinP. Ahora tienes ${account.c - amount} WCoinC y ${account.p + got} WCoinP.` };
   });
 }
 

@@ -50,7 +50,11 @@ instalador de Windows.
   lo que el admin prenda (alas de 1ra y 2da, plumas, mascotas, armas +15…), que llega al
   baúl. También dan **5 puntos por cada hora jugada** (desde nivel 50).
 - **Monedas**: 🪙 puntos (del juego), 💎 **WCoinC** (la da el admin; sirve en la tienda) y
-  🔷 **WCoinP** (para comerciar entre jugadores; se obtiene cambiando WCoinC 1:1 en Mi cuenta).
+  🔷 **WCoinP** (para comerciar entre jugadores; se obtiene cambiando WCoinC en Mi cuenta,
+  por defecto 1 WCoinC = 2 WCoinP).
+- **Mercado** en Mi cuenta: los jugadores venden items de su baúl por WCoinP y otros los
+  compran; el servidor cobra un impuesto al vendedor (25% por defecto, editable en el panel
+  admin → Economía, junto con la tasa de cambio).
 - **Comandos de chat**: `/addstr`, `/addagi`, `/addvit`, `/addene`, `/addcmd` + cantidad para
   repartir puntos, `/openware` abre el baúl en cualquier lugar y `/resetstats` reparte de nuevo
   (1.000.000 de zen). Anuncios del servidor cada 20 minutos.
@@ -269,7 +273,7 @@ Cambios sobre el cliente (`babylon/personalizar-cliente.sh` y `babylon/patch-cli
 | `babylon/barriomu.sh` | Prender, apagar, vigilar y configurar todo |
 | `babylon/iniciar-cliente.sh` | Arranca proxy, página, registro y API (lo usa barriomu.sh) |
 | `babylon/servir.ts` | Servidor web mínimo de la página y el registro |
-| `babylon/api/` | API de la página: estado, rankings, Mi cuenta (`panel.ts`), admin (`admin.ts`), referidos (`referidos.ts`), tienda de puntos (`tienda.ts`) |
+| `babylon/api/` | API de la página: estado, rankings, Mi cuenta (`panel.ts`), admin (`admin.ts`), referidos (`referidos.ts`), tienda (`tienda.ts`), mercado (`mercado.ts`), economía (`economia.ts`) |
 | `babylon/mobile/` | Controles del celular: joystick, rueda de combate, pociones, dedo como cursor (`touchHover.ts`) |
 | `babylon/personalizar-cliente.sh`, `babylon/patch-client.py` | Cambios de BarrioMU sobre el cliente (web y PC) |
 | `babylon/branding/` | Logo, iconos y lista de servidores |

@@ -89,6 +89,17 @@
         </table>
       </div>
 
+      <!-- Economia -->
+      <h2 class="admin-h2" id="economia">💱 Economía</h2>
+      <form class="card form shop-add" id="eco-form">
+        <label>1 WCoinC = ? WCoinP <input name="rate" type="number" min="1" max="100" required inputmode="numeric" /></label>
+        <label>Impuesto del mercado (%) <input name="tax" type="number" min="0" max="90" required inputmode="numeric" /></label>
+        <button class="btn btn-gold" type="submit">💾 Guardar</button>
+        <p class="muted small wide">El cambio es solo de WCoinC a WCoinP. El impuesto se descuenta al vendedor y sale del juego.</p>
+      </form>
+      <div class="tiles" id="eco-tiles"></div>
+      <div class="card table-wrap"><table class="ranking"><thead><tr><th>Venta</th><th>Vendedor</th><th>Comprador</th><th class="num">Precio</th><th class="num">Impuesto</th></tr></thead><tbody id="eco-recent"></tbody></table></div>
+
       <!-- Tienda de puntos -->
       <h2 class="admin-h2" id="tienda">🪙 Tienda de puntos</h2>
       <p class="muted">Lo que está <b>prendido</b> se ve en Mi cuenta → Tienda de puntos. Lo comprado llega al baúl del jugador.</p>
