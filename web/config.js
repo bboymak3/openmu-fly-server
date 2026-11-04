@@ -6,6 +6,8 @@ window.BARRIOMU = {
 
   // Links principales
   play: "https://mu.makeseo.app",
+  // Imagenes de los items (las sirve el juego en la tablet)
+  items: "https://mu.makeseo.app/items/",
   register: "https://mu-registro.makeseo.app",
   // Instalador para Windows con los graficos completos (workflow build-pc.yml)
   pc: "https://github.com/bboymak3/openmu-fly-server/releases/download/barriomu-pc/BarrioMU-Setup.exe",

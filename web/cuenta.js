@@ -572,7 +572,11 @@
     $("#mk-listings").innerHTML = list.length
       ? list.map(l => `
         <div class="ref-reward shop-item ${mk.wcoinp >= l.price && !l.mine ? "is-ready" : "is-locked"}">
-          <div class="ref-reward-at">${esc(l.label)}</div>
+          <button class="mk-open" type="button" data-mk-view="${l.id}" aria-label="Ver ${esc(l.label)}">
+            ${itemIcon(l.info)}
+            <span class="ref-reward-at">${esc(l.label)}</span>
+            <span class="mk-more">Ver características</span>
+          </button>
           <div class="ref-reward-what">🔷 ${fmt(l.price)} WCoinP<br /><small class="muted">Vende ${esc(l.seller ?? "—")}</small></div>
           ${l.mine ? '<span class="ref-lock">Es tuyo</span>' : `<button class="btn btn-gold btn-small" data-mk-buy="${l.id}" ${locked || mk.wcoinp < l.price ? "disabled" : ""}>Comprar</button>`}
         </div>`).join("")
@@ -582,6 +586,7 @@
       : '<option value="">Tu baúl está vacío</option>';
     $("#mk-sell button").disabled = locked || !mk.vault.length;
     updateNet();
+    updatePreview();
     $("#mk-collect").hidden = !mk.pending;
     $("#mk-pending").textContent = fmt(mk.pending);
     $("#mk-collect-btn").disabled = locked;
@@ -594,6 +599,61 @@
         </tr>`).join("")
       : '<tr><td class="skeleton">Todavía no vendiste nada.</td></tr>';
   }
+
+  // ---------- Ficha del item (imagen y caracteristicas) ----------
+  const TINTS = [15, 13, 11, 9, 7, 5, 3, 0];
+  function itemIcon(info, big = false) {
+    if (!info || !cfg.items) return "";
+    const tint = TINTS.find(t => t <= info.level) ?? 0;
+    const variant = info.ancient ? "_a" : info.excellent ? "_e" : "";
+    const base = `${cfg.items}item_${info.group}_${info.number}_`;
+    return `<img class="mk-icon${big ? " is-big" : ""}" src="${base}${tint}${variant}.png" data-fallback="${base}0.png" alt="" loading="lazy" />`;
+  }
+  // Si no hay imagen para ese nivel o variante, prueba la basica; si tampoco, la esconde.
+  document.addEventListener("error", e => {
+    const img = e.target;
+    if (!(img instanceof HTMLImageElement) || !img.classList.contains("mk-icon")) return;
+    if (img.dataset.fallback && img.src !== img.dataset.fallback) img.src = img.dataset.fallback;
+    else img.remove();
+  }, true);
+
+  function itemSheet(label, info) {
+    if (!info) return `<h3 class="mk-name">${esc(label)}</h3>`;
+    const rows = [
+      ["Tipo", info.kind],
+      ["Nivel", `+${info.level}`],
+      ["Durabilidad", info.durability],
+    ];
+    const tag = info.ancient ? '<span class="mk-tag is-ancient">Ancient</span>' : info.excellent ? '<span class="mk-tag is-exc">Excelente</span>' : "";
+    return `
+      <div class="mk-sheet">
+        ${itemIcon(info, true)}
+        <h3 class="mk-name ${info.excellent ? "is-exc" : ""} ${info.ancient ? "is-ancient" : ""}">${esc(label)} ${tag}</h3>
+        <dl class="mk-stats">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl>
+        ${info.options.length ? `<ul class="mk-options">${info.options.map(o => `<li>${esc(o)}</li>`).join("")}</ul>` : '<p class="muted small">Sin opciones extra.</p>'}
+      </div>`;
+  }
+
+  function updatePreview() {
+    const v = mk?.vault.find(x => x.id === $("#mk-vault").value);
+    const box = $("#mk-preview");
+    box.hidden = !v;
+    box.innerHTML = v ? itemSheet(v.label, v.info) : "";
+  }
+  $("#mk-vault").addEventListener("change", updatePreview);
+
+  $("#mk-listings").addEventListener("click", e => {
+    const btn = e.target.closest("[data-mk-view]");
+    if (!btn) return;
+    const l = mk.listings.find(x => x.id === Number(btn.dataset.mkView));
+    if (!l) return;
+    const locked = data?.online === true;
+    $("#mk-dialog-body").innerHTML = `${itemSheet(l.label, l.info)}
+      <p class="mk-price">🔷 ${fmt(l.price)} WCoinP · <span class="muted">Vende ${esc(l.seller ?? "—")}</span></p>
+      ${l.mine ? '<p class="muted">Es tu venta.</p>' : `<button class="btn btn-gold" data-mk-buy="${l.id}" type="button" ${locked || mk.wcoinp < l.price ? "disabled" : ""}>Comprar</button>`}`;
+    const dlg = $("#mk-dialog");
+    if (dlg.showModal) dlg.showModal(); else dlg.setAttribute("open", "");
+  });
 
   function updateNet() {
     const price = Number($("#mk-sell").price.value) || 0;
@@ -633,14 +693,17 @@
   $("#mk-search").addEventListener("input", () => mk && renderMarket());
   $("#mk-sell").price.addEventListener("input", updateNet);
 
-  $("#mk-listings").addEventListener("click", e => {
+  function buyListing(e) {
     const btn = e.target.closest("button[data-mk-buy]");
     if (!btn) return;
     const l = mk.listings.find(x => x.id === Number(btn.dataset.mkBuy));
     if (l && confirm(`¿Comprar ${l.label} por ${fmt(l.price)} WCoinP?\n\nLlega a tu baúl. Debes estar fuera del juego.`)) {
+      $("#mk-dialog").close?.();
       mkAct("/me/mercado/comprar", { id: l.id }, btn);
     }
-  });
+  }
+  $("#mk-listings").addEventListener("click", buyListing);
+  $("#mk-dialog").addEventListener("click", buyListing);
 
   $("#mk-sell").addEventListener("submit", async e => {
     e.preventDefault();

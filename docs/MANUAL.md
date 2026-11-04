@@ -398,6 +398,10 @@ la sección `#tienda` de Mi cuenta y la de `web/admin.html`.
 - **Cambio**: WCoinC → WCoinP a la tasa del admin (por defecto **1 WCoinC = 2 WCoinP**), solo en ese
   sentido. Panel admin → **Economía**.
 
+> La Plaza muestra la **imagen** de cada item (la sirve el juego, `https://mu.makeseo.app/items/`)
+> y al tocar "Ver características" abre su ficha: tipo, nivel, durabilidad, skill, suerte, opción
+> adicional, opciones excelentes y ancient. El nombre publicado es solo el nombre y su +nivel.
+
 ### Cash Shop (con WCoinC)
 La tienda que traía el cliente, recreada en la web: **https://barriomu.makeseo.app/cashshop.html**
 (botón "💎 Cash Shop" en la portada, en el menú y en Mi cuenta).

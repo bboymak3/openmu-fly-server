@@ -40,8 +40,8 @@ function ensureTables(sql: Sql): Promise<void> {
     await sql`create index if not exists market_state on barrio.market_listing (state)`;
     await sql`create index if not exists market_seller on barrio.market_listing (seller)`;
     // Ventas publicadas antes de limpiar los nombres de OpenMU (con sus traducciones pegadas).
-    for (const row of await sql`select id, label from barrio.market_listing where label like '%||%'`) {
-      await sql`update barrio.market_listing set label = ${cleanName(row.label)} where id = ${row.id}`;
+    for (const row of await sql`select id, label from barrio.market_listing where label like '%||%' or label like '% · %'`) {
+      await sql`update barrio.market_listing set label = ${cleanName(row.label).split(" · ")[0]} where id = ${row.id}`;
     }
   })().catch(error => {
     ready = null;
@@ -75,12 +75,74 @@ const ITEM_VIEW = (sql: Sql) => sql`
   (select count(*)::int from data."ItemOptionLink" o where o."ItemId" = i."Id") as options,
   exists (select 1 from data."ItemItemOfItemSet" a where a."ItemId" = i."Id") as ancient`;
 
-function itemLabel(r: { name: string; level: number; options?: number; ancient?: boolean; skill?: boolean }): string {
-  const parts = [`${cleanName(r.name)}${r.level ? ` +${r.level}` : ""}`];
-  if (r.ancient) parts.push("Ancient");
-  if (r.skill) parts.push("Skill");
-  if (r.options) parts.push(`${r.options} ${r.options === 1 ? "opcion" : "opciones"}`);
-  return parts.join(" · ");
+/** El nombre que se publica: solo el nombre del item y su +nivel (lo demas va en la ficha). */
+function itemLabel(r: { name: string; level: number }): string {
+  return `${cleanName(r.name)}${r.level ? ` +${r.level}` : ""}`;
+}
+
+// ---------------------------------------------------------------- ficha del item
+
+/** Que es cada grupo de items de MU (para la ficha). */
+const KINDS: Record<number, string> = {
+  0: "Espada", 1: "Hacha", 2: "Maza / Cetro", 3: "Lanza", 4: "Arco / Ballesta", 5: "Bastón",
+  6: "Escudo", 7: "Casco", 8: "Armadura", 9: "Pantalón", 10: "Guantes", 11: "Botas",
+  12: "Alas / Joya", 13: "Accesorio / Mascota", 14: "Joya / Consumible", 15: "Pergamino",
+};
+const EXC_ATTACK = ["Maná al matar +maná/8", "Vida al matar +vida/8", "Velocidad de ataque +7", "Daño +2%", "Daño +nivel/20", "Daño excelente +10%"];
+const EXC_DEFENSE = ["Zen +40%", "Defensa +10%", "Refleja daño +5%", "Reduce daño +4%", "Maná máximo +4%", "Vida máxima +4%"];
+
+export interface ItemInfo {
+  group: number; number: number; level: number; durability: number; skill: boolean;
+  kind: string; excellent: boolean; ancient: boolean; options: string[];
+}
+
+/** La ficha de cada item (tipo, nivel, skill, suerte, opcion, excelentes, ancient), por id de item. */
+async function itemInfo(sql: Sql, ids: string[]): Promise<Map<string, ItemInfo>> {
+  const out = new Map<string, ItemInfo>();
+  if (!ids.length) return out;
+  const rows = await sql`
+    select i."Id"::text as id, d."Group" as "group", d."Number" as number, i."Level" as level,
+           i."Durability" as durability, i."HasSkill" as skill,
+           exists (select 1 from data."ItemItemOfItemSet" a where a."ItemId" = i."Id") as ancient
+    from data."Item" i join config."ItemDefinition" d on d."Id" = i."DefinitionId"
+    where i."Id" = any(${ids}::uuid[])`;
+  let opts: { item: string; type: string; number: number; level: number }[] = [];
+  try {
+    opts = await sql`
+      select l."ItemId"::text as item, coalesce(t."Name", '') as type, coalesce(o."Number", 0) as number, coalesce(l."Level", 0) as level
+      from data."ItemOptionLink" l
+      left join config."IncreasableItemOption" o on o."Id" = l."ItemOptionId"
+      left join config."ItemOptionType" t on t."Id" = o."OptionTypeId"
+      where l."ItemId" = any(${ids}::uuid[])
+      order by l."ItemId", o."Number"`;
+  } catch (error) {
+    console.error("ficha del item: opciones", error);
+  }
+  for (const r of rows) {
+    const weapon = r.group <= 5;
+    const options: string[] = [];
+    let excellent = false;
+    if (r.skill) options.push("Skill del arma");
+    for (const o of opts.filter(o => o.item === r.id)) {
+      const type = o.type.toLowerCase();
+      if (type.startsWith("excellent")) {
+        excellent = true;
+        options.push((weapon ? EXC_ATTACK : EXC_DEFENSE)[o.number - 1] ?? `Excelente #${o.number}`);
+      } else if (type.includes("luck")) options.push("Suerte (+5% crítico, +25% éxito con joyas)");
+      else if (type === "option" || type.includes("additional")) options.push(`Opción adicional +${(o.level || 1) * 4}`);
+      else if (type.includes("harmony")) options.push(`Opción Harmony (nivel ${o.level || 1})`);
+      else if (type.includes("guardian")) options.push("Opción 380 (Guardian)");
+      else if (type.includes("socket")) options.push("Socket");
+      else if (type.includes("wing")) options.push("Opción de alas");
+      else if (type.includes("ancient")) options.push("Opción ancient");
+      else if (type) options.push(`${o.type}${o.level > 1 ? ` (nivel ${o.level})` : ""}`);
+    }
+    out.set(r.id, {
+      group: r.group, number: r.number, level: r.level, durability: Math.round(Number(r.durability) || 0), skill: r.skill,
+      kind: KINDS[r.group] ?? "Item", excellent, ancient: r.ancient, options,
+    });
+  }
+  return out;
 }
 
 async function publicName(sql: Sql, accountId: string): Promise<string> {
@@ -98,7 +160,7 @@ async function market(req: Request, sql: Sql) {
   const { tax } = await economy(sql);
   const [account] = await sql`select "WCoinP" as wcoinp, "VaultId"::text as vault from data."Account" where "Id" = ${s.accountId}`;
   const listings = await sql`
-    select l.id, l.label, l.price, l.listed_at as "listedAt", l.seller::text as seller
+    select l.id, l.label, l.price, l.listed_at as "listedAt", l.seller::text as seller, l.item_id::text as item
     from barrio.market_listing l where l.state = 'active'
     order by l.listed_at desc limit 200`;
   const names = new Map<string, string>();
@@ -114,6 +176,7 @@ async function market(req: Request, sql: Sql) {
         where i."ItemStorageId" = ${account.vault}
         order by i."ItemSlot"`
     : [];
+  const info = await itemInfo(sql, [...listings.map(l => l.item as string), ...vault.map(v => v.id as string)]);
   const pending = mine.filter(m => m.state === "sold" && !m.paid).reduce((sum, m) => sum + (m.proceeds ?? 0), 0);
   return {
     wcoinp: account?.wcoinp ?? 0,
@@ -121,10 +184,10 @@ async function market(req: Request, sql: Sql) {
     pending,
     listings: listings.map(l => ({
       id: l.id, label: l.label, price: l.price, listedAt: l.listedAt,
-      seller: names.get(l.seller), mine: l.seller === s.accountId,
+      seller: names.get(l.seller), mine: l.seller === s.accountId, info: info.get(l.item) ?? null,
     })),
     mine,
-    vault: vault.map(v => ({ id: v.id, label: itemLabel(v) })),
+    vault: vault.map(v => ({ id: v.id, label: itemLabel(v), info: info.get(v.id) ?? null })),
   };
 }
 

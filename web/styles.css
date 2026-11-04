@@ -567,3 +567,28 @@ td.bad { color: var(--red); }
 .cs-roll.tier-legendario { box-shadow: 0 0 22px rgba(232, 183, 92, 0.4); }
 .cs-item .shop-buy { flex-wrap: wrap; }
 .cs-item .shop-qty { width: 56px; flex: none; }
+
+/* La Plaza: imagen y ficha del item */
+.mk-open { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-align: center; cursor: pointer; }
+.mk-more { font-size: 0.78rem; color: var(--blue); text-decoration: underline; }
+.mk-icon { width: 72px; height: 72px; object-fit: contain; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.6)); }
+.mk-icon.is-big { width: 140px; height: 120px; }
+.mk-dialog { width: min(420px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow: auto; padding: 20px; border-radius: 16px; border: 1px solid var(--gold); background: #15131b; color: var(--text, #eee); }
+.mk-dialog::backdrop { background: rgba(0, 0, 0, 0.7); }
+.mk-dialog .btn { margin-top: 10px; }
+.mk-close { width: 100%; }
+.mk-sheet { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+.mk-name { margin: 0; color: var(--gold-2); font-size: 1.15rem; }
+.mk-name.is-exc { color: #86efac; }
+.mk-name.is-ancient { color: #7dd3fc; }
+.mk-tag { display: inline-block; margin-left: 4px; padding: 2px 8px; border-radius: 999px; font-size: 0.7rem; vertical-align: middle; }
+.mk-tag.is-exc { background: rgba(134, 239, 172, 0.15); color: #86efac; }
+.mk-tag.is-ancient { background: rgba(125, 211, 252, 0.15); color: #7dd3fc; }
+.mk-stats { display: grid; grid-template-columns: auto auto; gap: 4px 14px; margin: 4px 0; font-size: 0.92rem; }
+.mk-stats dt { color: var(--muted); text-align: right; }
+.mk-stats dd { margin: 0; text-align: left; font-weight: 700; }
+.mk-options { list-style: none; margin: 4px 0 0; padding: 0; color: #93c5fd; font-size: 0.92rem; }
+.mk-options li { padding: 2px 0; }
+.mk-price { text-align: center; margin: 12px 0 0; font-weight: 700; }
+.mk-dialog > div > .btn { display: block; width: 100%; }
+.mk-preview { padding: 12px; border-radius: 12px; border: 1px dashed var(--card-border); }
