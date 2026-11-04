@@ -386,14 +386,14 @@ la sección `#tienda` de Mi cuenta y la de `web/admin.html`.
 - El catálogo está en `barrio.points_shop` y los movimientos en `barrio.points_log`.
 - **Monedas**: además de los puntos, cada cuenta tiene **WCoinC** (la da el admin desde el panel →
   "Dar o quitar monedas"; un item de la tienda puede costar puntos o WCoinC) y **WCoinP** (la moneda
-  para comerciar entre jugadores en el Mercado). En Mi cuenta → Tienda el jugador cambia WCoinC por
+  para comerciar entre jugadores en la Plaza). En Mi cuenta → Tienda el jugador cambia WCoinC por
   WCoinP, fuera del juego. Todo queda en `barrio.points_log`.
 - **Cambio**: WCoinC → WCoinP a la tasa del admin (por defecto **1 WCoinC = 2 WCoinP**), solo en ese
   sentido. Panel admin → **Economía**.
 
-### Mercado (entre jugadores, con WCoinP)
+### La Plaza (comercio entre jugadores, con WCoinP)
 
-Código: `babylon/api/mercado.ts` y la sección `#mercado` de Mi cuenta.
+Código: `babylon/api/mercado.ts` y la sección `#mercado` de Mi cuenta ("La Plaza").
 
 - **Vender**: el jugador elige un item de su baúl y le pone precio en WCoinP. El item sale del baúl a un
   baúl de custodia del servidor (`barrio.settings` → `market_escrow`) y conserva todo: nivel, opciones,

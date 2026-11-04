@@ -52,7 +52,7 @@ instalador de Windows.
 - **Monedas**: 🪙 puntos (del juego), 💎 **WCoinC** (la da el admin; sirve en la tienda) y
   🔷 **WCoinP** (para comerciar entre jugadores; se obtiene cambiando WCoinC en Mi cuenta,
   por defecto 1 WCoinC = 2 WCoinP).
-- **Mercado** en Mi cuenta: los jugadores venden items de su baúl por WCoinP y otros los
+- **La Plaza** en Mi cuenta: los jugadores venden items de su baúl por WCoinP y otros los
   compran; el servidor cobra un impuesto al vendedor (25% por defecto, editable en el panel
   admin → Economía, junto con la tasa de cambio).
 - **Comandos de chat**: `/addstr`, `/addagi`, `/addvit`, `/addene`, `/addcmd` + cantidad para
