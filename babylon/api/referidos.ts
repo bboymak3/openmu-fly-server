@@ -52,13 +52,13 @@ export const WELCOME: Reward = {
   zen: 5_000_000,
 };
 
-/** Alas (grupo 12) por familia de clase: [1ra, 3ra]. */
-const WINGS: Record<string, { first: number; third: number; firstName: string; thirdName: string }> = {
+/** Alas por familia de clase: [1ra, 3ra]. Todas en el grupo 12, salvo la Cape of Lord (13, 30). */
+const WINGS: Record<string, { first: number; third: number; firstName: string; thirdName: string; firstGroup?: number }> = {
   dw: { first: 1, third: 37, firstName: "Wings of Heaven", thirdName: "Wing of Eternal" },
   dk: { first: 2, third: 36, firstName: "Wings of Satan", thirdName: "Wing of Storm" },
   elf: { first: 0, third: 38, firstName: "Wings of Elf", thirdName: "Wing of Illusion" },
   mg: { first: 2, third: 39, firstName: "Wings of Satan", thirdName: "Wing of Ruin" },
-  dl: { first: 30, third: 40, firstName: "Cape of Lord", thirdName: "Cape of Emperor" },
+  dl: { first: 30, third: 40, firstName: "Cape of Lord", thirdName: "Cape of Emperor", firstGroup: 13 },
   sum: { first: 41, third: 43, firstName: "Wings of Curse", thirdName: "Wing of Dimension" },
   rf: { first: 49, third: 50, firstName: "Cape of Fighter", thirdName: "Cape of Overrule" },
 };
@@ -360,7 +360,7 @@ async function claim(req: Request, sql: Sql) {
   }
 
   // Alas: de la clase del personaje que eligio.
-  let wing: { number: number; name: string } | null = null;
+  let wing: { group: number; number: number; name: string } | null = null;
   if (reward.wings) {
     const [c] = await sql`
       select cc."Number" as class from data."Character" c join config."CharacterClass" cc on cc."Id" = c."CharacterClassId"
@@ -368,7 +368,9 @@ async function claim(req: Request, sql: Sql) {
     const family = c ? familyOf(c.class) : null;
     if (!family) throw new PanelError(400, "Elige el personaje para el que quieres las alas.");
     const w = WINGS[family];
-    wing = reward.wings === 1 ? { number: w.first, name: w.firstName } : { number: w.third, name: w.thirdName };
+    wing = reward.wings === 1
+      ? { group: w.firstGroup ?? 12, number: w.first, name: w.firstName }
+      : { group: 12, number: w.third, name: w.thirdName };
   }
 
   await requireOffline(s.login);
@@ -379,7 +381,7 @@ async function claim(req: Request, sql: Sql) {
     if (!done) throw new PanelError(400, "Ya pediste este premio.");
     const vault = await vaultOf(tx, s.accountId);
     let slot = 0;
-    if (wing) await putItem(tx, vault, 12, wing.number, slot++);
+    if (wing) await putItem(tx, vault, wing.group, wing.number, slot++);
     for (const item of reward.items) {
       for (let i = 0; i < item.count; i++) await putItem(tx, vault, item.group, item.number, slot++);
     }

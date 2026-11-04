@@ -143,9 +143,9 @@ export function json(body: unknown, status: number, cors: Record<string, string>
   });
 }
 
-export async function body(req: Request): Promise<Record<string, unknown>> {
+export async function body(req: Request, maxBytes = 2048): Promise<Record<string, unknown>> {
   const text = await req.text();
-  if (text.length > 2048) throw new PanelError(413, "Solicitud demasiado grande.");
+  if (text.length > maxBytes) throw new PanelError(413, "Solicitud demasiado grande.");
   try {
     const parsed = JSON.parse(text || "{}");
     return parsed && typeof parsed === "object" ? parsed : {};

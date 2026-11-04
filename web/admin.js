@@ -197,7 +197,9 @@
   async function load() {
     $("#refresh").disabled = true;
     try {
-      render(await call("/admin/stats"));
+      const stats = call("/admin/stats");
+      loadShop();
+      render(await stats);
     } catch (e) {
       if (!$("#panel-view").hidden) toast(e.message, true);
       else showLogin(store.get() ? e.message : "");
@@ -252,6 +254,107 @@
   }
   $("#purge").addEventListener("click", () => purge(false));
   $("#purge-all").addEventListener("click", () => purge(true));
+
+
+  // ---------- Tienda de puntos ----------
+  let shopData = null;
+  const when = iso => new Date(iso).toLocaleString("es", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+
+  function renderShop(d) {
+    shopData = d;
+    $("#shop-items").innerHTML = d.items.length
+      ? d.items.map(it => `
+        <tr data-id="${it.id}">
+          <td><input type="checkbox" class="shop-on" ${it.enabled ? "checked" : ""} aria-label="A la venta" /></td>
+          <td><strong>${esc(it.label)}</strong><br /><small class="muted">${it.group}/${it.number}${it.level ? " +" + it.level : ""}</small></td>
+          <td class="num"><input type="number" class="shop-price" min="1" value="${it.price}" inputmode="numeric" /></td>
+          <td class="num"><input type="number" class="shop-max" min="1" max="50" value="${it.maxQty}" inputmode="numeric" /></td>
+          <td><button class="btn btn-ghost btn-small shop-del" type="button" title="Quitar de la tienda">✕</button></td>
+        </tr>`).join("")
+      : '<tr><td colspan="5" class="skeleton">La tienda está vacía.</td></tr>';
+    $("#shop-monsters").innerHTML = d.monsters.map(m => `
+      <tr data-number="${m.number}">
+        <td><strong>${esc(m.name)}</strong> <small class="muted">#${m.number}</small></td>
+        <td>${esc(m.kind)}</td>
+        <td class="num"><input type="number" class="monster-points" min="0" value="${m.points}" inputmode="numeric" /></td>
+      </tr>`).join("");
+    $("#shop-top").innerHTML = d.top.length
+      ? d.top.map(r => `<tr><td>${esc(r.account)}</td><td class="num">${r.points}</td></tr>`).join("")
+      : '<tr><td class="skeleton">Nadie tiene puntos todavía.</td></tr>';
+    $("#shop-log").innerHTML = d.log.length
+      ? d.log.map(r => `<tr><td><small>${when(r.at)}</small></td><td>${esc(r.account ?? "—")}</td><td>${esc(r.detail ?? r.kind)}</td><td class="num ${r.points < 0 ? "bad" : "ok"}">${r.points > 0 ? "+" : ""}${r.points}</td></tr>`).join("")
+      : '<tr><td class="skeleton">Sin movimientos.</td></tr>';
+  }
+
+  async function loadShop() {
+    try {
+      renderShop(await call("/admin/tienda"));
+    } catch (e) {
+      $("#shop-items").innerHTML = `<tr><td colspan="5" class="skeleton">${esc(e.message)}</td></tr>`;
+    }
+  }
+
+  async function shopCall(path, body, btn) {
+    if (btn) btn.disabled = true;
+    try {
+      const res = await call(path, { method: "POST", body });
+      toast(res.message);
+      await loadShop();
+      return true;
+    } catch (e) {
+      toast(e.message, true);
+      return false;
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  $("#shop-save").addEventListener("click", e => {
+    const items = [...document.querySelectorAll("#shop-items tr[data-id]")].map(tr => ({
+      id: Number(tr.dataset.id),
+      enabled: tr.querySelector(".shop-on").checked,
+      price: Number(tr.querySelector(".shop-price").value),
+      maxQty: Number(tr.querySelector(".shop-max").value),
+    }));
+    shopCall("/admin/tienda/guardar", { items }, e.target);
+  });
+
+  $("#shop-items").addEventListener("click", e => {
+    const btn = e.target.closest(".shop-del");
+    if (!btn) return;
+    const tr = btn.closest("tr");
+    const label = tr.querySelector("strong").textContent;
+    if (confirm(`¿Quitar "${label}" de la tienda?\n\nSi solo quieres dejar de venderlo, desmarca "A la venta".`)) {
+      shopCall("/admin/tienda/quitar", { id: Number(tr.dataset.id) });
+    }
+  });
+
+  $("#shop-add").addEventListener("submit", async e => {
+    e.preventDefault();
+    const f = e.target;
+    const ok = await shopCall("/admin/tienda/agregar", {
+      group: Number(f.group.value), number: Number(f.number.value), level: Number(f.level.value || 0),
+      price: Number(f.price.value), maxQty: Number(f.maxQty.value || 1), label: f.label.value,
+    }, f.querySelector("button"));
+    if (ok) f.reset();
+  });
+
+  $("#monsters-save").addEventListener("click", e => {
+    const table = {};
+    document.querySelectorAll("#shop-monsters tr[data-number]").forEach(tr => {
+      table[tr.dataset.number] = Number(tr.querySelector(".monster-points").value) || 0;
+    });
+    shopCall("/admin/puntos/monstruos", { table }, e.target);
+  });
+
+  $("#give-points").addEventListener("submit", async e => {
+    e.preventDefault();
+    const f = e.target;
+    const points = Number(f.points.value);
+    if (!confirm(`¿${points < 0 ? "Quitar" : "Dar"} ${Math.abs(points)} puntos a ${f.account.value}?`)) return;
+    const ok = await shopCall("/admin/puntos/dar", { account: f.account.value.trim(), points }, f.querySelector("button"));
+    if (ok) f.reset();
+  });
 
   if (store.get()) load();
   else showLogin();

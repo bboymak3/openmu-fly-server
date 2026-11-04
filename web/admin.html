@@ -88,6 +88,58 @@
           <tbody id="top"></tbody>
         </table>
       </div>
+
+      <!-- Tienda de puntos -->
+      <h2 class="admin-h2" id="tienda">🪙 Tienda de puntos</h2>
+      <p class="muted">Lo que está <b>prendido</b> se ve en Mi cuenta → Tienda de puntos. Lo comprado llega al baúl del jugador.</p>
+      <div class="card table-wrap">
+        <table class="ranking shop-admin">
+          <thead><tr><th>A la venta</th><th>Item</th><th class="num">Precio</th><th class="num">Máx.</th><th></th></tr></thead>
+          <tbody id="shop-items"><tr><td colspan="5" class="skeleton">Cargando…</td></tr></tbody>
+        </table>
+      </div>
+      <div class="shop-actions"><button class="btn btn-gold" id="shop-save" type="button">💾 Guardar tienda</button></div>
+
+      <h3 class="admin-h3">Agregar un item</h3>
+      <form class="card form shop-add" id="shop-add">
+        <label>Grupo <input name="group" type="number" min="0" max="15" required inputmode="numeric" /></label>
+        <label>Número <input name="number" type="number" min="0" max="511" required inputmode="numeric" /></label>
+        <label>Nivel (+) <input name="level" type="number" min="0" max="15" value="0" inputmode="numeric" /></label>
+        <label>Precio <input name="price" type="number" min="1" required inputmode="numeric" /></label>
+        <label>Máx. por compra <input name="maxQty" type="number" min="1" max="50" value="1" inputmode="numeric" /></label>
+        <label class="wide">Nombre (opcional) <input name="label" maxlength="80" placeholder="Se usa el nombre de OpenMU" /></label>
+        <button class="btn btn-gold" type="submit">➕ Agregar</button>
+        <p class="muted small wide">Ejemplos: Bless 14/13, Soul 14/14, Chaos 12/15, Life 14/16, Creation 14/22. Alas: grupo 12 (Cape of Lord 13/30). Armas: grupos 0 a 5.</p>
+      </form>
+
+      <h3 class="admin-h3">Puntos por monstruo</h3>
+      <p class="muted">0 = no da puntos. OpenMU lo lee solo en menos de un minuto.</p>
+      <div class="card table-wrap">
+        <table class="ranking shop-admin">
+          <thead><tr><th>Monstruo</th><th>Tipo</th><th class="num">Puntos</th></tr></thead>
+          <tbody id="shop-monsters"></tbody>
+        </table>
+      </div>
+      <div class="shop-actions"><button class="btn btn-gold" id="monsters-save" type="button">💾 Guardar puntos</button></div>
+
+      <h3 class="admin-h3">Dar o quitar puntos</h3>
+      <form class="card form shop-add" id="give-points">
+        <label>Cuenta <input name="account" required maxlength="10" autocapitalize="off" /></label>
+        <label>Puntos <input name="points" type="number" required placeholder="50 o -50" inputmode="numeric" /></label>
+        <button class="btn btn-gold" type="submit">Aplicar</button>
+        <p class="muted small wide">La cuenta debe estar fuera del juego.</p>
+      </form>
+
+      <div class="shop-cols">
+        <div>
+          <h3 class="admin-h3">Más puntos</h3>
+          <div class="card table-wrap"><table class="ranking"><tbody id="shop-top"></tbody></table></div>
+        </div>
+        <div>
+          <h3 class="admin-h3">Últimos movimientos</h3>
+          <div class="card table-wrap"><table class="ranking"><tbody id="shop-log"></tbody></table></div>
+        </div>
+      </div>
     </section>
   </main>
 

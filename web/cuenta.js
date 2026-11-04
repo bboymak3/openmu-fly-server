@@ -172,6 +172,7 @@
       data = await call("/me");
       render();
       loadRef();
+      loadShop();
     } catch (e) {
       if (!$("#panel-view").hidden) toast(e.message, true);
       else showLogin(store.get() ? e.message : "");
@@ -460,6 +461,60 @@
   $("#wings-form").addEventListener("submit", e => {
     if (e.submitter?.value !== "ok") return;
     claim(wingsReward, $("#wings-char").value);
+  });
+
+
+  // ---------- Tienda de puntos ----------
+  let shop = null;
+
+  function renderShop() {
+    const locked = data?.online === true;
+    $("#shop-points").textContent = Number(shop.points).toLocaleString("es");
+    $("#shop-items").innerHTML = shop.items.length
+      ? shop.items.map(it => {
+          const can = shop.points >= it.price;
+          return `
+        <div class="ref-reward shop-item ${can ? "is-ready" : "is-locked"}" data-id="${it.id}">
+          <div class="ref-reward-at">${esc(it.label)}</div>
+          <div class="ref-reward-what">🪙 ${Number(it.price).toLocaleString("es")} puntos</div>
+          <div class="shop-buy">
+            ${it.maxQty > 1 ? `<input type="number" class="shop-qty" min="1" max="${it.maxQty}" value="1" inputmode="numeric" aria-label="Cantidad" />` : ""}
+            <button class="btn btn-gold btn-small" data-buy="${it.id}" ${locked || !can ? "disabled" : ""}>Comprar</button>
+          </div>
+        </div>`;
+        }).join("")
+      : '<p class="skeleton">La tienda está vacía por ahora.</p>';
+    $("#shop-monsters").innerHTML = shop.monsters
+      .map(m => `<tr><td>${esc(m.name)}</td><td class="num">🪙 ${m.points}</td></tr>`)
+      .join("");
+  }
+
+  async function loadShop() {
+    try {
+      shop = await call("/me/tienda");
+      renderShop();
+    } catch (e) {
+      $("#shop-items").innerHTML = `<p class="skeleton">${esc(e.message)}</p>`;
+    }
+  }
+
+  $("#shop-items").addEventListener("click", async e => {
+    const btn = e.target.closest("button[data-buy]");
+    if (!btn) return;
+    const box = btn.closest(".shop-item");
+    const item = shop.items.find(i => i.id === Number(btn.dataset.buy));
+    const qty = Number(box.querySelector(".shop-qty")?.value || 1);
+    if (!item || qty < 1) return;
+    if (!confirm(`¿Comprar ${qty} x ${item.label} por ${(item.price * qty).toLocaleString("es")} puntos?\n\nLlega a tu baúl. Recuerda estar fuera del juego.`)) return;
+    btn.disabled = true;
+    try {
+      const res = await call("/me/tienda/comprar", { method: "POST", body: { id: item.id, qty } });
+      toast(res.message);
+      await loadShop();
+    } catch (err) {
+      toast(err.message, true);
+      btn.disabled = false;
+    }
   });
 
   // ---------- Inicio ----------
