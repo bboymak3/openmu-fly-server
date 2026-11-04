@@ -28,6 +28,7 @@ import {
   recentFails,
 } from "./panel";
 import { readMasterResets } from "./masterReset";
+import { adminMarket, adminSaveEconomy } from "./mercado";
 import { adminAddItem, adminDeleteItem, adminGivePoints, adminSaveItems, adminSaveMonsters, adminShop } from "./tienda";
 
 const LEVEL = "560931ad-0901-4342-b7f4-fd2e2fcc0563";
@@ -368,6 +369,8 @@ export async function handleAdmin(
     "/admin/tienda/quitar": ["POST", () => (session(req), adminDeleteItem(req, sql))],
     "/admin/puntos/monstruos": ["POST", () => (session(req), adminSaveMonsters(req))],
     "/admin/puntos/dar": ["POST", () => adminGivePoints(req, sql, session(req).accountId)],
+    "/admin/economia": ["GET", () => (session(req), adminMarket(sql))],
+    "/admin/economia/guardar": ["POST", () => (session(req), adminSaveEconomy(req, sql))],
     "/admin/logout": [
       "POST",
       async () => {

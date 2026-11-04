@@ -526,3 +526,12 @@ td.bad { color: var(--red); }
 .wallet b { font-size: 1.3rem; color: var(--gold-2); }
 .convert { margin-bottom: 4px; }
 .shop-admin select.ref-select, .shop-add select.ref-select { margin: 0; padding: 8px; }
+
+/* ---------- Mercado ---------- */
+.mk-tabs { justify-content: flex-start; margin: 12px 0; }
+.mk-search { width: 100%; margin-bottom: 10px; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(232, 183, 92, 0.45); background: #07060a; color: var(--text); font: inherit; }
+.mk-sell { display: grid; gap: 10px; }
+.mk-sell input { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(232, 183, 92, 0.45); background: #07060a; color: var(--text); font: inherit; }
+.mk-collect { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 12px; margin-bottom: 10px; border-radius: 12px; border: 1px solid var(--gold); background: rgba(232, 183, 92, 0.08); }
+.mk-collect b { color: var(--gold-2); }
+.mk-collect[hidden], .mk-pane[hidden] { display: none; }

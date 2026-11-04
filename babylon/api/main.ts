@@ -18,6 +18,7 @@ import { readMasterResets } from "./masterReset";
 import { handleAdmin } from "./admin";
 import { handleReferidos } from "./referidos";
 import { handleTienda } from "./tienda";
+import { handleMercado } from "./mercado";
 
 const PORT = Number(process.env.PORT || 3400);
 const DATABASE_URL = process.env.DATABASE_URL || "postgres://postgres:admin@127.0.0.1:5432/openmu";
@@ -28,7 +29,7 @@ const ORIGINS = new Set(
     .filter(Boolean),
 );
 
-const sql = postgres(DATABASE_URL, { max: 2, idle_timeout: 30 });
+const sql = postgres(DATABASE_URL, { max: 2, idle_timeout: 30, onnotice: () => {} });
 
 // Atributos de OpenMU (MUnique.OpenMU.GameLogic.Attributes.Stats).
 const LEVEL = "560931ad-0901-4342-b7f4-fd2e2fcc0563";
@@ -282,6 +283,8 @@ Bun.serve({
     if (referidos) return referidos;
     const tienda = await handleTienda(req, url, cors, sql);
     if (tienda) return tienda;
+    const mercado = await handleMercado(req, url, cors, sql);
+    if (mercado) return mercado;
     const panel = await handlePanel(req, url, cors, sql);
     if (panel) return panel;
     const admin = await handleAdmin(req, url, cors, sql, () => cached("status-admin", 20, status).then(JSON.parse));

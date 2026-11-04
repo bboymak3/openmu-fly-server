@@ -199,6 +199,7 @@
     try {
       const stats = call("/admin/stats");
       loadShop();
+      loadEconomy();
       render(await stats);
     } catch (e) {
       if (!$("#panel-view").hidden) toast(e.message, true);
@@ -357,6 +358,40 @@
     if (!confirm(`¿${points < 0 ? "Quitar" : "Dar"} ${Math.abs(points)} ${coin} a ${f.account.value}?`)) return;
     const ok = await shopCall("/admin/puntos/dar", { account: f.account.value.trim(), points, currency: f.currency.value }, f.querySelector("button"));
     if (ok) f.reset();
+  });
+
+
+  // ---------- Economia / mercado ----------
+  async function loadEconomy() {
+    try {
+      const d = await call("/admin/economia");
+      const f = $("#eco-form");
+      f.rate.value = d.rate;
+      f.tax.value = d.tax;
+      const tile = (label, value) => `<div class="card tile"><span>${label}</span><b>${Number(value).toLocaleString("es")}</b></div>`;
+      $("#eco-tiles").innerHTML = tile("🟢 A la venta", d.stats.active) + tile("✅ Ventas", d.stats.sold) + tile("🔷 Movido", d.stats.volume) + tile("🏛 Impuestos", d.stats.taxes);
+      $("#eco-recent").innerHTML = d.recent.length
+        ? d.recent.map(r => `<tr><td>${esc(r.label)}</td><td>${esc(r.seller ?? "—")}</td><td>${esc(r.buyer ?? "—")}</td><td class="num">${r.price}</td><td class="num">${r.tax}</td></tr>`).join("")
+        : '<tr><td colspan="5" class="skeleton">Todavía no hay ventas en el mercado.</td></tr>';
+    } catch (e) {
+      $("#eco-recent").innerHTML = `<tr><td colspan="5" class="skeleton">${esc(e.message)}</td></tr>`;
+    }
+  }
+
+  $("#eco-form").addEventListener("submit", async e => {
+    e.preventDefault();
+    const f = e.target;
+    const btn = f.querySelector("button");
+    btn.disabled = true;
+    try {
+      const res = await call("/admin/economia/guardar", { method: "POST", body: { rate: Number(f.rate.value), tax: Number(f.tax.value) } });
+      toast(res.message);
+      await loadEconomy();
+    } catch (err) {
+      toast(err.message, true);
+    } finally {
+      btn.disabled = false;
+    }
   });
 
   if (store.get()) load();
