@@ -361,6 +361,30 @@ desbloquear el personaje (lo manda a su ciudad), Reset, Master Reset y cambiar l
 
 ## 9. Cloudflare: túnel, caché y Pages
 
+### Tienda de puntos
+
+Código: `openmu-barrio/BarrioPointsPlugIn.cs` (puntos y NPC), `babylon/api/tienda.ts` (API),
+la sección `#tienda` de Mi cuenta y la de `web/admin.html`.
+
+- **Los puntos** son los Goblin Points de la cuenta. Se ganan al matar los monstruos dorados de
+  las invasiones (Golden Budge Dragon, Goblin, Soldier, Titan, Lizard King, Vepar, Tantallos,
+  Wheel, Golden Dragon), Red Dragon, White Wizard y los jefes (Phoenix of Darkness de Icarus,
+  Kundun y sus ilusiones de Kalima, Erohim, Balgass, Nightmare y las manos de Maya, Selupan).
+  Cuenta el que mata, o el dueño de la invocación que mató. El juego avisa: "+5 puntos…".
+- **Cuántos da cada uno**: `~/openmu/data/puntos.json` (número de monstruo: puntos). OpenMU lo
+  crea con los valores por defecto y lo vuelve a leer solo cuando cambia; se edita desde el
+  **panel admin → Puntos por monstruo**.
+- **NPC Cambista** (Golden Archer) en Lorencia, x 142 y 124, al lado de Guerrero y Fortuna: al
+  hablarle dice cuántos puntos tienes y dónde cambiarlos.
+- **Tienda** en **Mi cuenta → Tienda de puntos**: se compra fuera del juego y lo comprado llega
+  al **baúl**, al primer hueco donde quepa (si no cabe, no cobra). Viene con Bless (10), Soul (10)
+  y Chaos (15) a la venta, y apagados (para prender desde el panel): alas de 1ra de cada clase
+  (300) y armas básicas +15 (200).
+- **Panel admin → Tienda de puntos**: prender o apagar cada item, precio y máximo por compra;
+  agregar items (grupo / número / nivel); quitar; dar o quitar puntos a una cuenta (fuera del
+  juego); quién tiene más puntos y los últimos movimientos.
+- El catálogo está en `barrio.points_shop` y los movimientos en `barrio.points_log`.
+
 ### Referidos (Invita y gana)
 
 Código: `babylon/api/referidos.ts` (API), `web/cuenta.html` / `cuenta.js` (Mi cuenta) y la

@@ -44,6 +44,10 @@ instalador de Windows.
   mapas (el doble en ALTOBARINAS o con el buff de Fortuna).
 - **Set gratis**: cada personaje nuevo recibe en la bolsa el set básico de su clase
   (Pad, Leather, Vine o Mistery).
+- **Tienda de puntos**: matar monstruos dorados de las invasiones y jefes (Icarus, Kalima,
+  Crywolf, Kanturu, Raklion, Land of Trials) da puntos. El **Cambista** de Lorencia te dice
+  cuántos tienes y en **Mi cuenta → Tienda de puntos** se cambian por Bless, Soul, Chaos y
+  lo que el admin prenda (alas de 1ra, armas +15…), que llega al baúl.
 
 **Celular** (solo en el teléfono; la PC queda igual)
 - **Joystick** para caminar sin tocar el piso.
@@ -72,7 +76,8 @@ instalador de Windows.
   y alas de 3ra; el invitado gana 3 Bless + 3 Soul + 5.000.000 de zen. Se piden desde la
   web y llegan al baúl (vacío). Máximo 10 por mes y 8 cuentas por casa. Ranking de
   reclutadores del mes y de siempre.
-- **Panel admin** (solo GM): jugadores en línea, cuentas y personajes por día, visitas
+- **Panel admin** (solo GM): tienda de puntos (qué se vende, precios, puntos por monstruo,
+  dar puntos), jugadores en línea, cuentas y personajes por día, visitas
   por país y caché (Cloudflare), descargas del instalador y botón para purgar la caché.
 
 **Vigilancia**
@@ -177,6 +182,11 @@ bash ~/barriomu.sh joyas 1        # joyas al 1% por monstruo en todos los mapas 
 bash ~/barriomu.sh cloudflare     # guarda en la tablet el token de Cloudflare del panel admin
 ```
 
+### Ver los puntos por monstruo (se editan en el panel admin)
+```bash
+proot-distro login ubuntu -- cat ~/openmu/data/puntos.json
+```
+
 ### Revisar los referidos
 ```bash
 psql -U postgres -d openmu -c 'select * from barrio.referral order by linked_at desc limit 30'
@@ -231,7 +241,8 @@ Cambios sobre OpenMU (`openmu-barrio/`):
 - Premio diario (`BarrioDailyRewardPlugIn`), Master Reset (`BarrioMasterResetPlugIn`,
   `~/openmu/data/master-reset.json`), NPCs de buff (`BarrioBuffNpcsPlugIn`,
   `~/openmu/data/buffs-npc.json`), NPCs de las ciudades (`BarrioTownNpcsPlugIn`) y set
-  gratis (`BarrioStarterSetPlugIn`).
+  gratis (`BarrioStarterSetPlugIn`), puntos por dorados y jefes y NPC Cambista
+  (`BarrioPointsPlugIn`, `~/openmu/data/puntos.json`).
 
 Cambios sobre el cliente (`babylon/personalizar-cliente.sh` y `babylon/patch-client.py`):
 - Logo, lista de mundos (solo BarrioMU) y controles del celular (`babylon/mobile/`).
@@ -250,7 +261,7 @@ Cambios sobre el cliente (`babylon/personalizar-cliente.sh` y `babylon/patch-cli
 | `babylon/barriomu.sh` | Prender, apagar, vigilar y configurar todo |
 | `babylon/iniciar-cliente.sh` | Arranca proxy, página, registro y API (lo usa barriomu.sh) |
 | `babylon/servir.ts` | Servidor web mínimo de la página y el registro |
-| `babylon/api/` | API de la página: estado, rankings, Mi cuenta (`panel.ts`), admin (`admin.ts`), referidos (`referidos.ts`) |
+| `babylon/api/` | API de la página: estado, rankings, Mi cuenta (`panel.ts`), admin (`admin.ts`), referidos (`referidos.ts`), tienda de puntos (`tienda.ts`) |
 | `babylon/mobile/` | Controles del celular: joystick, rueda de combate, pociones, dedo como cursor (`touchHover.ts`) |
 | `babylon/personalizar-cliente.sh`, `babylon/patch-client.py` | Cambios de BarrioMU sobre el cliente (web y PC) |
 | `babylon/branding/` | Logo, iconos y lista de servidores |

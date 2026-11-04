@@ -497,3 +497,25 @@ img { display: block; max-width: 100%; }
 .ref-cta { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 20px 0 8px; }
 .ref-top { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 12px; }
 .ref-top h3 { margin: 0 0 8px; font-family: var(--display); color: var(--gold-2); text-align: center; }
+
+/* ---------- Tienda de puntos ---------- */
+.shop-points { color: var(--muted); }
+.shop-points b { color: var(--gold-2); font-size: 1.3rem; }
+.shop-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.shop-buy { display: flex; gap: 6px; align-items: center; }
+.shop-qty, .shop-admin input[type=number] {
+  width: 72px; padding: 6px 8px; border-radius: 8px; border: 1px solid rgba(232, 183, 92, 0.45);
+  background: #07060a; color: var(--text); font: inherit;
+}
+.shop-how { margin-top: 14px; color: var(--muted); }
+.shop-how summary { cursor: pointer; color: var(--blue); }
+.shop-admin td { vertical-align: middle; }
+.shop-admin input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--gold); }
+.shop-actions { display: flex; justify-content: flex-end; margin: 10px 0 18px; }
+.shop-add { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; align-items: end; }
+.shop-add .wide { grid-column: 1 / -1; }
+.shop-add input { width: 100%; }
+.admin-h3 { margin: 18px 0 8px; font-family: var(--display); color: var(--gold-2); }
+.shop-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+td.ok { color: var(--green); }
+td.bad { color: var(--red); }

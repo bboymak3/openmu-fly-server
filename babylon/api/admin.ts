@@ -28,6 +28,7 @@ import {
   recentFails,
 } from "./panel";
 import { readMasterResets } from "./masterReset";
+import { adminAddItem, adminDeleteItem, adminGivePoints, adminSaveItems, adminSaveMonsters, adminShop } from "./tienda";
 
 const LEVEL = "560931ad-0901-4342-b7f4-fd2e2fcc0563";
 const RESETS = "89a891a7-f9f9-4ab5-af36-12056e53a5f7";
@@ -361,6 +362,12 @@ export async function handleAdmin(
     "/admin/login": ["POST", () => login(req, sql)],
     "/admin/stats": ["GET", () => stats(req, sql, status)],
     "/admin/purge": ["POST", () => purge(req)],
+    "/admin/tienda": ["GET", () => (session(req), adminShop(sql))],
+    "/admin/tienda/guardar": ["POST", () => (session(req), adminSaveItems(req, sql))],
+    "/admin/tienda/agregar": ["POST", () => (session(req), adminAddItem(req, sql))],
+    "/admin/tienda/quitar": ["POST", () => (session(req), adminDeleteItem(req, sql))],
+    "/admin/puntos/monstruos": ["POST", () => (session(req), adminSaveMonsters(req))],
+    "/admin/puntos/dar": ["POST", () => adminGivePoints(req, sql, session(req).accountId)],
     "/admin/logout": [
       "POST",
       async () => {

@@ -17,6 +17,7 @@ import { handlePanel } from "./panel";
 import { readMasterResets } from "./masterReset";
 import { handleAdmin } from "./admin";
 import { handleReferidos } from "./referidos";
+import { handleTienda } from "./tienda";
 
 const PORT = Number(process.env.PORT || 3400);
 const DATABASE_URL = process.env.DATABASE_URL || "postgres://postgres:admin@127.0.0.1:5432/openmu";
@@ -279,6 +280,8 @@ Bun.serve({
 
     const referidos = await handleReferidos(req, url, cors, sql);
     if (referidos) return referidos;
+    const tienda = await handleTienda(req, url, cors, sql);
+    if (tienda) return tienda;
     const panel = await handlePanel(req, url, cors, sql);
     if (panel) return panel;
     const admin = await handleAdmin(req, url, cors, sql, () => cached("status-admin", 20, status).then(JSON.parse));
