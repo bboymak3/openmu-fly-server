@@ -48,18 +48,39 @@ export const MONSTERS: { number: number; name: string; points: number; kind: str
   { number: 459, name: "Selupan (Raklion)", points: 50, kind: "Jefe" },
 ];
 
-/** Lo que trae la tienda la primera vez. Prendido: las joyas; lo demas lo prende el admin. */
+/** Lo que trae la tienda la primera vez. Prendido: joyas y alas; lo demas lo prende el admin. */
 const SEED: { group: number; number: number; level: number; label: string; price: number; enabled: boolean; maxQty: number }[] = [
+  // Joyas
   { group: 14, number: 13, level: 0, label: "Jewel of Bless", price: 10, enabled: true, maxQty: MAX_QTY },
   { group: 14, number: 14, level: 0, label: "Jewel of Soul", price: 10, enabled: true, maxQty: MAX_QTY },
   { group: 12, number: 15, level: 0, label: "Jewel of Chaos", price: 15, enabled: true, maxQty: MAX_QTY },
+  { group: 14, number: 16, level: 0, label: "Jewel of Life", price: 25, enabled: true, maxQty: MAX_QTY },
+  { group: 14, number: 22, level: 0, label: "Jewel of Creation", price: 30, enabled: true, maxQty: MAX_QTY },
   // Alas de 1ra
-  { group: 12, number: 1, level: 0, label: "Wings of Heaven (Dark Wizard)", price: 300, enabled: false, maxQty: 1 },
-  { group: 12, number: 2, level: 0, label: "Wings of Satan (Dark Knight, Magic Gladiator)", price: 300, enabled: false, maxQty: 1 },
-  { group: 12, number: 0, level: 0, label: "Wings of Elf (Fairy Elf)", price: 300, enabled: false, maxQty: 1 },
-  { group: 12, number: 41, level: 0, label: "Wings of Curse (Summoner)", price: 300, enabled: false, maxQty: 1 },
-  { group: 13, number: 30, level: 0, label: "Cape of Lord (Dark Lord)", price: 300, enabled: false, maxQty: 1 },
-  { group: 12, number: 49, level: 0, label: "Cape of Fighter (Rage Fighter)", price: 300, enabled: false, maxQty: 1 },
+  { group: 12, number: 1, level: 0, label: "Wings of Heaven (Dark Wizard)", price: 300, enabled: true, maxQty: 1 },
+  { group: 12, number: 2, level: 0, label: "Wings of Satan (Dark Knight, Magic Gladiator)", price: 300, enabled: true, maxQty: 1 },
+  { group: 12, number: 0, level: 0, label: "Wings of Elf (Fairy Elf)", price: 300, enabled: true, maxQty: 1 },
+  { group: 12, number: 41, level: 0, label: "Wings of Curse (Summoner)", price: 300, enabled: true, maxQty: 1 },
+  // Alas de 2da (el Dark Lord y el Rage Fighter empiezan con capa)
+  { group: 12, number: 4, level: 0, label: "Wings of Soul (Dark Wizard)", price: 800, enabled: true, maxQty: 1 },
+  { group: 12, number: 5, level: 0, label: "Wings of Dragon (Dark Knight)", price: 800, enabled: true, maxQty: 1 },
+  { group: 12, number: 3, level: 0, label: "Wings of Spirits (Fairy Elf)", price: 800, enabled: true, maxQty: 1 },
+  { group: 12, number: 6, level: 0, label: "Wings of Darkness (Magic Gladiator)", price: 800, enabled: true, maxQty: 1 },
+  { group: 12, number: 42, level: 0, label: "Wings of Despair (Summoner)", price: 800, enabled: true, maxQty: 1 },
+  { group: 13, number: 30, level: 0, label: "Cape of Lord (Dark Lord)", price: 800, enabled: true, maxQty: 1 },
+  { group: 12, number: 49, level: 0, label: "Cape of Fighter (Rage Fighter)", price: 800, enabled: true, maxQty: 1 },
+  // Recomendados, apagados: el admin decide
+  { group: 14, number: 31, level: 0, label: "Jewel of Guardian", price: 40, enabled: false, maxQty: 20 },
+  { group: 14, number: 42, level: 0, label: "Jewel of Harmony", price: 30, enabled: false, maxQty: 20 },
+  { group: 14, number: 41, level: 0, label: "Gemstone", price: 15, enabled: false, maxQty: 20 },
+  { group: 13, number: 14, level: 0, label: "Loch's Feather (alas de 2da)", price: 150, enabled: false, maxQty: 5 },
+  { group: 13, number: 53, level: 0, label: "Feather of Condor (alas de 3ra)", price: 400, enabled: false, maxQty: 1 },
+  { group: 13, number: 52, level: 0, label: "Flame of Condor (alas de 3ra)", price: 400, enabled: false, maxQty: 1 },
+  { group: 13, number: 0, level: 0, label: "Guardian Angel", price: 50, enabled: false, maxQty: 1 },
+  { group: 13, number: 1, level: 0, label: "Imp", price: 80, enabled: false, maxQty: 1 },
+  { group: 13, number: 2, level: 0, label: "Horn of Uniria", price: 120, enabled: false, maxQty: 1 },
+  { group: 13, number: 3, level: 0, label: "Horn of Dinorant", price: 250, enabled: false, maxQty: 1 },
+  { group: 13, number: 37, level: 0, label: "Horn of Fenrir", price: 600, enabled: false, maxQty: 1 },
   // Armas basicas +15
   { group: 0, number: 0, level: 15, label: "Kris +15", price: 200, enabled: false, maxQty: 1 },
   { group: 0, number: 1, level: 15, label: "Short Sword +15", price: 200, enabled: false, maxQty: 1 },

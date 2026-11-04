@@ -384,6 +384,12 @@ la sección `#tienda` de Mi cuenta y la de `web/admin.html`.
   agregar items (grupo / número / nivel); quitar; dar o quitar puntos a una cuenta (fuera del
   juego); quién tiene más puntos y los últimos movimientos.
 - El catálogo está en `barrio.points_shop` y los movimientos en `barrio.points_log`.
+- **Puntos por tiempo jugado y comandos /add…**: `bash ~/barriomu.sh extras` prende el plugin de
+  OpenMU `GoblinPointsForPlayTimePlugIn` (5 puntos cada hora, desde nivel 50) y los comandos
+  `/addstr`, `/addagi`, `/addvit`, `/addene`, `/addcmd`. `bash ~/barriomu.sh extras estado` lo muestra.
+- Catálogo inicial a la venta: Bless 10, Soul 10, Chaos 15, Life 25, Creation 30, alas de 1ra 300 y
+  de 2da 800. Cargados y apagados: Guardian, Harmony, Gemstone, Loch's Feather, Feather y Flame of
+  Condor, Guardian Angel, Imp, Uniria, Dinorant, Fenrir y armas básicas +15.
 
 ### Referidos (Invita y gana)
 
