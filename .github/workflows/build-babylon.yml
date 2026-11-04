@@ -102,6 +102,7 @@ jobs:
         env:
           # Carpetas de graficos del cliente: van solo en el paquete completo.
           HEAVY_DIRS: Data game-assets packs items bundles
+          GRAFICOS_VERSION: g1
         run: |
           mv client-src/dist out/client
           mv client-src/dist-register out/register
@@ -112,9 +113,14 @@ jobs:
           tar -czf babylon-proxy-arm64.tar.gz -C out proxy register mu-servir iniciar-cliente.sh
           # Huella de los graficos (lo pesado, que casi nunca cambia). La actualizacion corta
           # (actualizar-babylon.sh) solo trae el codigo y exige que la huella sea la misma.
-          (cd out && for d in $HEAVY_DIRS; do [ -d "client/$d" ] && find "client/$d" -type f; done | sort | xargs -d '\n' sha256sum | sha256sum | cut -c1-16) > out/DATA_VERSION
+          # No se calcula sobre los bytes: las copias livianas (WebP, Opus) no salen identicas
+          # en cada compilacion aunque los graficos sean los mismos. Depende de la version fija
+          # del cliente y de GRAFICOS_VERSION: subirla a mano si se cambian los graficos.
+          echo "$(cat out/VERSION)-$GRAFICOS_VERSION" > out/DATA_VERSION
           echo "DATA_VERSION: $(cat out/DATA_VERSION)"
-          excludes=(); for d in $HEAVY_DIRS; do excludes+=(--exclude="./client/$d"); done
+          # El indice de graficos (assets-index*.json) guarda los tamanos de cada paquete de
+          # bundles/: va con los graficos, no con el codigo, para que siempre coincidan.
+          excludes=(--exclude='./client/assets-index*.json'); for d in $HEAVY_DIRS; do excludes+=(--exclude="./client/$d"); done
           tar -czf babylon-codigo-arm64.tar.gz -C out "${excludes[@]}" .
           du -sh out babylon-proxy-arm64.tar.gz babylon-codigo-arm64.tar.gz
 
