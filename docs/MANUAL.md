@@ -600,6 +600,39 @@ bash ~/barriomu.sh logs
 
 ## 14. Seguridad
 
+### Que no se dupliquen items ni monedas
+
+- Todo lo que cambia una cuenta desde la web (tienda, Plaza, referidos, cambio de monedas, Add Points,
+  resets, dar monedas desde el admin) se hace **con la cuenta fuera del juego**: se revisa antes de
+  empezar y **otra vez justo antes de guardar**; si entró al juego en el medio, se deshace todo
+  (`offlineTransaction` en `babylon/api/panel.ts`). Además hay que esperar un minuto después de salir,
+  para que OpenMU termine de guardar.
+- Cada operación es una transacción con la fila bloqueada: dos clics, dos pestañas o dos celulares a la
+  vez no compran, cobran ni venden dos veces.
+- En la Plaza el item a la venta sale del baúl a un baúl de custodia: no puede estar en dos lados.
+- Todo queda anotado: `barrio.points_log` (monedas y compras), `barrio.market_listing` (Plaza) y
+  `barrio.admin_log` (lo que hace cada admin; se ve abajo de todo en el panel admin).
+
+### El panel admin
+
+- Las claves se guardan con **bcrypt** (como OpenMU), que para claves es más seguro que SHA-256: es lento
+  a propósito y lleva sal, así que no sirve para adivinar claves por fuerza bruta.
+- Solo entran cuentas **GM**; tras 5 intentos fallidos por cuenta o 10 por IP se bloquea 15 minutos.
+- La sesión es un token al azar de 256 bits que vive solo en la memoria de la tablet y vence a las 2 horas.
+- La página manda cabeceras de seguridad (`web/_headers`): no se puede meter en un iframe, solo carga
+  scripts propios y solo habla con la API.
+
+### Recomendado: Cloudflare Zero Trust para el panel (gratis hasta 50 personas)
+
+Agrega un segundo candado: antes de ver el panel, Cloudflare pide **un código que llega a tu correo**.
+1. En Cloudflare: **Zero Trust → Access → Applications → Add an application → Self-hosted**.
+2. Nombre `Panel BarrioMU`, dominio `barriomu.makeseo.app`, ruta `admin.html` (y otra ruta `admin`).
+3. Política: **Allow**, regla **Emails** = tu correo. Método de entrada: **One-time PIN**.
+4. Guardar. Desde ese momento, abrir el panel pide el código del correo y después el usuario GM.
+Si alguien consigue la clave GM, igual no entra sin tu correo.
+
+
+
 - **Nunca compartas** el token del túnel (`~/.barriomu-token`), el token de Cloudflare del panel admin
   (`~/.barriomu-cloudflare`), contraseñas de SSH ni la clave de la base de datos.
 - Las cuentas de prueba `barrio01`…`barrio10` tienen la clave igual al usuario: cámbiales la clave

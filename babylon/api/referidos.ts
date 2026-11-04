@@ -15,7 +15,7 @@
 
 import type { Sql } from "postgres";
 import { createHash } from "node:crypto";
-import { PanelError, body, clientIp, json, requireOffline, session } from "./panel";
+import { PanelError, body, clientIp, json, offlineTransaction, requireOffline, session } from "./panel";
 
 const LEVEL = "560931ad-0901-4342-b7f4-fd2e2fcc0563";
 const RESETS = "89a891a7-f9f9-4ab5-af36-12056e53a5f7";
@@ -373,8 +373,7 @@ async function claim(req: Request, sql: Sql) {
       : { group: 12, number: w.third, name: w.thirdName };
   }
 
-  await requireOffline(s.login);
-  return sql.begin(async tx => {
+  return offlineTransaction(sql, s.login, async tx => {
     const [done] = await tx`
       insert into barrio.referral_claim (account, reward, detail) values (${s.accountId}, ${reward.key}, ${wing?.name ?? null})
       on conflict do nothing returning 1`;

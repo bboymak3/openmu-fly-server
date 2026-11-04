@@ -200,6 +200,7 @@
       const stats = call("/admin/stats");
       loadShop();
       loadEconomy();
+      loadAudit();
       render(await stats);
     } catch (e) {
       if (!$("#panel-view").hidden) toast(e.message, true);
@@ -393,6 +394,17 @@
       btn.disabled = false;
     }
   });
+
+
+  // ---------- Registro del admin ----------
+  async function loadAudit() {
+    try {
+      const rows = await call("/admin/registro");
+      $("#audit-log").innerHTML = rows.length
+        ? rows.map(r => `<tr><td><small>${when(r.at)}</small></td><td>${esc(r.account ?? "—")}</td><td>${esc(r.action)}</td><td><small class="muted">${esc(r.ip ?? "")}</small></td></tr>`).join("")
+        : '<tr><td class="skeleton">Sin acciones todavía.</td></tr>';
+    } catch {}
+  }
 
   if (store.get()) load();
   else showLogin();

@@ -49,6 +49,7 @@ const GITHUB_RELEASE = "https://api.github.com/repos/bboymak3/openmu-fly-server/
 
 const SESSION_MS = 2 * 60 * 60 * 1000;
 const sessions = new Map<string, { accountId: string; login: string; expires: number }>();
+const pendingLogin = new WeakMap<Request, string>();
 
 setInterval(() => {
   const now = Date.now();
@@ -111,6 +112,8 @@ async function login(req: Request, sql: Sql) {
   }
   const token = crypto.randomUUID() + crypto.randomUUID().replaceAll("-", "");
   sessions.set(token, { accountId: account.id, login: account.login, expires: Date.now() + SESSION_MS });
+  // El registro lee la sesion por el token de la peticion; en el login todavia no lo trae.
+  pendingLogin.set(req, account.login);
   return { token, account: account.login };
 }
 
@@ -350,6 +353,55 @@ async function stats(req: Request, sql: Sql, status: Status) {
   return { account: s.login, game, cloudflare, downloads, updated: new Date().toISOString() };
 }
 
+// ---------------------------------------------------------------- registro
+
+const ACTIONS: Record<string, string> = {
+  "/admin/login": "Entro al panel",
+  "/admin/purge": "Borro la cache de Cloudflare",
+  "/admin/tienda/guardar": "Cambio la tienda",
+  "/admin/tienda/agregar": "Agrego un item a la tienda",
+  "/admin/tienda/quitar": "Quito un item de la tienda",
+  "/admin/puntos/monstruos": "Cambio los puntos por monstruo",
+  "/admin/puntos/dar": "Dio o quito monedas",
+  "/admin/economia/guardar": "Cambio la tasa o el impuesto",
+};
+
+let auditReady: Promise<void> | null = null;
+
+function ensureAudit(sql: Sql): Promise<void> {
+  auditReady ??= (async () => {
+    await sql`create schema if not exists barrio`;
+    await sql`
+      create table if not exists barrio.admin_log (
+        id bigserial primary key,
+        at timestamptz not null default now(),
+        account text,
+        action text not null,
+        ip text)`;
+  })().catch(error => {
+    auditReady = null;
+    throw error;
+  });
+  return auditReady;
+}
+
+/** Todo lo que hace un admin queda anotado: quien, que, cuando y desde que IP. */
+async function audit(req: Request, sql: Sql, path: string): Promise<void> {
+  try {
+    await ensureAudit(sql);
+    const token = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? "";
+    const who = sessions.get(token)?.login ?? pendingLogin.get(req) ?? null;
+    await sql`insert into barrio.admin_log (account, action, ip) values (${who}, ${ACTIONS[path] ?? path}, ${clientIp(req)})`;
+  } catch (error) {
+    console.error("admin_log", error);
+  }
+}
+
+async function auditLog(sql: Sql) {
+  await ensureAudit(sql);
+  return sql`select at, account, action, ip from barrio.admin_log order by at desc limit 40`;
+}
+
 /** Rutas /admin/*; null si la ruta no es del panel admin. */
 export async function handleAdmin(
   req: Request,
@@ -371,6 +423,7 @@ export async function handleAdmin(
     "/admin/puntos/dar": ["POST", () => adminGivePoints(req, sql, session(req).accountId)],
     "/admin/economia": ["GET", () => (session(req), adminMarket(sql))],
     "/admin/economia/guardar": ["POST", () => (session(req), adminSaveEconomy(req, sql))],
+    "/admin/registro": ["GET", () => (session(req), auditLog(sql))],
     "/admin/logout": [
       "POST",
       async () => {
@@ -383,7 +436,9 @@ export async function handleAdmin(
   if (!route) return json({ error: "No encontrado." }, 404, cors);
   if (req.method !== route[0]) return json({ error: "Metodo no permitido." }, 405, cors);
   try {
-    return json(await route[1](), 200, cors);
+    const result = await route[1]();
+    if (req.method === "POST" && url.pathname !== "/admin/logout") await audit(req, sql, url.pathname);
+    return json(result, 200, cors);
   } catch (error) {
     if (error instanceof PanelError) return json({ error: error.message }, error.status, cors);
     console.error(url.pathname, error);
