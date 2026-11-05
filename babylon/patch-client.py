@@ -305,6 +305,20 @@ PATCHES = [
         "        width={108}\n        height={29}\n        frames={{ up: 0, active: 1, down: 2 }}\n        label={t('muHelperButtons.settings')}\n        labelStyle={{ fontWeight: 'bold', fontSize: 11 }}",
         "        width={34}\n        height={29}\n        frames={{ up: 0, active: 1, down: 2 }}\n        label={'A'}\n        labelStyle={{ fontWeight: 'bold', fontSize: 12 }}",
     ),
+    # BarrioMU: el boton de "Restablecer camara" compacto (una letra R) para
+    # que quepa en la linea superior del celular, de primero a la IZQUIERDA de
+    # la camara (la posicion la manda barrio.less; solo se ve si la vista
+    # salio del encuadre de apertura).
+    (
+        "versions/shared/ui/hud/camera_reset/index.tsx",
+        "    <div\n      style={{\n        position: 'absolute',\n        top: TOP,\n",
+        "    <div\n      className=\"barrio-camera-reset\"\n      style={{\n        position: 'absolute',\n        top: TOP,\n",
+    ),
+    (
+        "versions/shared/ui/hud/camera_reset/index.tsx",
+        "        width={108}\n        height={29}\n        frames={{ up: 0, active: 1, down: 2 }}\n        label={t('camera.reset')}\n        labelStyle={{ fontWeight: 'bold', fontSize: 11 }}",
+        "        width={34}\n        height={29}\n        frames={{ up: 0, active: 1, down: 2 }}\n        label={'R'}\n        labelStyle={{ fontWeight: 'bold', fontSize: 12 }}",
+    ),
     # El vigilante (scripts/vigilante.js) lee la pantalla actual y elige el personaje.
     (
         "src/app/boot.tsx",

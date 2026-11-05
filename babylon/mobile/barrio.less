@@ -80,7 +80,7 @@
   left: auto !important;
   transform: none !important;
 }
-// Los dos botoncitos del ayudante (B = activar/detener, A = ajustar) entran
+// Las dos botoncitos del ayudante (B = activar/detener, A = ajustar) entran
 // en la misma linea superior: pegados a la derecha del chat, centrados como
 // el resto (camara al centro como guia; 4 botones en linea arriba).
 .mu-mobile .mu-helper-buttons {
@@ -89,6 +89,17 @@
   left: calc(50% + 74px) !important;
   transform: none !important;
   transform-origin: left top;
+}
+
+// El boton de restablecer camara (R) compacto y DE PRIMERO en la linea: un
+// cuadrito a la IZQUIERDA de la camara (la camara sigue centrada como guia).
+// Solo aparece cuando la vista salio del encuadre de apertura.
+.mu-mobile .barrio-camera-reset {
+  top: 4px !important;
+  right: auto !important;
+  left: calc(50% - 60px) !important;
+  transform: none !important;
+  transform-origin: right top;
 }
 
 // ---- the classic bar's own buttons are ON in the menu cluster already ------
@@ -301,9 +312,11 @@
   }
 }
 
-// Sobre el borde izquierdo (las dos X verdes), arriba del boton M.
-.barrio-potion-q { bottom: 172px; }
-.barrio-potion-w { bottom: 120px; }
+// Sobre el borde izquierdo, DOS ESPACIOS mas abajo que antes: el primer
+// boton quedaba tapado por la camara frontal del telefono. Siguen en su
+// misma columna, sin tocar el boton M (que vive dentro de la barra).
+.barrio-potion-q { bottom: 124px; }
+.barrio-potion-w { bottom: 72px; }
 
 // ---- with an item window open, the combat wheel steps aside -----------------
 // (it sits where the inventory opens; the finger would hit a skill, not the item)
