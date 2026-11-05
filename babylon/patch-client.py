@@ -339,7 +339,7 @@ PATCHES = [
 """,
     ),
     # BarrioMU: el menu del click secundario (trueque, party, susurro...) se
-    # despliega tambien dejando presionado 1 segundo el NOMBRE de otro
+    # despliega tambien dejando presionado 0.7 segundos el NOMBRE de otro
     # jugador sobre el mapa (los globos de nombre son DOM; barrio.less da el
     # toque a la linea del nombre).
     (
@@ -351,8 +351,8 @@ PATCHES = [
         "versions/shared/ui/hud/name_tags/index.tsx",
         "type Slot = TagSlot<TagEntity, HTMLDivElement>;",
         """// BarrioMU: el menu del click secundario (trueque, party, susurro...) con la
-// presion larga (1 s) sobre el nombre de otro jugador en el mapa. El dedo
-// que se mueve mas de 24px o que levanta antes cancela; Commands.openQuickOn
+// presion larga (0.7 s) sobre el nombre de otro jugador en el mapa. El dedo
+// que se mueve mas de 48px o que levanta antes cancela; Commands.openQuickOn
 // rechaza al heroe, los NPC y los que quedan fuera del alcance.
 let barrioPressToken = 0;
 
@@ -362,9 +362,20 @@ const barrioArmLongPress = (entity: Entity, el: HTMLElement) => {
     const startX = ev.clientX;
     const startY = ev.clientY;
     const timer = window.setTimeout(() => {
-      if (token === barrioPressToken)
-        Commands.openQuickOn(entity, startX, startY);
-    }, 1000);
+      if (token === barrioPressToken) {
+        if (!Commands.openQuickOn(entity, startX, startY)) return;
+        // BarrioMU: ademas del cierre del propio menu, cada toque NUEVO de
+        // pantalla fuera del cuadrito lo cierra (captura en el descendente:
+        // llega antes que cualquier otra capa).
+        const closer = (outside: PointerEvent) => {
+          const hit = outside.target as HTMLElement | null;
+          if (hit && hit.closest && hit.closest('.quick-command-window')) return;
+          Commands.closeQuick();
+          window.removeEventListener('pointerdown', closer, true);
+        };
+        window.addEventListener('pointerdown', closer, true);
+      }
+    }, 700);
     const cleanup = () => {
       if (token !== barrioPressToken) return;
       barrioPressToken++;
@@ -376,7 +387,7 @@ const barrioArmLongPress = (entity: Entity, el: HTMLElement) => {
     const onMove = (e: PointerEvent) => {
       const dx = e.clientX - startX;
       const dy = e.clientY - startY;
-      if (dx * dx + dy * dy > 576) cleanup();
+      if (dx * dx + dy * dy > 2304) cleanup();
     };
     const onEnd = () => cleanup();
     window.addEventListener('pointermove', onMove);
