@@ -339,7 +339,7 @@ PATCHES = [
 """,
     ),
     # BarrioMU: el menu del click secundario (trueque, party, susurro...) se
-    # despliega tambien dejando presionado 1.7 segundos el NOMBRE de otro
+    # despliega tambien dejando presionado 1 segundo el NOMBRE de otro
     # jugador sobre el mapa (los globos de nombre son DOM; barrio.less da el
     # toque a la linea del nombre).
     (
@@ -351,8 +351,8 @@ PATCHES = [
         "versions/shared/ui/hud/name_tags/index.tsx",
         "type Slot = TagSlot<TagEntity, HTMLDivElement>;",
         """// BarrioMU: el menu del click secundario (trueque, party, susurro...) con la
-// presion larga (1.7 s) sobre el nombre de otro jugador en el mapa. El dedo
-// que se mueve mas de 12px o que levanta antes cancela; Commands.openQuickOn
+// presion larga (1 s) sobre el nombre de otro jugador en el mapa. El dedo
+// que se mueve mas de 24px o que levanta antes cancela; Commands.openQuickOn
 // rechaza al heroe, los NPC y los que quedan fuera del alcance.
 let barrioPressToken = 0;
 
@@ -364,7 +364,7 @@ const barrioArmLongPress = (entity: Entity, el: HTMLElement) => {
     const timer = window.setTimeout(() => {
       if (token === barrioPressToken)
         Commands.openQuickOn(entity, startX, startY);
-    }, 1700);
+    }, 1000);
     const cleanup = () => {
       if (token !== barrioPressToken) return;
       barrioPressToken++;
@@ -376,7 +376,7 @@ const barrioArmLongPress = (entity: Entity, el: HTMLElement) => {
     const onMove = (e: PointerEvent) => {
       const dx = e.clientX - startX;
       const dy = e.clientY - startY;
-      if (dx * dx + dy * dy > 144) cleanup();
+      if (dx * dx + dy * dy > 576) cleanup();
     };
     const onEnd = () => cleanup();
     window.addEventListener('pointermove', onMove);

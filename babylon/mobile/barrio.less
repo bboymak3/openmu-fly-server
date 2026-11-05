@@ -113,17 +113,36 @@
 }
 
 // El menu del click secundario en el celular: se despliega dejando apretado
-// 1.7 segundos el NOMBRE de otro jugador sobre el mapa. La capa de los
-// nombres no toca el puntero de por si; solo la linea del nombre recibe el
-// toque, para que el resto del globo (chat, guild) siga siendo "aire".
+// 1 segundo el NOMBRE de otro jugador sobre el mapa. La capa de los nombres
+// no toca el puntero de por si; solo la linea del nombre recibe el toque, y
+// con una zona invisible mas grande (el radio no cambia el dibujo del globo
+// ni el acomodo).
 .mu-mobile .name-tag .line.barrio-name {
+  position: relative;
   pointer-events: auto;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: -6px -16px;
+    pointer-events: auto;
+  }
 }
 
 // ---- the classic bar's own buttons are ON in the menu cluster already ------
 // (the main-frame buttons used to appear twice: cluster top-right and bar)
 
 .mu-mobile .bottom-bar .bar-button { display: none; }
+
+// La barra RECORTADA en el celular: fuera la franja negra de la izquierda
+// (los huecos de la correa Q/W/E/R, que ya no existen) y la franja negra del
+// final (las casillas de los botones del cuadro principal, que estan ocultas
+// y quedan debajo del grupo del puño). El recorte es en % del ancho de la
+// propia barra, asi cuadra en cualquier resolucion; los orbes y los slots de
+// habilidades quedan (las casillas del disenno empiezan mas adelante).
+.mu-mobile .bottom-bar {
+  clip-path: inset(0 23.5% 0 18.75% round 10px);
+}
 
 // ---- target list, top left beside the column --------------------------------
 
@@ -185,7 +204,7 @@
 .barrio-combat {
   position: absolute;
   right: 10px;
-  bottom: 10px;
+  bottom: 2px;
   width: 230px;
   height: 200px;
   pointer-events: none;
