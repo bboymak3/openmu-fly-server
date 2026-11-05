@@ -292,6 +292,19 @@ PATCHES = [
         "    <div\n      style={{\n        position: 'absolute',\n        top,\n",
         "    <div\n      className=\"mu-helper-buttons\"\n      style={{\n        position: 'absolute',\n        top,\n",
     ),
+    # BarrioMU: el ayudante compacto, dos botoncitos de una letra que caben en
+    # la linea superior del celular junto a camara y chat (B = activar/detener,
+    # A = ajustar). La posicion la manda barrio.less.
+    (
+        "versions/shared/ui/hud/mu_helper_buttons/index.tsx",
+        "        width={108}\n        height={29}\n        frames={{ up: 0, active: 1, down: 2 }}\n        label={t(MuHelper.active ? 'muHelperButtons.stop' : 'muHelperButtons.start')}\n        labelStyle={{ fontWeight: 'bold', fontSize: 11, color: MuHelper.active ? '#7CFC7C' : '#FFD700' }}",
+        "        width={34}\n        height={29}\n        frames={{ up: 0, active: 1, down: 2 }}\n        label={'B'}\n        labelStyle={{ fontWeight: 'bold', fontSize: 12, color: MuHelper.active ? '#7CFC7C' : '#FFD700' }}",
+    ),
+    (
+        "versions/shared/ui/hud/mu_helper_buttons/index.tsx",
+        "        width={108}\n        height={29}\n        frames={{ up: 0, active: 1, down: 2 }}\n        label={t('muHelperButtons.settings')}\n        labelStyle={{ fontWeight: 'bold', fontSize: 11 }}",
+        "        width={34}\n        height={29}\n        frames={{ up: 0, active: 1, down: 2 }}\n        label={'A'}\n        labelStyle={{ fontWeight: 'bold', fontSize: 12 }}",
+    ),
     # El vigilante (scripts/vigilante.js) lee la pantalla actual y elige el personaje.
     (
         "src/app/boot.tsx",

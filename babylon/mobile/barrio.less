@@ -32,7 +32,7 @@
 // completa. La M queda DENTRO de la barra, abajo a la izquierda (X violeta).
 .mobile-controls .mobile-camera-button {
   position: absolute;
-  top: 44px;
+  top: 4px;
   left: 50%;
   transform: translateX(-50%);
   pointer-events: auto;
@@ -41,7 +41,7 @@
 }
 .mobile-controls .mobile-chat-button {
   position: absolute;
-  top: 44px;
+  top: 4px;
   left: calc(50% + 26px);
   pointer-events: auto;
   cursor: pointer;
@@ -80,11 +80,15 @@
   left: auto !important;
   transform: none !important;
 }
+// Los dos botoncitos del ayudante (B = activar/detener, A = ajustar) entran
+// en la misma linea superior: pegados a la derecha del chat, centrados como
+// el resto (camara al centro como guia; 4 botones en linea arriba).
 .mu-mobile .mu-helper-buttons {
-  top: 100px !important;
-  right: 8px !important;
-  transform: scale(0.78) !important;
-  transform-origin: right top;
+  top: 4px !important;
+  right: auto !important;
+  left: calc(50% + 74px) !important;
+  transform: none !important;
+  transform-origin: left top;
 }
 
 // ---- the classic bar's own buttons are ON in the menu cluster already ------
