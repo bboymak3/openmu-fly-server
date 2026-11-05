@@ -4,12 +4,14 @@
 
 namespace MUnique.OpenMU.GameLogic.PlugIns;
 
+using System.ComponentModel.DataAnnotations;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Threading;
 using MUnique.OpenMU.GameLogic.NPC;
+using MUnique.OpenMU.GameLogic.Views.Inventory;
 using MUnique.OpenMU.GameLogic.Views.NPC;
 using MUnique.OpenMU.PlugIns;
 
@@ -19,10 +21,14 @@ using MUnique.OpenMU.PlugIns;
 /// How many points each monster gives is in data/puntos.json (monster number: points),
 /// written with the defaults below the first time and edited from the admin panel;
 /// it is read again when it changes.
-/// The "Cambista" NPC in Lorencia tells the player how many points they have.
+/// The "Cambista" NPC in Lorencia also changes zen of the character for WCoinP of the
+/// account: the server does it itself, so it can not be duplicated. How much one WCoinP
+/// costs, how many can be changed in one click and the daily limit are in
+/// data/cambista.json; the amounts changed of the day are kept in data/cambio-zen.json,
+/// with the day in the time of Venezuela (UTC-4).
 /// </summary>
 [PlugIn]
-[Display(Name = "BarrioMU: puntos por dorados y jefes", Description = "Da puntos (Goblin Points) al matar los monstruos dorados de la invasion y los jefes; el NPC Cambista de Lorencia los muestra.")]
+[Display(Name = "BarrioMU: puntos por dorados y jefes", Description = "Da puntos (Goblin Points) al matar los monstruos dorados de la invasion y los jefes; el NPC Cambista de Lorencia los muestra y ademas cambia zen por WCoinP.")]
 [Guid("3F7B2C1D-8E4A-4B6C-9D0E-1A2B3C4D5E71")]
 public class BarrioPointsPlugIn : IAttackableGotKilledPlugIn, IObjectAddedToMapPlugIn, IPlayerTalkToNpcPlugIn
 {
@@ -84,6 +90,24 @@ public class BarrioPointsPlugIn : IAttackableGotKilledPlugIn, IObjectAddedToMapP
     private static DateTime checkedAt = DateTime.MinValue;
 
     private static DateTime fileTime = DateTime.MinValue;
+
+    /// <summary>The day changes at midnight in Venezuela (UTC-4), as in the premio diario.</summary>
+    private static readonly TimeSpan ServerTimeOffset = TimeSpan.FromHours(-4);
+
+    /// <summary>How much one WCoinP costs, while there is no data/cambista.json yet.</summary>
+    private static readonly CambistaRule CambistaDefaults = new(ZenPerWcoinP: 10_000_000, MaxPerClick: 5, DailyCap: 20);
+
+    private static readonly string CambistaFilePath = Path.Combine(AppContext.BaseDirectory, "data", "cambista.json");
+
+    private static readonly BarrioStore<CambistaState> CambistaStore = new("cambio-zen");
+
+    private static readonly Lock CambistaLock = new();
+
+    private static CambistaRule cambistaRule = CambistaDefaults;
+
+    private static DateTime cambistaCheckedAt = DateTime.MinValue;
+
+    private static DateTime cambistaFileTime = DateTime.MinValue;
 
     /// <inheritdoc />
     public async ValueTask AttackableGotKilledAsync(IAttackable killed, IAttacker? killer)
@@ -170,9 +194,106 @@ public class BarrioPointsPlugIn : IAttackableGotKilledPlugIn, IObjectAddedToMapP
         }
 
         eventArgs.HasBeenHandled = true;
+        await ExchangeZenAsync(player, npc, account).ConfigureAwait(false);
         await player.InvokeViewPlugInAsync<IShowMessageOfObjectPlugIn>(p => p.ShowMessageOfObjectAsync($"Tienes {account.GoblinPoints} puntos.", npc)).ConfigureAwait(false);
         await player.ShowBlueMessageAsync($"Cambista: tienes {account.GoblinPoints} puntos. Los ganas matando monstruos dorados y jefes.").ConfigureAwait(false);
         await player.ShowBlueMessageAsync("Cambialos en barriomu.makeseo.app > Mi cuenta > Tienda de puntos (fuera del juego).").ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Changes the zen of the character for WCoinP of the account; the server does it
+    /// itself, so it can not go duplicated. One click changes as much zen as buys,
+    /// up to the max per click and to the daily limit of the account.
+    /// </summary>
+    private static async ValueTask ExchangeZenAsync(Player player, NonPlayerCharacter npc, MUnique.OpenMU.DataModel.Entities.Account account)
+    {
+        var rule = ReadCambistaRule();
+        var login = account.LoginName ?? string.Empty;
+        if (rule.ZenPerWcoinP <= 0 || string.IsNullOrEmpty(login))
+        {
+            return;
+        }
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow + ServerTimeOffset);
+        var state = CambistaStore.Get(login);
+        if (state?.Day != today)
+        {
+            state = new CambistaState(today, 0);
+        }
+
+        var left = Math.Max(0, rule.DailyCap - state.Got);
+        var byZen = (int)((long)player.Money / rule.ZenPerWcoinP);
+        var amount = Math.Min(left, Math.Min(byZen, rule.MaxPerClick));
+        var cost = checked(amount * rule.ZenPerWcoinP);
+        if (amount <= 0)
+        {
+            if (left <= 0)
+            {
+                await player.ShowBlueMessageAsync($"Cambista: hoy cambiaste {state.Got} WCoinP (tope {rule.DailyCap}). Vuelve manana.").ConfigureAwait(false);
+            }
+            else
+            {
+                var missing = rule.ZenPerWcoinP - player.Money;
+                await player.InvokeViewPlugInAsync<IShowMessageOfObjectPlugIn>(p => p.ShowMessageOfObjectAsync($"{rule.ZenPerWcoinP:N0} zen = 1 WCoinP", npc)).ConfigureAwait(false);
+                await player.ShowBlueMessageAsync($"Cambista: cambio {rule.ZenPerWcoinP:N0} zen por 1 WCoinP (tope {rule.DailyCap} por dia). Te faltan {missing:N0} zen.").ConfigureAwait(false);
+            }
+
+            return;
+        }
+
+        if (!player.TryRemoveMoney(cost))
+        {
+            return;
+        }
+
+        if (!CambistaStore.Update(login, _ => state with { Got = state.Got + amount }))
+        {
+            // Without the counter written the change is not handed out (better keep the zen).
+            player.TryAddMoney(cost);
+            return;
+        }
+
+        account.WCoinP = (int)Math.Min((long)account.WCoinP + amount, int.MaxValue);
+        await player.InvokeViewPlugInAsync<IUpdateMoneyPlugIn>(p => p.UpdateMoneyAsync()).ConfigureAwait(false);
+        await player.InvokeViewPlugInAsync<IShowMessageOfObjectPlugIn>(p => p.ShowMessageOfObjectAsync($"+{amount} WCoinP", npc)).ConfigureAwait(false);
+        var leftAfter = Math.Max(0, rule.DailyCap - state.Got - amount);
+        await player.ShowBlueMessageAsync($"Cambista: -{cost:N0} zen, +{amount} WCoinP (hoy {state.Got + amount} de {rule.DailyCap}; quedan {leftAfter}). Gasta en barriomu.makeseo.app > La Plaza.").ConfigureAwait(false);
+    }
+
+    /// <summary>The rule of the change, from data/cambista.json (read again when it changed).</summary>
+    private static CambistaRule ReadCambistaRule()
+    {
+        lock (CambistaLock)
+        {
+            var now = DateTime.UtcNow;
+            if (now - cambistaCheckedAt > ReloadEvery)
+            {
+                cambistaCheckedAt = now;
+                try
+                {
+                    if (!File.Exists(CambistaFilePath))
+                    {
+                        Directory.CreateDirectory(Path.GetDirectoryName(CambistaFilePath)!);
+                        File.WriteAllText(CambistaFilePath, JsonSerializer.Serialize(CambistaDefaults, new JsonSerializerOptions { WriteIndented = true }));
+                    }
+
+                    var time = File.GetLastWriteTimeUtc(CambistaFilePath);
+                    if (time != cambistaFileTime
+                        && JsonSerializer.Deserialize<CambistaRule>(File.ReadAllText(CambistaFilePath)) is { } rule
+                        && rule.ZenPerWcoinP > 0)
+                    {
+                        cambistaRule = rule;
+                        cambistaFileTime = time;
+                    }
+                }
+                catch (Exception)
+                {
+                    // A broken file leaves the rule of before, cero drama.
+                }
+            }
+
+            return cambistaRule;
+        }
     }
 
     /// <summary>The points of a monster, from data/puntos.json (read again when it changed).</summary>
@@ -219,4 +340,10 @@ public class BarrioPointsPlugIn : IAttackableGotKilledPlugIn, IObjectAddedToMapP
             // A broken file keeps the last good table.
         }
     }
+
+    /// <summary>One WCoinP costs ZenPerWcoinP zen; the max changed in one click and the daily limit of one account.</summary>
+    private sealed record CambistaRule(int ZenPerWcoinP, int MaxPerClick, int DailyCap);
+
+    /// <summary>The amounts changed of the day by one account; the day is the one of Venezuela (UTC-4).</summary>
+    private sealed record CambistaState(DateOnly Day, int Got);
 }
