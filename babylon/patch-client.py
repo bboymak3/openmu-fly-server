@@ -305,6 +305,112 @@ PATCHES = [
         "        width={108}\n        height={29}\n        frames={{ up: 0, active: 1, down: 2 }}\n        label={t('muHelperButtons.settings')}\n        labelStyle={{ fontWeight: 'bold', fontSize: 11 }}",
         "        width={34}\n        height={29}\n        frames={{ up: 0, active: 1, down: 2 }}\n        label={'A'}\n        labelStyle={{ fontWeight: 'bold', fontSize: 12 }}",
     ),
+    # La correa Q/W/E/R sale del celular: ese espacio lo usan los cuadros del
+    # menu (barrio.less). Las teclas siguen sirviendo y las pociones de la
+    # columna izquierda tambien.
+    (
+        "versions/shared/ui/hud/bottom_bar/index.tsx",
+        """  return (
+    <>
+      {HOTKEY_KEYS.slice(0, slots).map((key, i) => (
+        <ConsumableItem key={key} index={i} hotKey={key} />
+      ))}
+    </>
+  );
+};
+""",
+        """  // BarrioMU: en el celular los cuatro huecos Q/W/E/R salen; ese espacio de
+  // la barra lo ocupan los cuadros del menu. Las teclas y las pociones de la
+  // columna izquierda siguen funcionando igual.
+  if (
+    typeof document !== 'undefined' &&
+    document.documentElement.classList.contains('mu-mobile')
+  ) {
+    return null;
+  }
+  return (
+    <>
+      {HOTKEY_KEYS.slice(0, slots).map((key, i) => (
+        <ConsumableItem key={key} index={i} hotKey={key} />
+      ))}
+    </>
+  );
+};
+""",
+    ),
+    # BarrioMU: el menu del click secundario (trueque, party, susurro...) se
+    # despliega tambien dejando presionado 1.7 segundos el NOMBRE de otro
+    # jugador sobre el mapa (los globos de nombre son DOM; barrio.less da el
+    # toque a la linea del nombre).
+    (
+        "versions/shared/ui/hud/name_tags/index.tsx",
+        "import { Social } from '@/modules/social/social';\nimport { guildMarkDataUrl, isEmptyGuildMark } from '@/core/guildMark';",
+        "import { Social } from '@/modules/social/social';\nimport { Commands } from '@/modules/chat/commands';\nimport { guildMarkDataUrl, isEmptyGuildMark } from '@/core/guildMark';",
+    ),
+    (
+        "versions/shared/ui/hud/name_tags/index.tsx",
+        "type Slot = TagSlot<TagEntity, HTMLDivElement>;",
+        """// BarrioMU: el menu del click secundario (trueque, party, susurro...) con la
+// presion larga (1.7 s) sobre el nombre de otro jugador en el mapa. El dedo
+// que se mueve mas de 12px o que levanta antes cancela; Commands.openQuickOn
+// rechaza al heroe, los NPC y los que quedan fuera del alcance.
+let barrioPressToken = 0;
+
+const barrioArmLongPress = (entity: Entity, el: HTMLElement) => {
+  el.addEventListener('pointerdown', (ev: PointerEvent) => {
+    const token = ++barrioPressToken;
+    const startX = ev.clientX;
+    const startY = ev.clientY;
+    const timer = window.setTimeout(() => {
+      if (token === barrioPressToken)
+        Commands.openQuickOn(entity, startX, startY);
+    }, 1700);
+    const cleanup = () => {
+      if (token !== barrioPressToken) return;
+      barrioPressToken++;
+      window.clearTimeout(timer);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onEnd);
+      window.removeEventListener('pointercancel', onEnd);
+    };
+    const onMove = (e: PointerEvent) => {
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      if (dx * dx + dy * dy > 144) cleanup();
+    };
+    const onEnd = () => cleanup();
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onEnd);
+    window.addEventListener('pointercancel', onEnd);
+  });
+};
+
+type Slot = TagSlot<TagEntity, HTMLDivElement>;""",
+    ),
+    (
+        "versions/shared/ui/hud/name_tags/index.tsx",
+        """      elSlots.set(el, slot);
+      observer?.observe(el, BORDER_BOX);
+    },
+    []
+  );""",
+        """      elSlots.set(el, slot);
+      observer?.observe(el, BORDER_BOX);
+      // BarrioMU: presion larga sobre el nombre = menu del click secundario.
+      barrioArmLongPress(entity, el);
+    },
+    []
+  );""",
+    ),
+    (
+        "versions/shared/ui/hud/name_tags/index.tsx",
+        """          className={`line${line.bold ? ' bold' : ''}${
+            state.blink && line.isName ? ' blink' : ''
+          }`}""",
+        """          className={`line${line.bold ? ' bold' : ''}${line.isName ? ' barrio-name' : ''}${
+            state.blink && line.isName ? ' blink' : ''
+          }`}""",
+    ),
     # BarrioMU: el boton de "Restablecer camara" compacto (una letra R) para
     # que quepa en la linea superior del celular, de primero a la IZQUIERDA de
     # la camara (la posicion la manda barrio.less; solo se ve si la vista

@@ -64,14 +64,24 @@
 }
 .mobile-controls .mobile-camera-button.is-on .mobile-camera-glyph { filter: drop-shadow(0 0 3px #ffd98a); }
 
-// ---- abajo: los 5 cuadritos del menu DENTRO de la franja del final de la
-// ---- barra; el boton M al otro extremo de la misma franja. Con la capa del
-// ---- celular sin z-index propio, estos dos elementos escapan a la capa
-// ---- superior de la barra con su propio z-index (150/160): flotan sobre el
-// ---- arte de la barra y siguen DEBAJO de cualquier ventana que abra el
-// ---- jugador (102..500). El ayudante queda arriba a la derecha, mas chico.
+// ---- abajo: los 5 cuadritos del menu van DENTRO de la barra, a la IZQUIERDA
+// ---- (encima de donde estaban los huecos Q/W/E/R, que ahora salen); mas
+// ---- chicos para que quepan en ese mismo espacio. El boton M queda al otro
+// ---- extremo de la franja. Con la capa del celular sin z-index propio, estos
+// ---- elementos escapan a la capa superior de la barra con su propio
+// ---- z-index (150/160/170): flotan sobre el arte de la barra y siguen DEBAJO
+// ---- de cualquier ventana que abra el jugador (102..500).
 
-.mobile-controls .mobile-menu-cluster { top: auto; bottom: 12px; right: 60px; z-index: 160; gap: 5px; }
+.mobile-controls .mobile-menu-cluster {
+  top: auto;
+  bottom: 12px;
+  left: 11.5%;
+  right: auto;
+  transform: scale(0.66);
+  transform-origin: bottom left;
+  z-index: 160;
+  gap: 5px;
+}
 // Conteo regresivo (Blood Castle, etc.): rincón superior derecho, a la misma
 // altura de siempre; debajo quedan los botones del ayudante.
 .mu-mobile .event-timers {
@@ -100,6 +110,14 @@
   left: calc(50% - 60px) !important;
   transform: none !important;
   transform-origin: right top;
+}
+
+// El menu del click secundario en el celular: se despliega dejando apretado
+// 1.7 segundos el NOMBRE de otro jugador sobre el mapa. La capa de los
+// nombres no toca el puntero de por si; solo la linea del nombre recibe el
+// toque, para que el resto del globo (chat, guild) siga siendo "aire".
+.mu-mobile .name-tag .line.barrio-name {
+  pointer-events: auto;
 }
 
 // ---- the classic bar's own buttons are ON in the menu cluster already ------
@@ -159,17 +177,19 @@
   }
 }
 
-// ---- el grupo del puño: el puño sube una fila; debajo suyo queda la fila
-// ---- de los 5 cuadritos del menu. TRES cuadros de skill alrededor del puño.
+// ---- el grupo del puño, abajo-derecha HASTA LA FRANJA de la barra (todo el
+// ---- grupo, como una sola pieza; flotando sobre el final de la barra don ---
+// ---- de estaban los cuadritos del menu). TRES cuadros de skill alrededor.
 
 .mobile-controls .mobile-skill-pad,
 .barrio-combat {
   position: absolute;
   right: 10px;
-  bottom: @bar;
+  bottom: 10px;
   width: 230px;
   height: 200px;
   pointer-events: none;
+  z-index: 170;
 }
 
 .mobile-controls .mobile-skill-pad {
