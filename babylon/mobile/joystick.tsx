@@ -9,7 +9,7 @@ import { BarrioJoystick } from '@/controllers/interface/barrioJoystick';
  */
 
 /** Pixels the knob may travel from the centre. */
-const REACH = 44;
+const REACH = 38;
 /** Below this share of `REACH` the stick counts as centred. */
 const DEAD_ZONE = 0.25;
 

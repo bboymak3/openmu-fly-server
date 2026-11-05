@@ -27,22 +27,54 @@
 
 // ---- left column: move, chat, full screen, zoom (smaller) -------------------
 
+// Ahora en 2 columnas (mitad del alto): el camara libre queda en la segunda col.
 .mobile-controls .mobile-move-button { top: @col-top; left: @col-left; }
-.mobile-controls .mobile-chat-button { top: @col-top + (@small-h + @small-gap) * 1; left: @col-left; }
-.mobile-controls .mobile-fullscreen-button { top: @col-top + (@small-h + @small-gap) * 2; left: @col-left; }
-.mobile-controls .mobile-zoom-button { top: @col-top + (@small-h + @small-gap) * 3; left: @col-left; }
-.mobile-controls .mobile-zoom-button.mobile-zoom-out { top: @col-top + (@small-h + @small-gap) * 3; left: @col-left; }
-.mobile-controls .mobile-zoom-button.mobile-zoom-in { top: @col-top + (@small-h + @small-gap) * 4; left: @col-left; }
+.mobile-controls .mobile-chat-button { top: @col-top; left: @col-left + 46px; }
+.mobile-controls .mobile-fullscreen-button { top: @col-top + (@small-h + @small-gap) * 1; left: @col-left; }
+.mobile-controls .mobile-zoom-button { top: @col-top + (@small-h + @small-gap) * 1; left: @col-left + 46px; }
+.mobile-controls .mobile-zoom-button.mobile-zoom-in { top: @col-top + (@small-h + @small-gap) * 2; left: @col-left; }
+.mobile-controls .mobile-camera-button {
+  top: @col-top + (@small-h + @small-gap) * 2;
+  left: @col-left + 46px;
+  pointer-events: auto;
+  cursor: pointer;
+  touch-action: none;
+}
 .mobile-controls .mobile-chat-button .mobile-chat-glyph { font-size: 22px; }
 .mobile-controls .mobile-fullscreen-button .mobile-fullscreen-glyph { width: 20px; height: 20px; }
 .mobile-controls .mobile-fullscreen-button .mobile-fullscreen-glyph.is-full { width: 14px; height: 14px; }
 .mobile-controls .mobile-zoom-button .mobile-zoom-glyph { font-size: 26px; }
+.mobile-controls .mobile-camera-button .mobile-camera-glyph {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 22px;
+  line-height: 1;
+}
+.mobile-controls .mobile-camera-button.is-on .mobile-camera-glyph { filter: drop-shadow(0 0 3px #ffd98a); }
 
-// ---- top right: the menu (smaller, MENU_SCALE), then event timers and MU Helper
+// ---- top: the auras (buff bar) went to the CENTER (patch-client.py) -------
+// The event timers follow under them; the MU Helper buttons shrink.
 
 .mobile-controls .mobile-menu-cluster { top: @col-top; right: @col-left; gap: 5px; }
-.mu-mobile .event-timers { top: 58px !important; }
-.mu-mobile .mu-helper-buttons { top: 106px !important; }
+.mu-mobile .event-timers {
+  top: 44px !important;
+  left: 50% !important;
+  right: auto !important;
+  transform: translateX(-50%) !important;
+}
+.mu-mobile .mu-helper-buttons {
+  top: 100px !important;
+  right: 8px !important;
+  transform: scale(0.78) !important;
+  transform-origin: right top;
+}
+
+// ---- the classic bar's own buttons are ON in the menu cluster already ------
+// (the main-frame buttons used to appear twice: cluster top-right and bar)
+
+.mu-mobile .bottom-bar .bar-button { display: none; }
 
 // ---- target list, top left beside the column --------------------------------
 
@@ -96,15 +128,16 @@
   }
 }
 
-// ---- right: the combat wheel (attack, ✕, ✋) and the 4 skills in an arc -------
+// ---- el grupo del puño: mismo sitio, mas compacto y mas chico ---------------
+// El puño, la X, la mano, la lista de objetivos y UN SOLO slot de habilidad.
 
 .mobile-controls .mobile-skill-pad,
 .barrio-combat {
   position: absolute;
   right: 10px;
   bottom: @bar;
-  width: 260px;
-  height: 240px;
+  width: 230px;
+  height: 190px;
   pointer-events: none;
 }
 
@@ -115,24 +148,34 @@
     position: absolute;
     top: 0;
     right: 0;
+    font-size: 12px;
   }
 
   .mobile-skill-slots { display: block; }
 
-  // 51x61 slots (SLOT_SCALE 1.6) around the attack button.
+  // BarrioMU: UN solo cuadro de habilidad, chico y abajo, a la izquierda del
+  // puño. Los demas cuadritos (los que repetian la forma del arco) salen: se
+  // eliguen igual desde el cuadro que queda (tocandolo se abre la lista).
   .mobile-skill-slot { position: absolute; }
-  .mobile-skill-slot:nth-child(1) { right: 150px; bottom: 0; }
-  .mobile-skill-slot:nth-child(2) { right: 146px; bottom: 70px; }
-  .mobile-skill-slot:nth-child(3) { right: 92px; bottom: 116px; }
-  .mobile-skill-slot:nth-child(4) { right: 30px; bottom: 104px; }
+  .mobile-skill-slot:nth-child(1) {
+    right: 124px;
+    bottom: 2px;
+    transform: scale(0.74);
+    transform-origin: bottom right;
+  }
+  .mobile-skill-slot:nth-child(2),
+  .mobile-skill-slot:nth-child(3),
+  .mobile-skill-slot:nth-child(4) {
+    display: none;
+  }
 }
 
 .barrio-attack {
   position: absolute;
-  right: 56px;
-  bottom: 6px;
-  width: 84px;
-  height: 84px;
+  right: 48px;
+  bottom: 4px;
+  width: 70px;
+  height: 70px;
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -140,19 +183,19 @@
   border: 3px solid #e2b45c;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.7), inset 0 0 12px rgba(255, 210, 120, 0.25);
 
-  .barrio-attack-glyph { font-size: 40px; line-height: 1; filter: drop-shadow(0 2px 2px #000); }
+  .barrio-attack-glyph { font-size: 32px; line-height: 1; filter: drop-shadow(0 2px 2px #000); }
 
   &.is-pressed { transform: scale(0.94); border-color: #ffd98a; }
 }
 
 .barrio-round {
   position: absolute;
-  width: 40px;
-  height: 40px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  font-size: 20px;
+  font-size: 17px;
   line-height: 1;
   color: #fff;
   background: rgba(20, 16, 12, 0.85);
@@ -162,17 +205,17 @@
   &.is-pressed { transform: scale(0.92); }
 }
 
-.barrio-cancel { right: 2px; bottom: 30px; color: #ff6b6b; border-color: #b33; }
-.barrio-pickup { right: 210px; bottom: 8px; }
+.barrio-cancel { right: 4px; bottom: 24px; color: #ff6b6b; border-color: #b33; }
+.barrio-pickup { right: 176px; bottom: 6px; }
 
 // ---- left bottom: joystick and the two potions -------------------------------
 
 .barrio-joystick {
   position: absolute;
-  left: 56px;
-  bottom: @bar;
-  width: 120px;
-  height: 120px;
+  left: 44px;
+  bottom: @bar + 2px;
+  width: 104px;
+  height: 104px;
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -180,8 +223,8 @@
   border: 2px solid rgba(255, 255, 255, 0.35);
 
   .barrio-joystick-knob {
-    width: 52px;
-    height: 52px;
+    width: 46px;
+    height: 46px;
     border-radius: 50%;
     background: radial-gradient(circle at 40% 35%, rgba(240, 225, 190, 0.85), rgba(170, 150, 110, 0.75));
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
@@ -191,9 +234,9 @@
 
 .barrio-potion {
   position: absolute;
-  left: 186px;
-  width: 50px;
-  height: 50px;
+  left: 158px;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -208,8 +251,8 @@
   overflow: hidden;
   .item-icon,
   img {
-    max-width: 38px;
-    max-height: 38px;
+    max-width: 34px;
+    max-height: 34px;
     pointer-events: none;
   }
 
@@ -228,8 +271,8 @@
   }
 }
 
-.barrio-potion-q { bottom: @bar + 62px; }
-.barrio-potion-w { bottom: @bar + 4px; }
+.barrio-potion-q { bottom: @bar + 54px; }
+.barrio-potion-w { bottom: @bar + 2px; }
 
 // ---- with an item window open, the combat wheel steps aside -----------------
 // (it sits where the inventory opens; the finger would hit a skill, not the item)

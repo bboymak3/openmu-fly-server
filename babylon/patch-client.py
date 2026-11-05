@@ -68,6 +68,161 @@ PATCHES = [
         "}\n\n"
         "function syncMoved(): void {\n",
     ),
+    # Camara libre del celular: con el modo encendido (el boton de la camara
+    # del HUD pone window.barrioCameraOn), un dedo que arrastra gira e inclina
+    # y dos dedos pellizcan para acercar o alejar por niveles. Sin arrastre la
+    # pantalla sigue tocando como siempre (un toque corto camina, como antes).
+    (
+        "src/controllers/camera/index.ts",
+        """  installMouseLook(
+    canvas,
+    () => isActive() && canMouseLook(),
+    (dx, dy) => applyLook(dx, dy, MOUSE_LOOK_DEG_PER_PX, MOUSE_LOOK_DEG_PER_PX)
+  );
+""",
+        """  installMouseLook(
+    canvas,
+    () => isActive() && canMouseLook(),
+    (dx, dy) => applyLook(dx, dy, MOUSE_LOOK_DEG_PER_PX, MOUSE_LOOK_DEG_PER_PX)
+  );
+
+  // BarrioMU: camara libre con los dedos. El boton del HUD enciende y apaga
+  // window.barrioCameraOn; mientras arrastra marca window.barrioCameraDrag,
+  // que el paseo por toque consulta para no caminar mientras se gira.
+  const TOUCH_ROTATE_DEG_PER_PX = 0.35;
+  const TOUCH_PITCH_DEG_PER_PX = 0.3;
+  const TOUCH_PX_PER_LEVEL = 40;
+  const TOUCH_DRAG_START_PX = 10;
+  let camId: number | null = null;
+  let camX = 0;
+  let camY = 0;
+  let camPinch = 0;
+  let camPinchLevel = 0;
+  const camPts = new Map<number, { x: number; y: number }>();
+  const camOn = () => (globalThis as any).barrioCameraOn === true;
+
+  const camDown = (ev: PointerEvent) => {
+    if (!camOn() || !isActive() || !GameOptions.cameraControl) return;
+    camPts.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    (globalThis as any).barrioCameraDrag = false;
+    if (camPts.size === 1) {
+      camId = ev.pointerId;
+      camX = ev.clientX;
+      camY = ev.clientY;
+      try {
+        canvas.setPointerCapture(ev.pointerId);
+      } catch {
+        // Sin captura igual llegan los movimientos de la misma lienza.
+      }
+    } else if (camPts.size === 2) {
+      const [a, b] = [...camPts.values()];
+      camPinch = Math.hypot(a.x - b.x, a.y - b.y);
+      camPinchLevel = level;
+      camId = null;
+    }
+  };
+
+  const camMove = (ev: PointerEvent) => {
+    if (!camOn() || !camPts.has(ev.pointerId)) return;
+    camPts.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    if (camId === null && camPts.size > 1) {
+      if (camPinch > 0) {
+        const [a, b] = [...camPts.values()];
+        const d = Math.hypot(a.x - b.x, a.y - b.y);
+        level = Math.max(
+          0,
+          Math.min(MAX_CAMERA_LEVEL, Math.round(camPinchLevel + (camPinch - d) / TOUCH_PX_PER_LEVEL))
+        );
+      }
+      (globalThis as any).barrioCameraDrag = true;
+    } else if (ev.pointerId === camId) {
+      const dx = ev.clientX - camX;
+      const dy = ev.clientY - camY;
+      if ((globalThis as any).barrioCameraDrag || Math.abs(dx) + Math.abs(dy) > TOUCH_DRAG_START_PX) {
+        (globalThis as any).barrioCameraDrag = true;
+        applyLook(dx, dy, TOUCH_ROTATE_DEG_PER_PX, TOUCH_PITCH_DEG_PER_PX);
+        camX = ev.clientX;
+        camY = ev.clientY;
+      }
+    }
+  };
+
+  const camUp = (ev: PointerEvent) => {
+    if (!camPts.has(ev.pointerId)) return;
+    camPts.delete(ev.pointerId);
+    camPinch = 0;
+    if (camPts.size <= 1) camId = null;
+    if (camPts.size === 0) {
+      // Soltados los dedos: un toque corto camina como siempre; el giro que
+      // arrastro deja la marca un momento mas para no caminar al soltar.
+      window.setTimeout(() => {
+        (globalThis as any).barrioCameraDrag = false;
+      }, 180);
+    }
+  };
+
+  canvas.addEventListener('pointerdown', camDown);
+  canvas.addEventListener('pointermove', camMove);
+  canvas.addEventListener('pointerup', camUp);
+  canvas.addEventListener('pointercancel', camUp);
+
+""",
+    ),
+    # Mientras se gira la camara con los dedos el hero no camina (el paseo por
+    # toque consulta window.barrioCameraDrag arriba).
+    (
+        "src/ecs/systems/playerControllerSystem.ts",
+        """    if (!playerEntity) return;
+
+    // Dead until the server respawns us (Hero->Dead in the original): no""",
+        """    if (!playerEntity) return;
+
+    // BarrioMU: girando la camara con el dedo (modo camara) el hero no camina.
+    if ((globalThis as any).barrioCameraOn && (globalThis as any).barrioCameraDrag) return;
+
+    // Dead until the server respawns us (Hero->Dead in the original): no""",
+    ),
+    # Las auras arriba al CENTRO en el celular (a la izquierda tapaban el juego).
+    (
+        "versions/shared/ui/hud/buff_bar/index.tsx",
+        """className="buff-bar"
+      style={{ left: BAR_X * scale, top: BAR_Y * scale, transform: `scale(${scale})` }}
+""",
+        """className="buff-bar"
+      style={
+        // BarrioMU: en el celular la fila de auras vive centrada arriba.
+        typeof document !== 'undefined' && document.documentElement.classList.contains('mu-mobile')
+          ? { left: '50%', top: BAR_Y * scale, transform: `translateX(-50%) scale(${scale})` }
+          : { left: BAR_X * scale, top: BAR_Y * scale, transform: `scale(${scale})` }
+      }
+""",
+    ),
+    # El log del chat en el celular empieza corto, con espacio reservado: que no
+    # crezca sobre el mapa. El boton de tamano del chat lo agranda igual.
+    (
+        "src/modules/social/social.ts",
+        """  chatLogLines = CHAT_SHOWING_LINES;
+""",
+        """  // BarrioMU: en el celular el log arranca corto para reservar sitio (el
+  // boton de tamano del chat lo agranda igual).
+  chatLogLines =
+    typeof document !== 'undefined' && document.documentElement.classList.contains('mu-mobile')
+      ? 6
+      : CHAT_SHOWING_LINES;
+""",
+    ),
+    # La caja de escribir del chat, un poco mas arriba en el celular (no pegada
+    # al borde de la barra).
+    (
+        "versions/shared/ui/hud/chat/index.tsx",
+        """        transform: `scale(${scale})`,
+        transformOrigin: '0 100%',
+""",
+        """        // BarrioMU: en el celular la caja del chat sube un poco.
+        transform: `scale(${scale})${mobile ? ` translateY(${(-26 / scale).toFixed(2)}px)` : ''}`,
+        transformOrigin: '0 100%',
+""",
+    ),
     # ---- HUD de celular de BarrioMU (babylon/mobile/barrio.less y compania) ----
     # Botones chicos: el menu de arriba y la columna de la izquierda.
     (
