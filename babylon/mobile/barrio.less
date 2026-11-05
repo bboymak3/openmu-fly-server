@@ -27,25 +27,34 @@
 
 // ---- left column: move, chat, full screen, zoom (smaller) -------------------
 
-// Ahora: arriba al centro van la camara (la X blanca) y, a su lado, el boton
-// del chat. SIN zoom/-+ (el pellizco del modo camara los reemplazo).
-// Pantalla completa queda arriba a la izquierda; la M abajo (la X violeta).
+// LINEA SUPERIOR: pantalla completa a la izquierda; alli va, arriba al centro
+// (en la linea misma de la camara), la camara centrada (la X blanca) y el
+// chat a su lado. SIN zoom/-+ (el pellizco del modo camara los reemplazo).
+// La M queda DENTRO de la barra, abajo a la izquierda (la X violeta).
 .mobile-controls .mobile-fullscreen-button { top: @col-top; left: @col-left; }
 .mobile-controls .mobile-camera-button {
-  top: 56px;
-  left: 34%;
+  position: absolute;
+  top: 44px;
+  left: 50%;
+  transform: translateX(-50%);
   pointer-events: auto;
   cursor: pointer;
   touch-action: none;
 }
 .mobile-controls .mobile-chat-button {
-  top: 56px;
-  left: calc(34% + 52px);
+  position: absolute;
+  top: 44px;
+  left: calc(50% + 26px);
   pointer-events: auto;
   cursor: pointer;
   touch-action: none;
 }
-.mobile-controls .mobile-move-button { top: auto; bottom: @bar + 2px; left: @col-left; }
+.mobile-controls .mobile-move-button {
+  top: auto;
+  bottom: 12px;
+  left: @col-left;
+  z-index: 150;
+}
 .mobile-controls .mobile-chat-button .mobile-chat-glyph { font-size: 22px; }
 .mobile-controls .mobile-fullscreen-button .mobile-fullscreen-glyph { width: 20px; height: 20px; }
 .mobile-controls .mobile-fullscreen-button .mobile-fullscreen-glyph.is-full { width: 14px; height: 14px; }
@@ -59,16 +68,19 @@
 }
 .mobile-controls .mobile-camera-button.is-on .mobile-camera-glyph { filter: drop-shadow(0 0 3px #ffd98a); }
 
-// ---- abajo: los 5 cuadritos del menu, sobre el espacio negro del final de la
-// ---- barra (donde estaba la marca del rectangulo negro). El ayudante queda
-// ---- arriba a la derecha, mas chico.
+// ---- abajo: los 5 cuadritos del menu DENTRO de la franja del final de la
+// ---- barra; el boton M al otro extremo de la misma franja. Con la capa del
+// ---- celular sin z-index propio, estos dos elementos escapan a la capa
+// ---- superior de la barra con su propio z-index (150/160): flotan sobre el
+// ---- arte de la barra y siguen DEBAJO de cualquier ventana que abra el
+// ---- jugador (102..500). El ayudante queda arriba a la derecha, mas chico.
 
-.mobile-controls .mobile-menu-cluster { top: auto; bottom: 74px; right: @col-left; gap: 5px; }
+.mobile-controls .mobile-menu-cluster { top: auto; bottom: 12px; right: 60px; z-index: 160; gap: 5px; }
 .mu-mobile .event-timers {
-  top: 44px !important;
-  left: 50% !important;
+  top: 10px !important;
+  left: 58px !important;
   right: auto !important;
-  transform: translateX(-50%) !important;
+  transform: none !important;
 }
 .mu-mobile .mu-helper-buttons {
   top: 100px !important;
@@ -159,25 +171,25 @@
 
   .mobile-skill-slots { display: block; }
 
-  // BarrioMU: tres cuadros de habilidad alrededor del puño (uno a la izquierda
-  // y dos arriba); el cuarto cuadro del arco sale. Se eliguen igual: tocar el
-  // cuadro abre la lista de habilidades.
+  // BarrioMU: tres cuadros de habilidad PEGADOS al puño (uno a su izquierda,
+  // otro encima de ese y otro encima del puño); el cuarto del arco sale. Se
+  // eliguen igual: tocar el cuadro abre la lista de habilidades.
   .mobile-skill-slot { position: absolute; }
   .mobile-skill-slot:nth-child(1) {
-    right: 124px;
-    bottom: 56px;
+    right: 122px;
+    bottom: 52px;
     transform: scale(0.74);
     transform-origin: bottom right;
   }
   .mobile-skill-slot:nth-child(2) {
-    right: 124px;
-    bottom: 132px;
+    right: 122px;
+    bottom: 104px;
     transform: scale(0.74);
     transform-origin: bottom right;
   }
   .mobile-skill-slot:nth-child(3) {
     right: 52px;
-    bottom: 132px;
+    bottom: 126px;
     transform: scale(0.74);
     transform-origin: bottom right;
   }
@@ -222,7 +234,7 @@
 }
 
 .barrio-cancel { right: 4px; bottom: 78px; color: #ff6b6b; border-color: #b33; }
-.barrio-pickup { right: 176px; bottom: 58px; }
+.barrio-pickup { right: 170px; bottom: 56px; }
 
 // ---- left bottom: joystick and the two potions -------------------------------
 
@@ -311,14 +323,16 @@
 // debajo suyo.
 //
 // Arreglo:
-//  1. La capa del celular baja a 90: queda por debajo de TODAS las ventanas
-//     normales (>=100) y por encima de la barra inferior. Las hojas de todo
-//     el mapa (minimapa, 500) y las ventanas modales (600) siguen encima.
-//  2. La ventana warp abre encima del boton M (hoy abajo a la izquierda):
-//     bottom @bar+58, left 6. Solo se nota mientras nadie arrastro la
-//     ventana antes (entonces un left/top inline manda).
+//  1. La capa del celular, hoy, SIN z-index propio (auto): sus hijos quedan
+//     por debajo de TODAS las ventanas normales (>=100) salvo el boton M y
+//     el racimo de menu, que llevan z 150/160 para flotar SOBRE el arte de
+//     la barra (donde nunca se abre una ventana). Las hojas de todo el mapa
+//     (minimapa, 500) y las ventanas modales (600) siguen encima de todo.
+//  2. La ventana warp abre encima del boton M (hoy dentro de la barra, a la
+//     izquierda): bottom @bar+58, left 6. Solo se nota mientras nadie
+//     arrastro la ventana antes (entonces un left/top inline manda).
 .mobile-controls {
-  z-index: 90;
+  z-index: auto;
 }
 .move-window {
   top: auto;
