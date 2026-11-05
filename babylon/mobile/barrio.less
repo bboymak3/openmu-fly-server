@@ -240,3 +240,28 @@
     display: none;
   }
 }
+
+// ---- El listado de mapas ("M") por encima del joystick ----------------------
+//
+// Las ventanas del juego se apilan con su propio z-index inline en
+// [WINDOW_Z_BASE=100, 500): un vistazo de codigo en windowManager.ts.
+// La capa del HUD del celular estaba en z-index 400, asi que el joystick y
+// las pociones (pointer-events: auto) quedaban ENCIMA de la lista de mapas,
+// tapaban la ventana del "M" y se comian los toques de las ciudades que caian
+// debajo suyo.
+//
+// Arreglo:
+//  1. La capa del celular baja a 90: queda por debajo de TODAS las ventanas
+//     normales (>=100) y por encima de la barra inferior. Las hojas de todo
+//     el mapa (minimapa, 500) y las ventanas modales (600) siguen encima.
+//  2. La ventana warp abre a la derecha de la columna de botones (left 52,
+//     top 6), para que el "M", chat, pantalla completa y zoom sigan tocables
+//     con la lista abierta (la ventana no los pisa). Solo se nota mientras
+//     nadie arrastro la ventana antes (entonces un left/top inline manda).
+.mobile-controls {
+  z-index: 90;
+}
+.move-window {
+  left: 52px;
+  top: 6px;
+}
