@@ -25,20 +25,19 @@ grep -c BarrioMU $C/index.html $C/public/manifest.webmanifest $C/src/modules/ser
 grep -c barriomu-logo $P/logoLight.tsx $P/directLoad.tsx
 # Boton de chat en el celular (no hay tecla Enter), debajo del de Move.
 M=$C/versions/shared/ui/hud/mobile_controls
-# Y uno de pantalla completa (no hay F11), debajo del de chat.
-# Y dos de zoom de la camara (alejar / acercar), a la derecha de pantalla completa.
-# Y el de la camara libre (girar con el dedo), a la derecha de acercar.
-cp babylon/mobile/chatButton.tsx babylon/mobile/fullscreenButton.tsx babylon/mobile/zoomButtons.tsx babylon/mobile/cameraButton.tsx $M/
+# Y uno de pantalla completa (no hay F11).
+# Y el de la camara libre (girar con el dedo). Los de zoom se quitaron: el
+# pellizco del modo camara aleja y acerca.
+cp babylon/mobile/chatButton.tsx babylon/mobile/fullscreenButton.tsx babylon/mobile/cameraButton.tsx $M/
 # HUD de celular de BarrioMU: rueda de combate (ataque, 4 habilidades, soltar,
 # recoger, lista de objetivos, circulo de alcance), joystick y pociones.
 cp babylon/mobile/combatPad.tsx babylon/mobile/joystick.tsx babylon/mobile/potionButtons.tsx babylon/mobile/touchHover.ts $M/
 cp babylon/mobile/barrioJoystick.ts $C/src/controllers/interface/
 cat babylon/mobile/chatButton.less >> $M/style.less
 cat babylon/mobile/barrio.less >> $M/style.less
-sed -i "s#^import { MoveButton } from './moveButton';#&\nimport { ChatButton } from './chatButton';\nimport { FullscreenButton } from './fullscreenButton';\nimport { ZoomButtons } from './zoomButtons';\nimport { CameraButton } from './cameraButton';#; s#<MoveButton />#&\n      <ChatButton />\n      <FullscreenButton />\n      <ZoomButtons />\n      <CameraButton />#" $M/index.tsx
+sed -i "s#^import { MoveButton } from './moveButton';#&\nimport { ChatButton } from './chatButton';\nimport { FullscreenButton } from './fullscreenButton';\nimport { CameraButton } from './cameraButton';#; s#<MoveButton />#&\n      <ChatButton />\n      <FullscreenButton />\n      <CameraButton />#" $M/index.tsx
 grep -c ChatButton $M/index.tsx
 grep -c FullscreenButton $M/index.tsx
-grep -c ZoomButtons $M/index.tsx
 grep -c CameraButton $M/index.tsx
 sed -i "s#^import { SkillPad } from './skillPad';#&\nimport { CombatPad } from './combatPad';\nimport { Joystick } from './joystick';\nimport { PotionButtons } from './potionButtons';#; s#      <MoveButton />#      <CombatPad />\n&#; s#      <SkillPad />#&\n      <Joystick />\n      <PotionButtons />#" $M/index.tsx
 grep -c '<CombatPad />' $M/index.tsx

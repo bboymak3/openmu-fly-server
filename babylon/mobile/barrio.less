@@ -27,23 +27,28 @@
 
 // ---- left column: move, chat, full screen, zoom (smaller) -------------------
 
-// Ahora en 2 columnas (mitad del alto): el camara libre queda en la segunda col.
-.mobile-controls .mobile-move-button { top: @col-top; left: @col-left; }
-.mobile-controls .mobile-chat-button { top: @col-top; left: @col-left + 46px; }
-.mobile-controls .mobile-fullscreen-button { top: @col-top + (@small-h + @small-gap) * 1; left: @col-left; }
-.mobile-controls .mobile-zoom-button { top: @col-top + (@small-h + @small-gap) * 1; left: @col-left + 46px; }
-.mobile-controls .mobile-zoom-button.mobile-zoom-in { top: @col-top + (@small-h + @small-gap) * 2; left: @col-left; }
+// Ahora: arriba al centro van la camara (la X blanca) y, a su lado, el boton
+// del chat. SIN zoom/-+ (el pellizco del modo camara los reemplazo).
+// Pantalla completa queda arriba a la izquierda; la M abajo (la X violeta).
+.mobile-controls .mobile-fullscreen-button { top: @col-top; left: @col-left; }
 .mobile-controls .mobile-camera-button {
-  top: @col-top + (@small-h + @small-gap) * 2;
-  left: @col-left + 46px;
+  top: 56px;
+  left: 34%;
   pointer-events: auto;
   cursor: pointer;
   touch-action: none;
 }
+.mobile-controls .mobile-chat-button {
+  top: 56px;
+  left: calc(34% + 52px);
+  pointer-events: auto;
+  cursor: pointer;
+  touch-action: none;
+}
+.mobile-controls .mobile-move-button { top: auto; bottom: @bar + 2px; left: @col-left; }
 .mobile-controls .mobile-chat-button .mobile-chat-glyph { font-size: 22px; }
 .mobile-controls .mobile-fullscreen-button .mobile-fullscreen-glyph { width: 20px; height: 20px; }
 .mobile-controls .mobile-fullscreen-button .mobile-fullscreen-glyph.is-full { width: 14px; height: 14px; }
-.mobile-controls .mobile-zoom-button .mobile-zoom-glyph { font-size: 26px; }
 .mobile-controls .mobile-camera-button .mobile-camera-glyph {
   position: absolute;
   left: 50%;
@@ -54,10 +59,11 @@
 }
 .mobile-controls .mobile-camera-button.is-on .mobile-camera-glyph { filter: drop-shadow(0 0 3px #ffd98a); }
 
-// ---- top: the auras (buff bar) went to the CENTER (patch-client.py) -------
-// The event timers follow under them; the MU Helper buttons shrink.
+// ---- abajo: los 5 cuadritos del menu, sobre el espacio negro del final de la
+// ---- barra (donde estaba la marca del rectangulo negro). El ayudante queda
+// ---- arriba a la derecha, mas chico.
 
-.mobile-controls .mobile-menu-cluster { top: @col-top; right: @col-left; gap: 5px; }
+.mobile-controls .mobile-menu-cluster { top: auto; bottom: 74px; right: @col-left; gap: 5px; }
 .mu-mobile .event-timers {
   top: 44px !important;
   left: 50% !important;
@@ -128,8 +134,8 @@
   }
 }
 
-// ---- el grupo del puño: mismo sitio, mas compacto y mas chico ---------------
-// El puño, la X, la mano, la lista de objetivos y UN SOLO slot de habilidad.
+// ---- el grupo del puño: el puño sube una fila; debajo suyo queda la fila
+// ---- de los 5 cuadritos del menu. TRES cuadros de skill alrededor del puño.
 
 .mobile-controls .mobile-skill-pad,
 .barrio-combat {
@@ -137,7 +143,7 @@
   right: 10px;
   bottom: @bar;
   width: 230px;
-  height: 190px;
+  height: 200px;
   pointer-events: none;
 }
 
@@ -153,18 +159,28 @@
 
   .mobile-skill-slots { display: block; }
 
-  // BarrioMU: UN solo cuadro de habilidad, chico y abajo, a la izquierda del
-  // puño. Los demas cuadritos (los que repetian la forma del arco) salen: se
-  // eliguen igual desde el cuadro que queda (tocandolo se abre la lista).
+  // BarrioMU: tres cuadros de habilidad alrededor del puño (uno a la izquierda
+  // y dos arriba); el cuarto cuadro del arco sale. Se eliguen igual: tocar el
+  // cuadro abre la lista de habilidades.
   .mobile-skill-slot { position: absolute; }
   .mobile-skill-slot:nth-child(1) {
     right: 124px;
-    bottom: 2px;
+    bottom: 56px;
     transform: scale(0.74);
     transform-origin: bottom right;
   }
-  .mobile-skill-slot:nth-child(2),
-  .mobile-skill-slot:nth-child(3),
+  .mobile-skill-slot:nth-child(2) {
+    right: 124px;
+    bottom: 132px;
+    transform: scale(0.74);
+    transform-origin: bottom right;
+  }
+  .mobile-skill-slot:nth-child(3) {
+    right: 52px;
+    bottom: 132px;
+    transform: scale(0.74);
+    transform-origin: bottom right;
+  }
   .mobile-skill-slot:nth-child(4) {
     display: none;
   }
@@ -173,7 +189,7 @@
 .barrio-attack {
   position: absolute;
   right: 48px;
-  bottom: 4px;
+  bottom: 52px;
   width: 70px;
   height: 70px;
   border-radius: 50%;
@@ -205,14 +221,14 @@
   &.is-pressed { transform: scale(0.92); }
 }
 
-.barrio-cancel { right: 4px; bottom: 24px; color: #ff6b6b; border-color: #b33; }
-.barrio-pickup { right: 176px; bottom: 6px; }
+.barrio-cancel { right: 4px; bottom: 78px; color: #ff6b6b; border-color: #b33; }
+.barrio-pickup { right: 176px; bottom: 58px; }
 
 // ---- left bottom: joystick and the two potions -------------------------------
 
 .barrio-joystick {
   position: absolute;
-  left: 44px;
+  left: 60px;
   bottom: @bar + 2px;
   width: 104px;
   height: 104px;
@@ -234,7 +250,7 @@
 
 .barrio-potion {
   position: absolute;
-  left: 158px;
+  left: @col-left;
   width: 46px;
   height: 46px;
   border-radius: 50%;
@@ -271,8 +287,9 @@
   }
 }
 
-.barrio-potion-q { bottom: @bar + 54px; }
-.barrio-potion-w { bottom: @bar + 2px; }
+// Sobre el borde izquierdo (las dos X verdes), arriba del boton M.
+.barrio-potion-q { bottom: 172px; }
+.barrio-potion-w { bottom: 120px; }
 
 // ---- with an item window open, the combat wheel steps aside -----------------
 // (it sits where the inventory opens; the finger would hit a skill, not the item)
@@ -297,14 +314,14 @@
 //  1. La capa del celular baja a 90: queda por debajo de TODAS las ventanas
 //     normales (>=100) y por encima de la barra inferior. Las hojas de todo
 //     el mapa (minimapa, 500) y las ventanas modales (600) siguen encima.
-//  2. La ventana warp abre a la derecha de la columna de botones (left 52,
-//     top 6), para que el "M", chat, pantalla completa y zoom sigan tocables
-//     con la lista abierta (la ventana no los pisa). Solo se nota mientras
-//     nadie arrastro la ventana antes (entonces un left/top inline manda).
+//  2. La ventana warp abre encima del boton M (hoy abajo a la izquierda):
+//     bottom @bar+58, left 6. Solo se nota mientras nadie arrastro la
+//     ventana antes (entonces un left/top inline manda).
 .mobile-controls {
   z-index: 90;
 }
 .move-window {
-  left: 52px;
-  top: 6px;
+  top: auto;
+  bottom: @bar + 58px;
+  left: 6px;
 }

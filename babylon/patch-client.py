@@ -218,7 +218,9 @@ PATCHES = [
         """        transform: `scale(${scale})`,
         transformOrigin: '0 100%',
 """,
-        """        // BarrioMU: en el celular la caja del chat sube un poco.
+        """        // BarrioMU: en el celular la caja del chat sube un poco y se
+        // corre del borde izquierdo (1 cm).
+        left: mobile ? 40 : undefined,
         transform: `scale(${scale})${mobile ? ` translateY(${(-26 / scale).toFixed(2)}px)` : ''}`,
         transformOrigin: '0 100%',
 """,
