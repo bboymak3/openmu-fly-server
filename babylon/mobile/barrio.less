@@ -27,11 +27,9 @@
 
 // ---- left column: move, chat, full screen, zoom (smaller) -------------------
 
-// LINEA SUPERIOR: pantalla completa a la izquierda; alli va, arriba al centro
-// (en la linea misma de la camara), la camara centrada (la X blanca) y el
-// chat a su lado. SIN zoom/-+ (el pellizco del modo camara los reemplazo).
-// La M queda DENTRO de la barra, abajo a la izquierda (la X violeta).
-.mobile-controls .mobile-fullscreen-button { top: @col-top; left: @col-left; }
+// LINEA SUPERIOR: arriba al centro (en la linea de la camara) van la camara
+// centrada (la X blanca) y el chat a su lado. SIN zoom/-+ ni pantalla
+// completa. La M queda DENTRO de la barra, abajo a la izquierda (X violeta).
 .mobile-controls .mobile-camera-button {
   position: absolute;
   top: 44px;
@@ -56,8 +54,6 @@
   z-index: 150;
 }
 .mobile-controls .mobile-chat-button .mobile-chat-glyph { font-size: 22px; }
-.mobile-controls .mobile-fullscreen-button .mobile-fullscreen-glyph { width: 20px; height: 20px; }
-.mobile-controls .mobile-fullscreen-button .mobile-fullscreen-glyph.is-full { width: 14px; height: 14px; }
 .mobile-controls .mobile-camera-button .mobile-camera-glyph {
   position: absolute;
   left: 50%;
