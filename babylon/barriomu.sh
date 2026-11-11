@@ -18,6 +18,7 @@
 #   bash ~/barriomu.sh cloudflare  guarda el token de Cloudflare del panel admin
 #   bash ~/barriomu.sh ia          configura El Sabio del Barrio (/ia): ID de cuenta y token de Workers AI
 #   bash ~/barriomu.sh whatsapp    vincula el WhatsApp del bot (el Sabio por WhatsApp); 'whatsapp desvincular' lo suelta
+#   bash ~/barriomu.sh whatsapp pausar   el bot no contesta (sigue vinculado); 'whatsapp reanudar' vuelve
 #   bash ~/barriomu.sh npcs        lista los NPCs de las ciudades y cuantos estan apagados
 #   bash ~/barriomu.sh npcs activar  vuelve a prender todos los NPCs y monstruos (reinicia OpenMU)
 #   bash ~/barriomu.sh mapas       monstruos de Lorencia, portales y /move: que sirve y que esta roto
@@ -269,6 +270,14 @@ ia() {
 # con un codigo (WhatsApp > Dispositivos vinculados > Vincular con numero de telefono).
 # Usa un numero aparte, no el personal: WhatsApp puede bloquear numeros de bots.
 whatsapp() {
+  if [ "$1" = pausar ] || [ "$1" = reanudar ]; then
+    pg_ctl -D "$PGDATA" status >/dev/null 2>&1 || { echo "PostgreSQL esta apagado: bash ~/barriomu.sh prender"; return 1; }
+    local v=1; [ "$1" = pausar ] && v=0
+    psql -U postgres -d openmu -q -c "CREATE SCHEMA IF NOT EXISTS barrio; CREATE TABLE IF NOT EXISTS barrio.settings (key text primary key, value text not null); INSERT INTO barrio.settings (key, value) VALUES ('wa_on', '$v') ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value" \
+      && if [ "$v" = 0 ]; then echo "Listo: el bot de WhatsApp quedo en PAUSA (sigue conectado, no contesta). Para volver: bash ~/barriomu.sh whatsapp reanudar"
+         else echo "Listo: el bot de WhatsApp vuelve a contestar."; fi
+    return
+  fi
   if [ "$1" = desvincular ]; then
     pkill -f whatsapp/bot
     proot-distro login ubuntu -- bash -c 'rm -rf ~/barriomu-wa/auth' && echo "Listo: el bot quedo desvinculado de la tablet."

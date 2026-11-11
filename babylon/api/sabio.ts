@@ -9,7 +9,8 @@
 //   Cloudflare, linea 2 el token (permiso "Workers AI"), linea 3 opcional el modelo.
 // - Solo responde: no tiene ninguna herramienta que de o cambie nada. Los datos que usa
 //   (personaje, reset, tienda, La Plaza) salen del servidor y de la base, no de su memoria.
-// - Limite por cuenta y por dia (barrio.settings sabio_daily, 20 por defecto); se puede
+// - Limite por cuenta (barrio.settings sabio_daily; 0 = ilimitado, lo de fabrica) que se reinicia cada hora
+//   o cada dia (sabio_periodo: "hora", por defecto mientras se prueba, o "dia"); se puede
 //   apagar con sabio_on = 0.
 
 import type { Sql } from "postgres";
@@ -23,7 +24,8 @@ const SECRET_FILE = process.env.SABIO_SECRET_FILE ?? `${HOME}/openmu/data/sabio-
 const KEY_FILE = process.env.SABIO_KEY_FILE ?? `${HOME}/.barriomu-ia`;
 const DEFAULT_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 const AI_BASE = process.env.SABIO_AI_BASE ?? "https://api.cloudflare.com/client/v4";
-const DEFAULT_DAILY = 20;
+/** Preguntas por periodo: 0 = ilimitadas (lo de fabrica mientras se prueba). */
+const DEFAULT_DAILY = 0;
 /** Largo de cada renglon del susurro en el juego, y cuantos como mucho. */
 const LINE_LEN = 70;
 const MAX_LINES = 8;
@@ -111,6 +113,12 @@ export function ensureSabioTables(sql: Sql): Promise<void> {
         n int not null default 0,
         primary key (login, day))`;
     await sql`
+      create table if not exists barrio.sabio_cupo (
+        login text not null,
+        periodo text not null,
+        n int not null default 0,
+        primary key (login, periodo))`;
+    await sql`
       create table if not exists barrio.sabio_log (
         id bigserial primary key,
         login text not null,
@@ -125,30 +133,37 @@ export function ensureSabioTables(sql: Sql): Promise<void> {
   return ready;
 }
 
-export async function settings(sql: Sql): Promise<{ on: boolean; daily: number }> {
-  const rows = await sql`select key, value from barrio.settings where key in ('sabio_on', 'sabio_daily')`;
+export type SabioSettings = { on: boolean; daily: number; hourly: boolean };
+
+export async function settings(sql: Sql): Promise<SabioSettings> {
+  const rows = await sql`select key, value from barrio.settings where key in ('sabio_on', 'sabio_daily', 'sabio_periodo')`;
   const get = (k: string) => rows.find(r => r.key === k)?.value;
   const daily = Number(get("sabio_daily"));
   return {
     on: get("sabio_on") !== "0",
     daily: Number.isInteger(daily) && daily >= 0 && daily <= 1000 ? daily : DEFAULT_DAILY,
+    hourly: get("sabio_periodo") !== "dia",
   };
 }
 
 const today = () => new Date(Date.now() + DAY_OFFSET_MS).toISOString().slice(0, 10);
+/** El periodo del cupo: la hora (2026-11-11T15) o el dia (2026-11-11), hora de Venezuela. */
+export const periodOf = (cfg: SabioSettings) => new Date(Date.now() + DAY_OFFSET_MS).toISOString().slice(0, cfg.hourly ? 13 : 10);
+/** "esta hora" o "hoy", para los mensajes. */
+export const periodWord = (cfg: SabioSettings) => (cfg.hourly ? "esta hora" : "hoy");
 
-/** Suma una pregunta al dia de la cuenta; devuelve cuantas lleva, o null si ya no le quedan. */
-export async function takeOne(sql: Sql, login: string, daily: number): Promise<number | null> {
+/** Suma una pregunta al periodo de la cuenta; devuelve cuantas lleva, o null si ya no le quedan. */
+export async function takeOne(sql: Sql, login: string, cfg: SabioSettings): Promise<number | null> {
   const [row] = await sql`
-    insert into barrio.sabio_uso (login, day, n) values (${login}, ${today()}, 1)
-    on conflict (login, day) do update set n = barrio.sabio_uso.n + 1
-    where barrio.sabio_uso.n < ${daily}
+    insert into barrio.sabio_cupo (login, periodo, n) values (${login}, ${periodOf(cfg)}, 1)
+    on conflict (login, periodo) do update set n = barrio.sabio_cupo.n + 1
+    where ${cfg.daily} = 0 or barrio.sabio_cupo.n < ${cfg.daily}
     returning n`;
   return row ? row.n : null;
 }
 
-export async function giveBack(sql: Sql, login: string): Promise<void> {
-  await sql`update barrio.sabio_uso set n = greatest(n - 1, 0) where login = ${login} and day = ${today()}`;
+export async function giveBack(sql: Sql, login: string, cfg: SabioSettings): Promise<void> {
+  await sql`update barrio.sabio_cupo set n = greatest(n - 1, 0) where login = ${login} and periodo = ${periodOf(cfg)}`;
 }
 
 // ---------------------------------------------------------------- contexto
@@ -298,13 +313,16 @@ export async function handleSabio(req: Request, url: URL, cors: Record<string, s
   if (!ask) return reply(cors, ["No te entendi, pana. Escribe /ia y tu pregunta."]);
 
   await ensureSabioTables(sql);
-  const { on, daily } = await settings(sql);
+  const cfg = await settings(sql);
+  const { on, daily } = cfg;
   if (!on) return reply(cors, ["El Sabio esta de vacaciones por ahora. Vuelve pronto, pana."]);
   const key = cloudflareKey();
   if (!key) return reply(cors, ["El Sabio esta durmiendo (falta configurarlo). Avisale al admin."]);
 
-  const used = await takeOne(sql, ask.login, daily);
-  if (used === null) return reply(cors, [`Ya me hiciste tus ${daily} preguntas de hoy, pana. Manana seguimos.`]);
+  const used = await takeOne(sql, ask.login, cfg);
+  if (used === null) {
+    return reply(cors, [`Ya me hiciste tus ${daily} preguntas de ${periodWord(cfg)}, pana. ${cfg.hourly ? "En la proxima hora seguimos." : "Manana seguimos."}`]);
+  }
 
   try {
     const messages = [
@@ -317,11 +335,11 @@ export async function handleSabio(req: Request, url: URL, cors: Record<string, s
     await sql`insert into barrio.sabio_log (login, character, question, answer) values (${ask.login}, ${ask.character}, ${ask.message}, ${answer})`;
     const lines = toLines(answer);
     const left = daily - used;
-    if (left <= 3) lines.push(`(Te quedan ${left} preguntas hoy.)`);
+    if (daily > 0 && left <= 3) lines.push(`(Te quedan ${left} preguntas ${periodWord(cfg)}.)`);
     return reply(cors, lines);
   } catch (error) {
     console.error("sabio", error);
-    await giveBack(sql, ask.login).catch(() => {});
+    await giveBack(sql, ask.login, cfg).catch(() => {});
     return reply(cors, ["Se me cruzaron los cables, pana. Intenta en un rato."]);
   }
 }
@@ -330,18 +348,21 @@ export async function handleSabio(req: Request, url: URL, cors: Record<string, s
 
 export async function adminSabio(sql: Sql) {
   await ensureSabioTables(sql);
-  const { on, daily } = await settings(sql);
-  const [{ hoy }] = await sql`select coalesce(sum(n), 0)::int as hoy from barrio.sabio_uso where day = ${today()}`;
+  const { on, daily, hourly } = await settings(sql);
+  const [wa] = await sql`select value from barrio.settings where key = 'wa_on'`;
+  const [{ hoy }] = await sql`select coalesce(sum(n), 0)::int as hoy from barrio.sabio_cupo where periodo like ${today() + "%"}`;
   const recent = await sql`select login, character, question, answer, at from barrio.sabio_log order by at desc limit 30`;
-  return { on, daily, today: hoy, configured: !!cloudflareKey() && !!secret(), recent };
+  return { on, daily, hourly, waOn: wa?.value !== "0", today: hoy, configured: !!cloudflareKey() && !!secret(), recent };
 }
 
 export async function adminSaveSabio(b: Record<string, unknown>, sql: Sql) {
   const daily = typeof b.daily === "number" && Number.isInteger(b.daily) && b.daily >= 0 && b.daily <= 1000 ? b.daily : null;
-  if (daily === null) throw new PanelError(400, "El limite diario debe ser un numero de 0 a 1000.");
+  if (daily === null) throw new PanelError(400, "El limite debe ser un numero de 0 (ilimitado) a 1000.");
   await ensureSabioTables(sql);
   await sql`
-    insert into barrio.settings (key, value) values ('sabio_on', ${b.on === true ? "1" : "0"}), ('sabio_daily', ${String(daily)})
+    insert into barrio.settings (key, value) values ('sabio_on', ${b.on === true ? "1" : "0"}), ('sabio_daily', ${String(daily)}),
+      ('sabio_periodo', ${b.periodo === "dia" ? "dia" : "hora"}),
+      ('wa_on', ${b.waOn === false ? "0" : "1"})
     on conflict (key) do update set value = excluded.value`;
   return { ok: true, message: "Sabio guardado." };
 }

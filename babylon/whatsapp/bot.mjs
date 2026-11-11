@@ -167,16 +167,17 @@ async function start() {
       if (busy.has(jid) || tooMany(jid)) continue;
       busy.add(jid);
       try {
-        await sock.readMessages([m.key]).catch(() => {});
-        await sock.sendPresenceUpdate("composing", jid).catch(() => {});
         const replies = await ask(jid, text);
-        for (const reply of replies.slice(0, 4)) await sock.sendMessage(jid, { text: reply.slice(0, 3000) });
+        // En pausa (o sin nada que decir) no se marca como leido ni se contesta.
+        if (replies.length) {
+          await sock.readMessages([m.key]).catch(() => {});
+          for (const reply of replies.slice(0, 4)) await sock.sendMessage(jid, { text: reply.slice(0, 3000) });
+        }
       } catch (error) {
         log("mensaje", error?.message ?? error);
         await sock.sendMessage(jid, { text: "Se me cruzaron los cables, pana. Intenta en un rato." }).catch(() => {});
       } finally {
         busy.delete(jid);
-        await sock.sendPresenceUpdate("paused", jid).catch(() => {});
       }
     }
   });

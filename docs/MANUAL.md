@@ -304,6 +304,15 @@ El WhatsApp del servidor corre **en la tablet** (sin Railway ni Evolution): `bab
   responde **sí** en 2 minutos (**no** cancela). Se hace con las mismas reglas de Mi cuenta: la
   cuenta **fuera del juego**, nivel y zen del reset, puntos libres. Nada más: la IA no puede dar ni
   cambiar otra cosa (si lo intenta, no se hace). Queda en el registro del Sabio como `[accion]`.
+- **Parar el farmeo sin conexión** (`parar`, o "deja de farmear"): con el **sí**, la API deja una
+  orden en `~/openmu/data/ordenes/` y `BarrioAvisosPlugIn` detiene el `/offlevel` de la cuenta en
+  unos segundos (el personaje queda guardado) y avisa por WhatsApp.
+- **Vender en La Plaza**: `baul` lista el baúl numerado; `vender 2 50` (item 2 a 50 WCoinP) o
+  hablando ("vende mi Dragon Armor a 50"). Con el **sí** se publica con las mismas reglas de Mi
+  cuenta (fuera del juego, máximo 20 ventas, impuesto) y dice cuánto recibe.
+- **Cupo de preguntas a la IA**: **ilimitadas** de fábrica; el admin elige 10, 20, 30 o 60 que se reinician **cada hora** o
+  **cada día** (Panel admin → 🧙 El Sabio). Los comandos directos (`baul`, `vender`, `parar`,
+  `reset`, `puntos`) no gastan preguntas. Tabla: `barrio.sabio_cupo`.
 - **Avisos automáticos (Fase C)** al WhatsApp vinculado (máximo 30 por cuenta al día):
   - 💰 **Vendiste en La Plaza**: qué, por cuánto y cuánto recibes.
   - ⬆️ **Reset listo**: un personaje que farmea sin conexión (`/offlevel`) llegó al nivel del reset.
@@ -313,6 +322,19 @@ El WhatsApp del servidor corre **en la tablet** (sin Railway ni Evolution): `bab
   `~/openmu/data/en-juego.json` con las cuentas que OpenMU tiene cargadas, **también las que
   farmean con `/offlevel`** (que no pasan por el proxy). Mi cuenta, la tienda, La Plaza y WhatsApp
   no tocan esas cuentas (OpenMU las guardaría encima al salir).
+- **Más comandos (no gastan preguntas)** (`babylon/api/wa-extras.ts`):
+  - `estado` (prendido y conectados), `top` (top 5), `mi puesto`, `eventos` (próximos horarios), `ayuda`.
+  - `avisar todos` / `avisar blood castle` / `no avisar …`: aviso **10 minutos antes** del evento.
+  - `resumen si` / `resumen no`: **resumen diario a las 8:00** (hora de Venezuela) con lo que cambió
+    desde el día anterior (niveles, resets, zen, monedas). Tablas `barrio.wa_snapshot*`.
+  - `@Nombre mensaje`: le llega a ese jugador **dentro del juego** como susurro (si está conectado;
+    20 por hora). En el juego se responde con **`/wa Nombre mensaje`** y llega al WhatsApp de Nombre.
+  - **Admin** (solo cuentas GM): `admin estado`, `admin jugadores`, `admin anuncio TEXTO` (aviso dorado
+    en el juego), `admin dar wcoinc CUENTA N` (con sí), `admin resumen` (manda el resumen ya).
+    Funcionan aunque el bot esté en pausa y quedan en el Registro del admin.
+- **Pausar las respuestas** (el bot sigue vinculado pero no contesta ni marca leído): Panel admin
+  → 🧙 El Sabio → desmarcar *"El bot de WhatsApp contesta"*, o `bash ~/barriomu.sh whatsapp pausar`
+  (`reanudar` para volver). Los avisos automáticos siguen saliendo.
 - Sesión del bot: `~/barriomu-wa/auth` (dentro de Ubuntu). Tablas: `barrio.wa_link`, `barrio.wa_code`.
 
 ### Teclas en la computadora (web en PC y programa de Windows)

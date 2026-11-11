@@ -193,8 +193,23 @@ async function market(req: Request, sql: Sql) {
 }
 
 async function sell(req: Request, sql: Sql) {
-  const s = session(req);
-  const b = await body(req);
+  return doSell(sql, session(req), await body(req));
+}
+
+/** Los items del baul de la cuenta, en orden, con su nombre publicable (para WhatsApp). */
+export async function vaultItems(sql: Sql, accountId: string): Promise<{ id: string; label: string }[]> {
+  const [account] = await sql`select "VaultId"::text as vault from data."Account" where "Id" = ${accountId}`;
+  if (!account?.vault) return [];
+  const rows = await sql`
+    select i."Id"::text as id, ${ITEM_VIEW(sql)}
+    from data."Item" i join config."ItemDefinition" d on d."Id" = i."DefinitionId"
+    where i."ItemStorageId" = ${account.vault}
+    order by i."ItemSlot"`;
+  return rows.map(r => ({ id: r.id as string, label: itemLabel(r as unknown as { name: string; level: number }) }));
+}
+
+/** Publica un item del baul en La Plaza (Mi cuenta y WhatsApp). */
+export async function doSell(sql: Sql, s: { accountId: string; login: string }, b: Record<string, unknown>) {
   const itemId = typeof b.item === "string" && /^[0-9a-f-]{36}$/i.test(b.item) ? b.item : null;
   const price = intIn(b.price, 1, MAX_PRICE);
   if (!itemId || !price) throw new PanelError(400, "Elige un item de tu baul y un precio en WCoinP.");
