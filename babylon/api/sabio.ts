@@ -361,8 +361,13 @@ export async function adminSaveSabio(b: Record<string, unknown>, sql: Sql) {
   await ensureSabioTables(sql);
   await sql`
     insert into barrio.settings (key, value) values ('sabio_on', ${b.on === true ? "1" : "0"}), ('sabio_daily', ${String(daily)}),
-      ('sabio_periodo', ${b.periodo === "dia" ? "dia" : "hora"}),
-      ('wa_on', ${b.waOn === false ? "0" : "1"})
+      ('sabio_periodo', ${b.periodo === "dia" ? "dia" : "hora"})
     on conflict (key) do update set value = excluded.value`;
+  // La pausa del bot solo cambia si el panel la manda (un panel viejo en cache no la despausa).
+  if (typeof b.waOn === "boolean") {
+    await sql`
+      insert into barrio.settings (key, value) values ('wa_on', ${b.waOn ? "1" : "0"})
+      on conflict (key) do update set value = excluded.value`;
+  }
   return { ok: true, message: "Sabio guardado." };
 }
