@@ -332,6 +332,17 @@ El WhatsApp del servidor corre **en la tablet** (sin Railway ni Evolution): `bab
   - **Admin** (solo cuentas GM): `admin estado`, `admin jugadores`, `admin anuncio TEXTO` (aviso dorado
     en el juego), `admin dar wcoinc CUENTA N` (con sí), `admin resumen` (manda el resumen ya).
     Funcionan aunque el bot esté en pausa y quedan en el Registro del admin.
+- **Spots de farmeo** (`openmu-barrio/BarrioSpotsPlugIn.cs`, `data/spots.json`):
+  - El GM, parado donde quiere el spot: **`/guardarspot Jaula 1`** (o `/guardarspot Jaula 3 nivel 200`
+    con nivel mínimo). **`/quitarspot Jaula 1`** lo borra. **`/spots`** los lista en el juego.
+  - El jugador arranca el farmeo en el juego (MU Helper + `/offlevel`) y por WhatsApp: **`spots`** y
+    **`mover 2`** (o "pon a farmear en la jaula 2") → **sí**. El servidor lo teletransporta y fija ahí
+    su punto de caza.
+  - **Si muere en el spot**: revive y vuelve solo al spot. A la **3ª muerte** se queda en la ciudad
+    esperando otro `mover` (o `parar`). Avisa cada muerte por WhatsApp.
+  - Para eso `build-arm64.yml` cambia `OfflinePlayer.RespawnAndContinue` (en OpenMU el farmeo sin
+    conexión se apaga al morir) para que pregunte a `BarrioOfflineRespawnPolicy`: solo quien está en
+    un spot sigue al revivir.
 - **Pausar las respuestas** (el bot sigue vinculado pero no contesta ni marca leído): Panel admin
   → 🧙 El Sabio → desmarcar *"El bot de WhatsApp contesta"*, o `bash ~/barriomu.sh whatsapp pausar`
   (`reanudar` para volver). Los avisos automáticos siguen saliendo.

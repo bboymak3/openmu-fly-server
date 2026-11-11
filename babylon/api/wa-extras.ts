@@ -148,7 +148,7 @@ export async function extrasContext(): Promise<string> {
       `SERVIDOR AHORA: ${s.online ? `prendido, ${s.players ?? "?"} conectados` : "apagado"}.`,
       `TOP 3: ${top.map(r => `${r.rank}. ${r.name} (${r.resets} resets, nivel ${r.level})`).join("; ")}.`,
       `PROXIMOS EVENTOS (hora de Venezuela): ${ev.filter(e => e.active).map(e => `${e.name} ${e.next.map(veTime).join(", ")}`).join("; ")}.`,
-      "- Comandos que no gastan preguntas: estado, top, mi puesto, eventos, avisar todos, resumen si/no, @Nombre mensaje (le llega en el juego).",
+      "- Comandos que no gastan preguntas: estado, top, mi puesto, eventos, avisar todos, resumen si/no, @Nombre mensaje (le llega en el juego), spots, mover N.",
     ].join("\n");
   } catch {
     return "";
@@ -314,6 +314,7 @@ export const HELP_TEXT = [
   "• *resumen si* / *resumen no* (resumen diario a las 8:00)",
   "• *@Nombre mensaje*: le llega a ese jugador dentro del juego",
   "• *baul* · *vender 2 50* · *parar* · *reset NOMBRE* · *puntos NOMBRE fuerza 100*",
+  "• *spots* · *mover 2*: lleva a tu personaje que farmea (/offlevel) a un spot de farmeo",
   "Y cualquier pregunta de MU, en tus palabras. 😉",
 ].join("\n");
 

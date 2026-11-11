@@ -181,6 +181,24 @@ public class BarrioAvisosPlugIn : IPeriodicTaskPlugIn, ICharacterLevelUpPlugIn, 
                 case "anuncio":
                     await AnnounceAsync(gameContext, file, order, age).ConfigureAwait(false);
                     break;
+                case "mover":
+                    if (order.Login is not { Length: > 0 } moveLogin || age > OrderMaxAge)
+                    {
+                        if (order.Login is { Length: > 0 } late && TryDelete(file))
+                        {
+                            Send(late, "No encontre tu personaje farmeando para moverlo. Arranca el farmeo en el juego (MU Helper + /offlevel).");
+                        }
+
+                        TryDelete(file);
+                        break;
+                    }
+
+                    if (gameContext.OfflinePlayerManager.IsActive(moveLogin) && TryDelete(file))
+                    {
+                        await BarrioSpots.HandleMoveOrderAsync(gameContext, moveLogin, order.Text).ConfigureAwait(false);
+                    }
+
+                    break;
                 default:
                     TryDelete(file);
                     break;
@@ -330,6 +348,11 @@ public class BarrioAvisosPlugIn : IPeriodicTaskPlugIn, ICharacterLevelUpPlugIn, 
             return ValueTask.CompletedTask;
         }
 
+        if (BarrioSpots.IsAssigned(login))
+        {
+            return ValueTask.CompletedTask; // Lo avisa BarrioSpots (cuenta las muertes en el spot).
+        }
+
         var key = "muerte:" + login;
         if (Sent.TryGetValue(key, out var last) && DateTime.UtcNow - last < DeathEvery)
         {
@@ -339,11 +362,12 @@ public class BarrioAvisosPlugIn : IPeriodicTaskPlugIn, ICharacterLevelUpPlugIn, 
         Sent[key] = DateTime.UtcNow;
         var map = player.CurrentMap?.Definition.Name.ToString() ?? "su mapa";
         var by = (killer as Monster)?.Definition.Designation.ToString();
-        Send(login, $"💀 *{character.Name}* murió farmeando sin conexión en {map}{(string.IsNullOrEmpty(by) ? string.Empty : $" ({by})")}. Revisa el MU Helper o cambia de spot.");
+        Send(login, $"💀 *{character.Name}* murió farmeando sin conexión en {map}{(string.IsNullOrEmpty(by) ? string.Empty : $" ({by})")}. El farmeo se detuvo (quedo guardado). Para volver: entra, MU Helper + /offlevel.");
         return ValueTask.CompletedTask;
     }
 
-    private static void Send(string login, string text)
+    /// <summary>Manda un aviso al WhatsApp vinculado a la cuenta (por la API de la tablet).</summary>
+    internal static void Send(string login, string text)
     {
         string secret;
         try
