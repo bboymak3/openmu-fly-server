@@ -46,7 +46,8 @@ jobs:
           cp openmu-barrio/BarrioDailyRewardPlugIn.cs openmu-barrio/BarrioStore.cs \
              openmu-barrio/BarrioMasterResetPlugIn.cs openmu-barrio/BarrioBuffNpcsPlugIn.cs \
              openmu-barrio/BarrioTownNpcsPlugIn.cs openmu-barrio/BarrioStarterSetPlugIn.cs \
-             openmu-barrio/BarrioPointsPlugIn.cs openmu-barrio/BarrioOnlineNpcPlugIn.cs $S/GameLogic/PlugIns/
+             openmu-barrio/BarrioPointsPlugIn.cs openmu-barrio/BarrioOnlineNpcPlugIn.cs \
+             openmu-barrio/BarrioSabioPlugIn.cs $S/GameLogic/PlugIns/
           # 2 game servers con nombre propio
           sed -i 's/CreateInitialDataAsync(3, true)/CreateInitialDataAsync(2, true)/' $S/Startup/Program.cs
           sed -i 's/server.Description = \$"Server {i}";/server.Description = i switch { 0 => "MIJAGUA", 1 => "ALTOBARINAS", _ => $"Server {i}" };/' $S/Persistence/Initialization/DataInitializationBase.cs

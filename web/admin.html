@@ -10,9 +10,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20261104e" />
-  <script src="config.js?v=20261104e"></script>
-  <script src="admin.js?v=20261104e" defer></script>
+  <link rel="stylesheet" href="styles.css?v=20261111a" />
+  <script src="config.js?v=20261111a"></script>
+  <script src="admin.js?v=20261111a" defer></script>
 </head>
 <body>
   <header class="top">
@@ -99,6 +99,17 @@
       </form>
       <div class="tiles" id="eco-tiles"></div>
       <div class="card table-wrap"><table class="ranking"><thead><tr><th>Venta</th><th>Vendedor</th><th>Comprador</th><th class="num">Precio</th><th class="num">Impuesto</th></tr></thead><tbody id="eco-recent"></tbody></table></div>
+
+      <!-- El Sabio del Barrio (IA) -->
+      <h2 class="admin-h2" id="sabio">🧙 El Sabio del Barrio (IA)</h2>
+      <p class="muted">En el juego: <b>/ia</b> y una pregunta; contesta por susurro con los datos reales del personaje. No puede dar ni cambiar nada. Se configura en la tablet con <code>bash ~/barriomu.sh ia</code>.</p>
+      <form class="card form shop-add" id="sabio-form">
+        <label class="wide"><span><input type="checkbox" name="on" /> Prendido</span></label>
+        <label>Preguntas por jugador al día <input name="daily" type="number" min="0" max="1000" required inputmode="numeric" /></label>
+        <button class="btn btn-gold" type="submit">💾 Guardar</button>
+        <p class="muted small wide" id="sabio-state"></p>
+      </form>
+      <div class="card table-wrap"><table class="ranking"><tbody id="sabio-recent"></tbody></table></div>
 
       <!-- Cash Shop -->
       <h2 class="admin-h2" id="cashshop">💎 Cash Shop (WCoinC)</h2>

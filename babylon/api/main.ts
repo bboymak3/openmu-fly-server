@@ -19,6 +19,7 @@ import { handleAdmin } from "./admin";
 import { handleReferidos } from "./referidos";
 import { handleTienda } from "./tienda";
 import { handleCashShop } from "./cashshop";
+import { handleSabio } from "./sabio";
 import { handleMercado } from "./mercado";
 
 const PORT = Number(process.env.PORT || 3400);
@@ -280,6 +281,8 @@ Bun.serve({
     const cors = corsHeaders(req);
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
 
+    const sabio = await handleSabio(req, url, cors, sql);
+    if (sabio) return sabio;
     const referidos = await handleReferidos(req, url, cors, sql);
     if (referidos) return referidos;
     const tienda = await handleTienda(req, url, cors, sql);

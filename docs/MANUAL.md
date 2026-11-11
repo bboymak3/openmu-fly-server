@@ -259,6 +259,22 @@ Se guarda en `~/openmu/data/premio-diario.json`.
 - En el ranking, el Master Reset va primero (columna **MR**).
 - Se guarda en `~/openmu/data/master-reset.json` (por id de personaje).
 
+### El Sabio del Barrio (IA, comando /ia)
+En el juego: **`/ia` y una pregunta** (ej. `/ia cuanto me falta para el reset?`). Contesta por
+**susurro** del "Sabio" en 1 a 5 segundos, con los datos reales del personaje (nivel, resets, zen,
+puntos, monedas, mapa), los precios reales de la tienda y lo que hay en La Plaza.
+
+- **No puede dar ni cambiar nada**: no tiene ninguna herramienta; solo conversa.
+- Quién pregunta lo pone el servidor de juego (BarrioSabioPlugIn.cs), no el jugador.
+- El modelo es Llama 3.3 de **Cloudflare Workers AI**; la tablet lo llama con un token.
+- **Configurar** (una vez, en Termux): `bash ~/barriomu.sh ia`. Pide el **ID de la cuenta** de
+  Cloudflare y un **token con permiso "Workers AI"** (Cloudflare → Mi perfil → Tokens de API →
+  Crear token → plantilla "Workers AI"). Prueba que la IA conteste.
+- Panel admin → **🧙 El Sabio del Barrio**: prender/apagar, preguntas por jugador al día (20 por
+  defecto) y las últimas conversaciones.
+- Archivos: `~/.barriomu-ia` (cuenta y token, dentro de Ubuntu), `~/openmu/data/sabio-secreto.txt`
+  (secreto entre OpenMU y la API). Tablas: `barrio.sabio_uso`, `barrio.sabio_log`.
+
 ### Teclas en la computadora (web en PC y programa de Windows)
 | Tecla | Qué hace |
 |---|---|
