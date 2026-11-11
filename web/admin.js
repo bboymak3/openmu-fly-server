@@ -266,6 +266,7 @@
       const d = await call("/admin/sabio");
       const f = $("#sabio-form");
       f.on.checked = d.on;
+      f.waOn.checked = d.waOn !== false;
       if (![...f.daily.options].some(o => Number(o.value) === d.daily)) f.daily.add(new Option(String(d.daily), String(d.daily)));
       f.daily.value = String(d.daily);
       f.periodo.value = d.hourly ? "hora" : "dia";
@@ -284,7 +285,7 @@
     const btn = f.querySelector("button");
     btn.disabled = true;
     try {
-      toast((await call("/admin/sabio/guardar", { method: "POST", body: { on: f.on.checked, daily: Number(f.daily.value), periodo: f.periodo.value } })).message);
+      toast((await call("/admin/sabio/guardar", { method: "POST", body: { on: f.on.checked, waOn: f.waOn.checked, daily: Number(f.daily.value), periodo: f.periodo.value } })).message);
       await loadSabio();
     } catch (err) {
       toast(err.message, true);

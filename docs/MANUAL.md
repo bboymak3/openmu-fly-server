@@ -322,6 +322,9 @@ El WhatsApp del servidor corre **en la tablet** (sin Railway ni Evolution): `bab
   `~/openmu/data/en-juego.json` con las cuentas que OpenMU tiene cargadas, **también las que
   farmean con `/offlevel`** (que no pasan por el proxy). Mi cuenta, la tienda, La Plaza y WhatsApp
   no tocan esas cuentas (OpenMU las guardaría encima al salir).
+- **Pausar las respuestas** (el bot sigue vinculado pero no contesta ni marca leído): Panel admin
+  → 🧙 El Sabio → desmarcar *"El bot de WhatsApp contesta"*, o `bash ~/barriomu.sh whatsapp pausar`
+  (`reanudar` para volver). Los avisos automáticos siguen saliendo.
 - Sesión del bot: `~/barriomu-wa/auth` (dentro de Ubuntu). Tablas: `barrio.wa_link`, `barrio.wa_code`.
 
 ### Teclas en la computadora (web en PC y programa de Windows)

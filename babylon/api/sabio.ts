@@ -349,9 +349,10 @@ export async function handleSabio(req: Request, url: URL, cors: Record<string, s
 export async function adminSabio(sql: Sql) {
   await ensureSabioTables(sql);
   const { on, daily, hourly } = await settings(sql);
+  const [wa] = await sql`select value from barrio.settings where key = 'wa_on'`;
   const [{ hoy }] = await sql`select coalesce(sum(n), 0)::int as hoy from barrio.sabio_cupo where periodo like ${today() + "%"}`;
   const recent = await sql`select login, character, question, answer, at from barrio.sabio_log order by at desc limit 30`;
-  return { on, daily, hourly, today: hoy, configured: !!cloudflareKey() && !!secret(), recent };
+  return { on, daily, hourly, waOn: wa?.value !== "0", today: hoy, configured: !!cloudflareKey() && !!secret(), recent };
 }
 
 export async function adminSaveSabio(b: Record<string, unknown>, sql: Sql) {
@@ -360,7 +361,8 @@ export async function adminSaveSabio(b: Record<string, unknown>, sql: Sql) {
   await ensureSabioTables(sql);
   await sql`
     insert into barrio.settings (key, value) values ('sabio_on', ${b.on === true ? "1" : "0"}), ('sabio_daily', ${String(daily)}),
-      ('sabio_periodo', ${b.periodo === "dia" ? "dia" : "hora"})
+      ('sabio_periodo', ${b.periodo === "dia" ? "dia" : "hora"}),
+      ('wa_on', ${b.waOn === false ? "0" : "1"})
     on conflict (key) do update set value = excluded.value`;
   return { ok: true, message: "Sabio guardado." };
 }

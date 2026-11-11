@@ -495,6 +495,10 @@ export async function handleWhatsapp(req: Request, url: URL, cors: Record<string
     const jid = typeof b.from === "string" ? b.from : "";
     const text = typeof b.text === "string" ? b.text.trim() : "";
     if (!JID_RE.test(jid) || !text) return json({ messages: [] }, 200, cors);
+    // Respuestas en pausa (Panel admin o barriomu.sh whatsapp pausar): no contesta nada.
+    await ensureTables(sql);
+    const [paused] = await sql`select 1 from barrio.settings where key = 'wa_on' and value = '0'`;
+    if (paused) return json({ messages: [] }, 200, cors);
     return json({ messages: await botMessage(sql, jid, text) }, 200, cors);
   }
 
