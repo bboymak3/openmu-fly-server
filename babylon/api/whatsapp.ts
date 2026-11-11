@@ -240,7 +240,8 @@ async function botMessage(sql: Sql, jid: string, text: string): Promise<string[]
   await ensureTables(sql);
   const lower = text.trim().toLowerCase();
 
-  const link = lower.match(/^vincular\s+(\d{6})$/);
+  // "vincular 123456", "vincula 123456" o solo el numero de 6 cifras.
+  const link = lower.match(/^(?:vincul(?:ar|a|o)\s*)?(\d{6})$/);
   if (link) {
     const now = Date.now();
     const bad = (badCodes.get(jid) ?? []).filter(t => now - t < 3600_000);
