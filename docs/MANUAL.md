@@ -283,8 +283,8 @@ puntos, monedas, mapa), los precios reales de la tienda y lo que hay en La Plaza
   (secreto entre OpenMU y la API). Tablas: `barrio.sabio_uso`, `barrio.sabio_log`.
 
 ### El Sabio por WhatsApp (bot en la tablet)
-El WhatsApp del servidor corre **en la tablet** (sin Railway ni Evolution): `babylon/whatsapp/bot.ts`
-(librería Baileys, como WhatsApp Web sin pantalla). Le pasa cada mensaje privado a la API
+El WhatsApp del servidor corre **en la tablet** (sin Railway ni Evolution): `babylon/whatsapp/bot.mjs`
+(librería Baileys 7 en Node.js, como WhatsApp Web sin pantalla; es lo mismo que usa Evolution API por dentro). Le pasa cada mensaje privado a la API
 (`/whatsapp`, solo desde la tablet, con el secreto del Sabio) y manda la respuesta.
 
 - **Vincular el número del bot** (una vez; usa un número aparte, no el personal: WhatsApp puede
