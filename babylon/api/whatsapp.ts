@@ -15,6 +15,7 @@ import type { Sql } from "postgres";
 import { LEVEL, MASTER_LEVEL, RESETS, PanelError, doAddPoints, doReset, json, presence, session } from "./panel";
 import { economy, ensureSettings } from "./economia";
 import { doSell, vaultItems } from "./mercado";
+import { cancelExtraPending, confirmExtra, extrasCommand, extrasContext, hasExtraPending, waChatFromGame } from "./wa-extras";
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import {
   PERSONALITY, SERVER_FACTS, cloudflareKey, ensureSabioTables, giveBack, remember, runModel, sameSecret,
@@ -365,11 +366,15 @@ async function botMessage(sql: Sql, jid: string, text: string): Promise<string[]
     from barrio.wa_link l join data."Account" a on a."Id" = l.account where l.jid = ${jid}`;
   if (!linked) return [HELP];
 
+  if (/^(s[ií]|si+|dale|ok|confirmo)[.! ]*$/.test(lower) && hasExtraPending(jid)) return confirmExtra(sql, jid, linked);
   if (/^(s[ií]|si+|dale|ok|confirmo)[.! ]*$/.test(lower) && pending.has(jid)) return confirm(sql, jid, linked);
-  if (/^(no|cancela(r)?)[.! ]*$/.test(lower) && pending.has(jid)) {
+  if (/^(no|cancela(r)?)[.! ]*$/.test(lower) && (pending.has(jid) || hasExtraPending(jid))) {
     pending.delete(jid);
+    cancelExtraPending(jid);
     return ["Listo, cancelado. No se hizo nada."];
   }
+  const extra = await extrasCommand(sql, jid, linked, text);
+  if (extra) return extra;
   if (/^(ba[uú]l|mi ba[uú]l|ver ba[uú]l)[.!?]*$/.test(lower)) return showVault(sql, jid, linked.account);
   const direct = parseCommand(text);
   if (direct) return propose(sql, jid, linked, direct);
@@ -395,7 +400,7 @@ async function botMessage(sql: Sql, jid: string, text: string): Promise<string[]
     const messages = [
       {
         role: "system",
-        content: `${PERSONALITY}\n- Estas hablando por WhatsApp: puedes usar emojis con moderacion y *negritas* de WhatsApp; maximo 5 frases.\n\n${SERVER_FACTS}\n\n${await accountContext(sql, linked.account, linked.login)}`,
+        content: `${PERSONALITY}\n- Estas hablando por WhatsApp: puedes usar emojis con moderacion y *negritas* de WhatsApp; maximo 5 frases.\n\n${SERVER_FACTS}\n\n${await extrasContext()}\n\n${await accountContext(sql, linked.account, linked.login)}`,
       },
       ...remember(memoryKey),
       { role: "user", content: text.slice(0, 500) },
@@ -459,6 +464,23 @@ export async function notifyAccount(sql: Sql, who: { accountId?: string; login?:
   }
 }
 
+/** Manda un mensaje a un chat de WhatsApp por el bot de la tablet. Nunca falla hacia afuera. */
+export async function sendToJid(jid: string, text: string): Promise<boolean> {
+  try {
+    const botSecret = secret();
+    if (!botSecret || !JID_RE.test(jid)) return false;
+    const res = await fetch(BOT_SEND, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ secret: botSecret, to: jid, text: text.slice(0, 1500) }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 // ---------------------------------------------------------------- rutas
 
 export async function handleWhatsapp(req: Request, url: URL, cors: Record<string, string>, sql: Sql): Promise<Response | null> {
@@ -480,6 +502,22 @@ export async function handleWhatsapp(req: Request, url: URL, cors: Record<string
     return json({ ok: true, sent }, 200, cors);
   }
 
+  if (url.pathname === "/wa-chat") {
+    // "/wa Nombre mensaje" desde el juego (BarrioWhatsappChatPlugIn): solo desde la tablet.
+    if (req.method !== "POST" || req.headers.has("cf-connecting-ip")) return new Response("Not found", { status: 404 });
+    const raw = await req.text();
+    if (raw.length > 4096) return new Response("Too large", { status: 413 });
+    let b: Record<string, unknown>;
+    try {
+      b = JSON.parse(raw);
+    } catch {
+      return new Response("Bad request", { status: 400 });
+    }
+    if (!sameSecret(b.secret)) return new Response("Not found", { status: 404 });
+    await ensureTables(sql);
+    return json(await waChatFromGame(sql, b), 200, cors);
+  }
+
   if (url.pathname === "/whatsapp") {
     // Solo el bot de la tablet: lo que llega por el tunel trae cabeceras de Cloudflare.
     if (req.method !== "POST" || req.headers.has("cf-connecting-ip")) return new Response("Not found", { status: 404 });
@@ -498,7 +536,8 @@ export async function handleWhatsapp(req: Request, url: URL, cors: Record<string
     // Respuestas en pausa (Panel admin o barriomu.sh whatsapp pausar): no contesta nada.
     await ensureTables(sql);
     const [paused] = await sql`select 1 from barrio.settings where key = 'wa_on' and value = '0'`;
-    if (paused) return json({ messages: [] }, 200, cors);
+    // Los comandos de admin siguen funcionando en pausa (asi el staff maneja el servidor igual).
+    if (paused && !/^admin\b/i.test(text)) return json({ messages: [] }, 200, cors);
     return json({ messages: await botMessage(sql, jid, text) }, 200, cors);
   }
 

@@ -16,7 +16,9 @@ using System.Text.Json.Serialization;
 using MUnique.OpenMU.GameLogic.Attributes;
 using MUnique.OpenMU.GameLogic.NPC;
 using MUnique.OpenMU.GameLogic.Offline;
+using MUnique.OpenMU.GameLogic.PlugIns.ChatCommands;
 using MUnique.OpenMU.GameLogic.Resets;
+using MUnique.OpenMU.GameLogic.Views;
 using MUnique.OpenMU.PlugIns;
 
 /// <summary>
@@ -64,6 +66,14 @@ public class BarrioAvisosPlugIn : IPeriodicTaskPlugIn, ICharacterLevelUpPlugIn, 
     private static readonly string OrdersDir = Path.Combine(DataDir, "ordenes");
 
     private static readonly TimeSpan OrderMaxAge = TimeSpan.FromMinutes(3);
+
+    private static readonly TimeSpan WhisperMaxAge = TimeSpan.FromSeconds(20);
+
+    /// <summary>El anuncio se queda este rato para que lo lean los dos servidores de juego.</summary>
+    private static readonly TimeSpan AnnounceMaxAge = TimeSpan.FromSeconds(30);
+
+    /// <summary>Anuncios que ya mostro cada servidor de juego.</summary>
+    private static readonly ConditionalWeakTable<GameContext, HashSet<string>> Announced = new();
 
     /// <summary>Cuando se miro por ultima vez cada servidor de juego.</summary>
     private static readonly ConditionalWeakTable<GameContext, StrongBox<DateTime>> CheckedAt = new();
@@ -154,38 +164,124 @@ public class BarrioAvisosPlugIn : IPeriodicTaskPlugIn, ICharacterLevelUpPlugIn, 
             }
 
             var age = DateTimeOffset.UtcNow - DateTimeOffset.FromUnixTimeMilliseconds(order?.At ?? 0);
-            if (order?.Login is not { Length: > 0 } login || age > OrderMaxAge)
+            if (order is null)
             {
-                if (order?.Login is { Length: > 0 } late && order.Accion == "parar")
-                {
-                    Send(late, "No encontre tu personaje farmeando para pararlo. Si sigue farmeando, entra al juego y sal.");
-                }
-
                 TryDelete(file);
                 continue;
             }
 
-            if (order.Accion != "parar" || !gameContext.OfflinePlayerManager.IsActive(login))
+            switch (order.Accion)
             {
-                continue; // Puede ser del otro servidor de juego: se queda hasta que venza.
+                case "parar":
+                    await StopFarmingAsync(gameContext, file, order, age).ConfigureAwait(false);
+                    break;
+                case "susurro":
+                    await WhisperFromWhatsappAsync(gameContext, file, order, age).ConfigureAwait(false);
+                    break;
+                case "anuncio":
+                    await AnnounceAsync(gameContext, file, order, age).ConfigureAwait(false);
+                    break;
+                default:
+                    TryDelete(file);
+                    break;
+            }
+        }
+    }
+
+    /// <summary>"parar": detiene el farmeo sin conexion de la cuenta (el juego guarda al personaje).</summary>
+    private static async ValueTask StopFarmingAsync(GameContext gameContext, string file, Order order, TimeSpan age)
+    {
+        if (order.Login is not { Length: > 0 } login || age > OrderMaxAge)
+        {
+            if (order.Login is { Length: > 0 } late)
+            {
+                Send(late, "No encontre tu personaje farmeando para pararlo. Si sigue farmeando, entra al juego y sal.");
             }
 
-            if (!TryDelete(file))
+            TryDelete(file);
+            return;
+        }
+
+        if (!gameContext.OfflinePlayerManager.IsActive(login) || !TryDelete(file))
+        {
+            return; // Del otro servidor de juego, o ya la tomo el otro.
+        }
+
+        gameContext.OfflinePlayerManager.TryGetPlayer(login, out var farming);
+        var name = farming?.SelectedCharacter?.Name ?? "Tu personaje";
+        try
+        {
+            await gameContext.OfflinePlayerManager.StopAsync(login).ConfigureAwait(false);
+            Send(login, $"🛑 Farmeo detenido: *{name}* quedo guardado y fuera del juego. En un minuto ya puedes hacer reset o vender por aqui.");
+        }
+        catch
+        {
+            Send(login, "No pude parar el farmeo. Entra al juego y sal para detenerlo.");
+        }
+    }
+
+    /// <summary>"susurro": un mensaje de WhatsApp que le llega a un jugador conectado como susurro.</summary>
+    private static async ValueTask WhisperFromWhatsappAsync(GameContext gameContext, string file, Order order, TimeSpan age)
+    {
+        if (order.Login is not { Length: > 0 } login || order.To is not { Length: > 0 } to || order.From is not { Length: > 0 } from || order.Text is not { Length: > 0 } text)
+        {
+            TryDelete(file);
+            return;
+        }
+
+        if (age > WhisperMaxAge)
+        {
+            if (TryDelete(file))
             {
-                continue; // El otro servidor de juego ya la tomo.
+                Send(login, $"✉️ *{to}* no esta conectado ahora: no le llego tu mensaje.");
             }
 
-            gameContext.OfflinePlayerManager.TryGetPlayer(login, out var farming);
-            var name = farming?.SelectedCharacter?.Name ?? "Tu personaje";
-            try
+            return;
+        }
+
+        var target = gameContext.GetPlayerByCharacterName(to);
+        if (target is null || target is OfflinePlayer || !TryDelete(file))
+        {
+            return; // Puede estar en el otro servidor de juego.
+        }
+
+        try
+        {
+            await target.InvokeViewPlugInAsync<IChatViewPlugIn>(p => p.ChatMessageAsync($"(WhatsApp) {text}", from, ChatMessageType.Whisper)).ConfigureAwait(false);
+            await target.ShowBlueMessageAsync($"Mensaje de {from} por WhatsApp. Responde con: /wa {from} tu mensaje").ConfigureAwait(false);
+            Send(login, $"✉️ Entregado a *{target.SelectedCharacter?.Name ?? to}* dentro del juego.");
+        }
+        catch
+        {
+            Send(login, $"✉️ No pude entregarle tu mensaje a *{to}*. Intenta en un rato.");
+        }
+    }
+
+    /// <summary>"anuncio": aviso dorado del admin para todos los conectados (cada servidor de juego una vez).</summary>
+    private static async ValueTask AnnounceAsync(GameContext gameContext, string file, Order order, TimeSpan age)
+    {
+        if (order.Text is not { Length: > 0 } text || age > AnnounceMaxAge)
+        {
+            TryDelete(file);
+            return;
+        }
+
+        var done = Announced.GetOrCreateValue(gameContext);
+        lock (done)
+        {
+            if (!done.Add(Path.GetFileName(file)))
             {
-                await gameContext.OfflinePlayerManager.StopAsync(login).ConfigureAwait(false);
-                Send(login, $"🛑 Farmeo detenido: *{name}* quedo guardado y fuera del juego. En un minuto ya puedes hacer reset o vender por aqui.");
+                return;
             }
-            catch
-            {
-                Send(login, "No pude parar el farmeo. Entra al juego y sal para detenerlo.");
-            }
+        }
+
+        try
+        {
+            await gameContext.SendGlobalNotificationAsync(text).ConfigureAwait(false);
+        }
+        catch
+        {
+            // Sin jugadores o se cayo una conexion: el anuncio sigue para los demas.
         }
     }
 
@@ -282,10 +378,105 @@ public class BarrioAvisosPlugIn : IPeriodicTaskPlugIn, ICharacterLevelUpPlugIn, 
         [property: JsonPropertyName("logins")] string[] Logins,
         [property: JsonPropertyName("offline")] string[] Offline);
 
-    private sealed record Order([property: JsonPropertyName("accion")] string? Accion, [property: JsonPropertyName("login")] string? Login, [property: JsonPropertyName("at")] long At);
+    private sealed record Order(
+        [property: JsonPropertyName("accion")] string? Accion,
+        [property: JsonPropertyName("login")] string? Login,
+        [property: JsonPropertyName("at")] long At,
+        [property: JsonPropertyName("from")] string? From = null,
+        [property: JsonPropertyName("to")] string? To = null,
+        [property: JsonPropertyName("text")] string? Text = null);
 
     private sealed record Aviso(
         [property: JsonPropertyName("secret")] string Secret,
         [property: JsonPropertyName("login")] string Login,
         [property: JsonPropertyName("text")] string Text);
+}
+
+/// <summary>
+/// BarrioMU: <c>/wa Nombre mensaje</c> en el juego: le manda el mensaje por WhatsApp al jugador
+/// <c>Nombre</c> (al WhatsApp vinculado a su cuenta), a traves de la API de la tablet.
+/// </summary>
+[PlugIn]
+[Display(Name = "BarrioMU: /wa (mensaje por WhatsApp)", Description = "Comando /wa Nombre mensaje: manda el mensaje al WhatsApp vinculado del jugador Nombre.")]
+[Guid("8D9E0F1A-2B3C-4D5E-9F6A-7B8C9D0E1F23")]
+public class BarrioWhatsappChatPlugIn : IChatCommandPlugIn
+{
+    private static readonly string SecretPath = Path.Combine(AppContext.BaseDirectory, "data", "sabio-secreto.txt");
+
+    private static readonly string ApiUrl = Environment.GetEnvironmentVariable("BARRIO_WACHAT_URL") ?? "http://127.0.0.1:3400/wa-chat";
+
+    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(15) };
+
+    /// <inheritdoc />
+    public string Key => "/wa";
+
+    /// <inheritdoc />
+    public CharacterStatus MinCharacterStatusRequirement => CharacterStatus.Normal;
+
+    /// <inheritdoc />
+    public async ValueTask HandleCommandAsync(Player player, string command)
+    {
+        if (player.SelectedCharacter?.Name is not { } from || player.Account?.LoginName is not { } login)
+        {
+            return;
+        }
+
+        var parts = command.Length > 3 ? command[3..].Trim().Split(' ', 2, StringSplitOptions.RemoveEmptyEntries) : Array.Empty<string>();
+        if (parts.Length < 2)
+        {
+            await player.ShowBlueMessageAsync("Uso: /wa Nombre mensaje (le llega al WhatsApp de ese jugador)").ConfigureAwait(false);
+            return;
+        }
+
+        string secret;
+        try
+        {
+            secret = File.Exists(SecretPath) ? File.ReadAllText(SecretPath).Trim() : string.Empty;
+        }
+        catch
+        {
+            secret = string.Empty;
+        }
+
+        if (secret.Length < 16)
+        {
+            await player.ShowBlueMessageAsync("WhatsApp no esta configurado en el servidor.").ConfigureAwait(false);
+            return;
+        }
+
+        var to = parts[0];
+        var text = parts[1].Length > 200 ? parts[1][..200] : parts[1];
+        _ = Task.Run(async () =>
+        {
+            string answer;
+            try
+            {
+                using var response = await Http.PostAsJsonAsync(ApiUrl, new WaChat(secret, login, from, to, text)).ConfigureAwait(false);
+                var result = await response.Content.ReadFromJsonAsync<WaChatResult>().ConfigureAwait(false);
+                answer = result?.Message ?? "No se pudo mandar.";
+            }
+            catch
+            {
+                answer = "No se pudo mandar el WhatsApp. Intenta en un rato.";
+            }
+
+            try
+            {
+                await player.ShowBlueMessageAsync(answer).ConfigureAwait(false);
+            }
+            catch
+            {
+                // El jugador se fue.
+            }
+        });
+    }
+
+    private sealed record WaChat(
+        [property: JsonPropertyName("secret")] string Secret,
+        [property: JsonPropertyName("login")] string Login,
+        [property: JsonPropertyName("from")] string From,
+        [property: JsonPropertyName("to")] string To,
+        [property: JsonPropertyName("text")] string Text);
+
+    private sealed record WaChatResult([property: JsonPropertyName("message")] string? Message);
 }

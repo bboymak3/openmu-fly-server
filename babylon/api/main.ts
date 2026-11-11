@@ -21,6 +21,7 @@ import { handleTienda } from "./tienda";
 import { handleCashShop } from "./cashshop";
 import { handleSabio } from "./sabio";
 import { handleWhatsapp } from "./whatsapp";
+import { setWaData, startWaJobs } from "./wa-extras";
 import { handleMercado } from "./mercado";
 
 const PORT = Number(process.env.PORT || 3400);
@@ -336,5 +337,13 @@ Bun.serve({
     }
   },
 });
+
+// El bot de WhatsApp usa los mismos datos de la pagina (estado, ranking, eventos).
+setWaData({
+  status: () => cached("status", 20, status).then(JSON.parse),
+  ranking: limit => cached(`level:${limit}`, 60, () => rankingLevel(limit)).then(JSON.parse),
+  events: () => cached("events", 60, events).then(JSON.parse),
+});
+startWaJobs(sql);
 
 console.log(`BarrioMU API en http://127.0.0.1:${PORT} (CORS: ${[...ORIGINS].join(", ")})`);

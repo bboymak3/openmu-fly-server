@@ -322,6 +322,16 @@ El WhatsApp del servidor corre **en la tablet** (sin Railway ni Evolution): `bab
   `~/openmu/data/en-juego.json` con las cuentas que OpenMU tiene cargadas, **también las que
   farmean con `/offlevel`** (que no pasan por el proxy). Mi cuenta, la tienda, La Plaza y WhatsApp
   no tocan esas cuentas (OpenMU las guardaría encima al salir).
+- **Más comandos (no gastan preguntas)** (`babylon/api/wa-extras.ts`):
+  - `estado` (prendido y conectados), `top` (top 5), `mi puesto`, `eventos` (próximos horarios), `ayuda`.
+  - `avisar todos` / `avisar blood castle` / `no avisar …`: aviso **10 minutos antes** del evento.
+  - `resumen si` / `resumen no`: **resumen diario a las 8:00** (hora de Venezuela) con lo que cambió
+    desde el día anterior (niveles, resets, zen, monedas). Tablas `barrio.wa_snapshot*`.
+  - `@Nombre mensaje`: le llega a ese jugador **dentro del juego** como susurro (si está conectado;
+    20 por hora). En el juego se responde con **`/wa Nombre mensaje`** y llega al WhatsApp de Nombre.
+  - **Admin** (solo cuentas GM): `admin estado`, `admin jugadores`, `admin anuncio TEXTO` (aviso dorado
+    en el juego), `admin dar wcoinc CUENTA N` (con sí), `admin resumen` (manda el resumen ya).
+    Funcionan aunque el bot esté en pausa y quedan en el Registro del admin.
 - **Pausar las respuestas** (el bot sigue vinculado pero no contesta ni marca leído): Panel admin
   → 🧙 El Sabio → desmarcar *"El bot de WhatsApp contesta"*, o `bash ~/barriomu.sh whatsapp pausar`
   (`reanudar` para volver). Los avisos automáticos siguen saliendo.
