@@ -260,7 +260,14 @@ Se guarda en `~/openmu/data/premio-diario.json`.
 - Se guarda en `~/openmu/data/master-reset.json` (por id de personaje).
 
 ### El Sabio del Barrio (IA, comando /ia)
-En el juego: **`/ia` y una pregunta** (ej. `/ia cuanto me falta para el reset?`). Contesta por
+En el juego hay dos formas:
+- **El NPC "Sabio del Barrio"** en Lorencia, junto al Cambista (cerca de 146, 126): al hacerle
+  clic saluda y **se abre el chat dirigido al Sabio**; se escribe la pregunta normal, sin `/ia`
+  (el cliente la manda como `/ia`). Mientras el susurro siga apuntando al Sabio, cada mensaje
+  es otra pregunta; para hablar con otros, se cambia el destinatario del susurro.
+- **`/ia` y una pregunta** (ej. `/ia cuanto me falta para el reset?`), desde cualquier mapa.
+
+Preguntas de hasta 56 letras (el chat de MU deja 60). Contesta por
 **susurro** del "Sabio" en 1 a 5 segundos, con los datos reales del personaje (nivel, resets, zen,
 puntos, monedas, mapa), los precios reales de la tienda y lo que hay en La Plaza.
 
