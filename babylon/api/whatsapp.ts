@@ -16,7 +16,7 @@ import { LEVEL, MASTER_LEVEL, RESETS, PanelError, doAddPoints, doReset, json, pr
 import { ensureSettings } from "./economia";
 import {
   PERSONALITY, SERVER_FACTS, cloudflareKey, ensureSabioTables, giveBack, remember, runModel, sameSecret,
-  settings, store, takeOne,
+  secret, settings, store, takeOne,
 } from "./sabio";
 
 const CLASSES: Record<number, string> = {
@@ -319,9 +319,63 @@ async function botMessage(sql: Sql, jid: string, text: string): Promise<string[]
   }
 }
 
+// ---------------------------------------------------------------- avisos (Fase C)
+
+const BOT_SEND = process.env.WA_SEND_URL ?? "http://127.0.0.1:3410/send";
+/** Avisos por cuenta y por dia como maximo (protege el numero del bot). */
+const MAX_AVISOS_DIA = 30;
+const avisosHoy = new Map<string, { day: string; n: number }>();
+
+/** Manda un aviso al WhatsApp vinculado a la cuenta (por id o por login). Nunca falla hacia afuera. */
+export async function notifyAccount(sql: Sql, who: { accountId?: string; login?: string }, text: string): Promise<boolean> {
+  try {
+    await ensureTables(sql);
+    const [row] = who.accountId
+      ? await sql`select jid, account::text as account from barrio.wa_link where account = ${who.accountId}`
+      : await sql`
+          select l.jid, l.account::text as account from barrio.wa_link l
+          join data."Account" a on a."Id" = l.account where lower(a."LoginName") = lower(${who.login ?? ""})`;
+    if (!row) return false;
+    const day = new Date(Date.now() - 4 * 3600_000).toISOString().slice(0, 10);
+    const count = avisosHoy.get(row.account);
+    const n = count?.day === day ? count.n : 0;
+    if (n >= MAX_AVISOS_DIA) return false;
+    avisosHoy.set(row.account, { day, n: n + 1 });
+    const botSecret = secret();
+    if (!botSecret) return false;
+    const res = await fetch(BOT_SEND, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ secret: botSecret, to: row.jid, text: text.slice(0, 1000) }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 // ---------------------------------------------------------------- rutas
 
 export async function handleWhatsapp(req: Request, url: URL, cors: Record<string, string>, sql: Sql): Promise<Response | null> {
+  if (url.pathname === "/aviso") {
+    // Avisos del servidor de juego (BarrioAvisosPlugIn): solo desde la tablet, con el secreto.
+    if (req.method !== "POST" || req.headers.has("cf-connecting-ip")) return new Response("Not found", { status: 404 });
+    const raw = await req.text();
+    if (raw.length > 4096) return new Response("Too large", { status: 413 });
+    let b: Record<string, unknown>;
+    try {
+      b = JSON.parse(raw);
+    } catch {
+      return new Response("Bad request", { status: 400 });
+    }
+    if (!sameSecret(b.secret)) return new Response("Not found", { status: 404 });
+    const login = typeof b.login === "string" ? b.login.slice(0, 20) : "";
+    const text = typeof b.text === "string" ? b.text.trim() : "";
+    const sent = login && text ? await notifyAccount(sql, { login }, text) : false;
+    return json({ ok: true, sent }, 200, cors);
+  }
+
   if (url.pathname === "/whatsapp") {
     // Solo el bot de la tablet: lo que llega por el tunel trae cabeceras de Cloudflare.
     if (req.method !== "POST" || req.headers.has("cf-connecting-ip")) return new Response("Not found", { status: 404 });

@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 // BarrioMU: panel de usuario. Login con la cuenta del juego y acciones sobre
 // los personajes (Add Points, PK Clear, Unstuck) y la cuenta (cambio de clave).
 //
@@ -178,8 +179,28 @@ export async function presence(login: string): Promise<Presence> {
   return (await res.json()) as Presence;
 }
 
+/**
+ * Las cuentas que OpenMU tiene cargadas (BarrioAvisosPlugIn las escribe cada 10 s), tambien las
+ * que farmean sin conexion con /offlevel, que no pasan por el proxy. Si el archivo es viejo
+ * (OpenMU sin ese plugin, o apagado), no dice nada y manda la presencia del proxy.
+ */
+const IN_GAME_FILE = process.env.IN_GAME_FILE ?? `${process.env.HOME ?? "/root"}/openmu/data/en-juego.json`;
+function loadedInGame(login: string): boolean {
+  try {
+    const data = JSON.parse(readFileSync(IN_GAME_FILE, "utf8")) as { at?: number; logins?: unknown[] };
+    if (typeof data.at !== "number" || Date.now() - data.at > 60_000 || !Array.isArray(data.logins)) return false;
+    const want = login.toLowerCase();
+    return data.logins.some(l => typeof l === "string" && l.toLowerCase() === want);
+  } catch {
+    return false;
+  }
+}
+
 /** Solo deja seguir si la cuenta esta desconectada hace al menos un minuto. */
 export async function requireOffline(login: string): Promise<void> {
+  if (loadedInGame(login)) {
+    throw new PanelError(409, "Tu cuenta esta cargada en el juego (o farmeando sin conexion con /offlevel). Sal del juego del todo o deten el farmeo, y espera un minuto.");
+  }
   let p: Presence;
   try {
     p = await presence(login);

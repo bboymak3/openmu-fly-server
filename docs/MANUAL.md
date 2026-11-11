@@ -304,6 +304,15 @@ El WhatsApp del servidor corre **en la tablet** (sin Railway ni Evolution): `bab
   responde **sí** en 2 minutos (**no** cancela). Se hace con las mismas reglas de Mi cuenta: la
   cuenta **fuera del juego**, nivel y zen del reset, puntos libres. Nada más: la IA no puede dar ni
   cambiar otra cosa (si lo intenta, no se hace). Queda en el registro del Sabio como `[accion]`.
+- **Avisos automáticos (Fase C)** al WhatsApp vinculado (máximo 30 por cuenta al día):
+  - 💰 **Vendiste en La Plaza**: qué, por cuánto y cuánto recibes.
+  - ⬆️ **Reset listo**: un personaje que farmea sin conexión (`/offlevel`) llegó al nivel del reset.
+  - 💀 **Murió farmeando** sin conexión (uno cada 10 minutos como máximo).
+  Los del juego los manda `BarrioAvisosPlugIn.cs` a la API (`/aviso`, solo desde la tablet).
+- **Cuentas cargadas en el juego**: `BarrioAvisosPlugIn` escribe cada 10 s
+  `~/openmu/data/en-juego.json` con las cuentas que OpenMU tiene cargadas, **también las que
+  farmean con `/offlevel`** (que no pasan por el proxy). Mi cuenta, la tienda, La Plaza y WhatsApp
+  no tocan esas cuentas (OpenMU las guardaría encima al salir).
 - Sesión del bot: `~/barriomu-wa/auth` (dentro de Ubuntu). Tablas: `barrio.wa_link`, `barrio.wa_code`.
 
 ### Teclas en la computadora (web en PC y programa de Windows)

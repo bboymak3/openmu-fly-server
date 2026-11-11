@@ -59,7 +59,7 @@ export const SERVER_FACTS = `DATOS DEL SERVIDOR BarrioMU:
 // ---------------------------------------------------------------- archivos
 
 let secretCache: { at: number; value: string | null } = { at: 0, value: null };
-function secret(): string | null {
+export function secret(): string | null {
   if (Date.now() - secretCache.at < 30_000) return secretCache.value;
   let value: string | null = null;
   try {
