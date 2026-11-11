@@ -334,7 +334,7 @@ public class BarrioSaveSpotChatCommandPlugIn : IChatCommandPlugIn
         var spots = BarrioSpots.Load();
         spots.RemoveAll(s => s.Name.Equals(text, StringComparison.OrdinalIgnoreCase));
         var id = spots.Count == 0 ? 1 : spots.Max(s => s.Id) + 1;
-        var spot = new BarrioSpots.Spot(id, text, map.Definition.Number, map.Definition.Name.ToString(), player.Position.X, player.Position.Y, level);
+        var spot = new BarrioSpots.Spot(id, text, map.Definition.Number, (map.Definition.Name.ToString() ?? "Mapa").Split("||")[0], player.Position.X, player.Position.Y, level);
         spots.Add(spot);
         BarrioSpots.Save(spots);
         await player.ShowBlueMessageAsync($"Spot {id} guardado: {text} ({spot.MapName} {spot.X},{spot.Y}{(level > 0 ? $", nivel {level}" : string.Empty)}).").ConfigureAwait(false);
