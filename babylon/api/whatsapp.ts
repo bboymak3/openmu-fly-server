@@ -1,6 +1,6 @@
 // BarrioMU: el Sabio del Barrio por WhatsApp (Fase A: vincular y conversar, sin acciones).
 //
-// - El bot de la tablet (babylon/whatsapp/bot.ts) manda aqui cada mensaje con el secreto
+// - El bot de la tablet (babylon/whatsapp/bot.mjs) manda aqui cada mensaje con el secreto
 //   compartido; esta ruta no responde a nada que llegue por el tunel.
 // - Un numero maneja una sola cuenta: el jugador genera un codigo en Mi cuenta y le
 //   escribe al bot "vincular 123456". "desvincular" lo suelta.

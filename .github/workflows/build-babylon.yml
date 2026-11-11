@@ -93,9 +93,15 @@ jobs:
           # API de BarrioMU para la landing (usa el paquete postgres del proxy)
           cp -r babylon/api out/proxy/api
           # Bot de WhatsApp de la tablet (el Sabio por WhatsApp), con sus librerias para ARM64
+          # (Baileys 7 corre en Node.js, como Evolution API: Node 22 para ARM64 va adentro)
           mkdir -p out/proxy/whatsapp
-          cp babylon/whatsapp/package.json babylon/whatsapp/bot.ts out/proxy/whatsapp/
-          (cd out/proxy/whatsapp && npm install --omit=dev --no-audit --no-fund --os=linux --cpu=arm64)
+          cp babylon/whatsapp/package.json babylon/whatsapp/bot.mjs out/proxy/whatsapp/
+          (cd out/proxy/whatsapp && npm install --omit=dev --legacy-peer-deps --no-audit --no-fund --os=linux --cpu=arm64)
+          curl -fsSL -o node.tar.xz https://nodejs.org/dist/v22.23.5/node-v22.23.5-linux-arm64.tar.xz
+          tar -xJf node.tar.xz node-v22.23.5-linux-arm64/bin/node
+          mv node-v22.23.5-linux-arm64/bin/node out/proxy/whatsapp/node
+          chmod +x out/proxy/whatsapp/node
+          rm -rf node.tar.xz node-v22.23.5-linux-arm64
           du -sh out/proxy/whatsapp
           (cd out/proxy && bun install --production --frozen-lockfile --ignore-scripts)
           curl -fsSL -o bun.zip https://github.com/oven-sh/bun/releases/download/bun-v1.4.2/bun-linux-aarch64.zip

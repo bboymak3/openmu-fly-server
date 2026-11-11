@@ -270,7 +270,7 @@ ia() {
 # Usa un numero aparte, no el personal: WhatsApp puede bloquear numeros de bots.
 whatsapp() {
   if [ "$1" = desvincular ]; then
-    pkill -f whatsapp/bot.ts
+    pkill -f whatsapp/bot
     proot-distro login ubuntu -- bash -c 'rm -rf ~/barriomu-wa/auth' && echo "Listo: el bot quedo desvinculado de la tablet."
     echo "En el telefono del bot: WhatsApp > Dispositivos vinculados > cierra la sesion de BarrioMU (Ubuntu/Chrome)."
     return
@@ -282,13 +282,13 @@ whatsapp() {
   if ! [[ "$numero" =~ ^[0-9]{10,15}$ ]]; then
     echo "Ese numero no parece valido. No se hizo nada."; return 1
   fi
-  pkill -f whatsapp/bot.ts
+  pkill -f whatsapp/bot
   # Siempre desde cero: una sesion a medio guardar no vuelve a entrar (error 428).
   proot-distro login ubuntu -- bash -c 'rm -rf ~/barriomu-wa/auth'
   echo "Antes de seguir: en el telefono del bot, WhatsApp > Dispositivos vinculados: si hay un"
   echo "'Ubuntu' o 'Chrome' viejo de BarrioMU, tocalo y cierra su sesion."
   echo "Pidiendo el codigo a WhatsApp (tarda unos segundos)..."
-  proot-distro login ubuntu -- bash -c "cd ~/babylon/proxy && ./bun whatsapp/bot.ts --vincular $numero" \
+  proot-distro login ubuntu -- bash -c "cd ~/babylon/proxy && whatsapp/node whatsapp/bot.mjs --vincular $numero" \
     || { echo "No se pudo vincular. Intenta de nuevo."; return 1; }
   echo "Prendiendo el bot..."
   pkill -f proxy/main.ts; pkill -f register/server/main.ts; pkill -f api/main.ts; pkill -f mu-servir
@@ -590,7 +590,7 @@ apagar() {
   echo "Apagando..."
   stop_watchdog
   pkill -f "cloudflared tunnel run"
-  pkill -f proxy/main.ts; pkill -f register/server/main.ts; pkill -f api/main.ts; pkill -f mu-servir; pkill -f whatsapp/bot.ts
+  pkill -f proxy/main.ts; pkill -f register/server/main.ts; pkill -f api/main.ts; pkill -f mu-servir; pkill -f whatsapp/bot
   stop_openmu
   pg_ctl -D "$PGDATA" -w stop >/dev/null 2>&1
   termux-wake-unlock 2>/dev/null
@@ -607,7 +607,7 @@ estado() {
   show 8081 "Pagina del juego  (8081)"
   show 8082 "Pagina registro   (8082)"
   show 3400 "API de la landing (3400)"
-  if pgrep -f whatsapp/bot.ts >/dev/null; then echo "  [OK]  WhatsApp del bot"
+  if pgrep -f whatsapp/bot >/dev/null; then echo "  [OK]  WhatsApp del bot"
   else echo "  [..]  WhatsApp del bot  (sin vincular: bash ~/barriomu.sh whatsapp)"; fi
   if pgrep -f "cloudflared tunnel run" >/dev/null; then echo "  [OK]  Tunel Cloudflare"
   else echo "  [--]  Tunel Cloudflare"; fi
