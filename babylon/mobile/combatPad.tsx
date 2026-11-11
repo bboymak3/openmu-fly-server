@@ -218,7 +218,7 @@ const TargetList = () => {
  * the way `CalculateScreenPositionSystem` places name tags. Drawn while a target
  * is held or for a moment after a press on the wheel.
  */
-const RangeRing = () => {
+export const RangeRing = () => {
   const path = useRef<SVGPathElement>(null);
 
   useEffect(() => {

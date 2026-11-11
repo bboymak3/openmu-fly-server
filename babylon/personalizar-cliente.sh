@@ -33,6 +33,9 @@ cp babylon/mobile/chatButton.tsx babylon/mobile/cameraButton.tsx $M/
 # recoger, lista de objetivos, circulo de alcance), joystick y pociones.
 cp babylon/mobile/combatPad.tsx babylon/mobile/joystick.tsx babylon/mobile/potionButtons.tsx babylon/mobile/touchHover.ts $M/
 cp babylon/mobile/barrioJoystick.ts $C/src/controllers/interface/
+# Version de PC (mouse y teclado): circulo de alcance y teclas de camara (- + Z Alt+Enter).
+mkdir -p $C/versions/shared/ui/hud/barrio_pc
+cp babylon/pc/index.tsx babylon/pc/window.ts $C/versions/shared/ui/hud/barrio_pc/
 cat babylon/mobile/chatButton.less >> $M/style.less
 cat babylon/mobile/barrio.less >> $M/style.less
 sed -i "s#^import { MoveButton } from './moveButton';#&\nimport { ChatButton } from './chatButton';\nimport { CameraButton } from './cameraButton';#; s#<MoveButton />#&\n      <ChatButton />\n      <CameraButton />#" $M/index.tsx

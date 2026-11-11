@@ -259,6 +259,16 @@ Se guarda en `~/openmu/data/premio-diario.json`.
 - En el ranking, el Master Reset va primero (columna **MR**).
 - Se guarda en `~/openmu/data/master-reset.json` (por id de personaje).
 
+### Teclas en la computadora (web en PC y programa de Windows)
+| Tecla | Qué hace |
+|---|---|
+| `-` / `+` (o RePág / AvPág, o `-` `+` del teclado numérico) | Alejar / acercar la cámara (también Ctrl+rueda) |
+| `Z` | Centrar la cámara |
+| `Alt+Enter` o `F11` | Pantalla completa |
+
+Mientras el personaje pelea se ve el **círculo rojo de alcance** alrededor, igual que en el celular.
+No funcionan mientras se escribe en el chat. Código: `babylon/pc/`.
+
 ### NPCs de buff (Lorencia, frente a la fuente)
 | NPC (nombre en el cliente) | Buff | Duración | Uso |
 |---|---|---|---|
