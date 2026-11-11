@@ -1,0 +1,9 @@
+{
+  "name": "barriomu-whatsapp",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "baileys": "6.7.24",
+    "pino": "9.14.0"
+  }
+}

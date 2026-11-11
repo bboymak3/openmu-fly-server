@@ -12,9 +12,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20261111a" />
-  <script src="config.js?v=20261111a"></script>
-  <script src="cuenta.js?v=20261111a" defer></script>
+  <link rel="stylesheet" href="styles.css?v=20261111b" />
+  <script src="config.js?v=20261111b"></script>
+  <script src="cuenta.js?v=20261111b" defer></script>
 </head>
 <body>
   <header class="top">
@@ -165,6 +165,20 @@
       </dialog>
 
       <div class="chars" id="chars"></div>
+
+      <!-- WhatsApp: el Sabio del Barrio -->
+      <section class="card ref" id="whatsapp">
+        <div class="ref-head"><h2>📱 WhatsApp</h2></div>
+        <p class="ref-lead">Habla con el <b>Sabio del Barrio</b> por WhatsApp: tus personajes, tus monedas, cuánto te falta para el reset…</p>
+        <div id="wa-linked" hidden>
+          <p class="ref-rule">✅ Vinculado: <b id="wa-number"></b></p>
+          <button class="btn btn-ghost btn-small" id="wa-unlink" type="button">Desvincular</button>
+        </div>
+        <div id="wa-unlinked">
+          <button class="btn btn-gold" id="wa-code-btn" type="button">🔑 Generar código</button>
+          <div class="wa-code" id="wa-code" hidden></div>
+        </div>
+      </section>
 
       <section class="card form password">
         <h3>Cambiar clave</h3>

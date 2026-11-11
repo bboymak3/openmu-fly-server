@@ -13,6 +13,7 @@
 
 import type { Sql } from "postgres";
 import { PanelError, body, json, offlineTransaction, requireOffline, session } from "./panel";
+import { notifyAccount } from "./whatsapp";
 import { cleanName, economy, ensureSettings, freeSlot, occupy, saveEconomy, vaultOf, vaultUsage } from "./economia";
 
 const MAX_PRICE = 100_000_000;
@@ -235,7 +236,8 @@ async function buy(req: Request, sql: Sql) {
   if (!id) throw new PanelError(400, "Falta la publicacion.");
   await ensureTables(sql);
   const { tax } = await economy(sql);
-  return offlineTransaction(sql, s.login, async tx => {
+  let sale: { seller: string; label: string; price: number; taxed: number } | null = null;
+  const result = await offlineTransaction(sql, s.login, async tx => {
     const [listing] = await tx`select * from barrio.market_listing where id = ${id} for update`;
     if (!listing || listing.state !== "active") throw new PanelError(409, "Ese item ya no esta a la venta.");
     if (listing.seller === s.accountId) throw new PanelError(400, "Es tu propio item: para sacarlo usa Retirar.");
@@ -249,8 +251,19 @@ async function buy(req: Request, sql: Sql) {
       update barrio.market_listing set state = 'sold', buyer = ${s.accountId}, tax = ${taxed},
              proceeds = ${listing.price - taxed}, closed_at = now()
       where id = ${id}`;
+    sale = { seller: String(listing.seller), label: listing.label, price: listing.price, taxed };
     return { ok: true, message: `¡Comprado! ${listing.label} ya esta en tu baul. Te quedan ${account.p - listing.price} WCoinP.` };
   });
+  // Ya guardado: aviso por WhatsApp al vendedor, si lo tiene vinculado (sin esperar).
+  const done = sale as { seller: string; label: string; price: number; taxed: number } | null;
+  if (done) {
+    void notifyAccount(
+      sql,
+      { accountId: done.seller },
+      `💰 ¡Vendiste *${done.label}* en La Plaza por ${done.price} WCoinP! Recibes ${done.price - done.taxed} (impuesto ${done.taxed}). Cóbralo en Mi cuenta → La Plaza → Mis ventas.`,
+    );
+  }
+  return result;
 }
 
 async function withdraw(req: Request, sql: Sql) {

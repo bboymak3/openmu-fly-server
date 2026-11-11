@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 // BarrioMU: panel de usuario. Login con la cuenta del juego y acciones sobre
 // los personajes (Add Points, PK Clear, Unstuck) y la cuenta (cambio de clave).
 //
@@ -11,9 +12,9 @@ import bcrypt from "bcryptjs";
 import { BONUS_POINTS, REQUIRED_RESETS, masterResetsOf, readMasterResets, setMasterResets } from "./masterReset";
 
 // Atributos de OpenMU (MUnique.OpenMU.GameLogic.Attributes.Stats).
-const LEVEL = "560931ad-0901-4342-b7f4-fd2e2fcc0563";
-const MASTER_LEVEL = "70cd8c10-391a-4c51-9aa4-a854600e3a9f";
-const RESETS = "89a891a7-f9f9-4ab5-af36-12056e53a5f7";
+export const LEVEL = "560931ad-0901-4342-b7f4-fd2e2fcc0563";
+export const MASTER_LEVEL = "70cd8c10-391a-4c51-9aa4-a854600e3a9f";
+export const RESETS = "89a891a7-f9f9-4ab5-af36-12056e53a5f7";
 const STATS = {
   str: "123282fe-fead-448e-ad2c-baece939b4b1",
   agi: "1ae9c014-e3cd-4703-bd05-1b65f5f94ceb",
@@ -172,14 +173,34 @@ export function session(req: Request) {
 
 type Presence = { online: boolean; lastSeenAt: number | null; startedAt: number; now: number; unidentifiedConnections: number };
 
-async function presence(login: string): Promise<Presence> {
+export async function presence(login: string): Promise<Presence> {
   const res = await fetch(`${PRESENCE_URL}/presence/${encodeURIComponent(login)}`, { signal: AbortSignal.timeout(3000) });
   if (!res.ok) throw new Error(`presence ${res.status}`);
   return (await res.json()) as Presence;
 }
 
+/**
+ * Las cuentas que OpenMU tiene cargadas (BarrioAvisosPlugIn las escribe cada 10 s), tambien las
+ * que farmean sin conexion con /offlevel, que no pasan por el proxy. Si el archivo es viejo
+ * (OpenMU sin ese plugin, o apagado), no dice nada y manda la presencia del proxy.
+ */
+const IN_GAME_FILE = process.env.IN_GAME_FILE ?? `${process.env.HOME ?? "/root"}/openmu/data/en-juego.json`;
+function loadedInGame(login: string): boolean {
+  try {
+    const data = JSON.parse(readFileSync(IN_GAME_FILE, "utf8")) as { at?: number; logins?: unknown[] };
+    if (typeof data.at !== "number" || Date.now() - data.at > 60_000 || !Array.isArray(data.logins)) return false;
+    const want = login.toLowerCase();
+    return data.logins.some(l => typeof l === "string" && l.toLowerCase() === want);
+  } catch {
+    return false;
+  }
+}
+
 /** Solo deja seguir si la cuenta esta desconectada hace al menos un minuto. */
 export async function requireOffline(login: string): Promise<void> {
+  if (loadedInGame(login)) {
+    throw new PanelError(409, "Tu cuenta esta cargada en el juego (o farmeando sin conexion con /offlevel). Sal del juego del todo o deten el farmeo, y espera un minuto.");
+  }
   let p: Presence;
   try {
     p = await presence(login);
@@ -305,9 +326,14 @@ async function ownCharacter(tx: Sql, accountId: string, name: unknown) {
   return row;
 }
 
+/** Quien hace la accion: la sesion de Mi cuenta o el WhatsApp vinculado a la cuenta. */
+export type Who = { accountId: string; login: string };
+
 async function addPoints(req: Request, sql: Sql) {
-  const s = session(req);
-  const b = await body(req);
+  return doAddPoints(sql, session(req), await body(req));
+}
+
+export async function doAddPoints(sql: Sql, s: Who, b: Record<string, unknown>) {
   const wanted: Partial<Record<StatKey, number>> = {};
   let total = 0;
   for (const key of Object.keys(STATS) as StatKey[]) {
@@ -375,8 +401,10 @@ async function unstuck(req: Request, sql: Sql) {
 
 /** El reset de OpenMU (ResetCharacterAction), hecho sobre la base con la cuenta desconectada. */
 async function reset(req: Request, sql: Sql) {
-  const s = session(req);
-  const b = await body(req);
+  return doReset(sql, session(req), await body(req));
+}
+
+export async function doReset(sql: Sql, s: Who, b: Record<string, unknown>) {
   const cfg = await resetConfig(sql);
   if (!cfg) throw new PanelError(400, "Los resets no estan activos en BarrioMU.");
   if (!cfg.simple) throw new PanelError(400, "Este reset se hace dentro del juego: escribe /reset.");

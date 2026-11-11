@@ -15,6 +15,9 @@ window.BARRIOMU = {
   // Comunidad: deja "" para ocultar el boton
   discord: "",
   whatsapp: "",
+  // Numero del WhatsApp del bot (el Sabio por WhatsApp), con codigo de pais y sin +.
+  // Ej: "584121234567". Vacio: Mi cuenta solo muestra el codigo para vincular.
+  whatsappBot: "584222525325",
 
   // Tarjetas de caracteristicas del servidor
   features: [

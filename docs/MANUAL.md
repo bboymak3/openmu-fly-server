@@ -282,6 +282,39 @@ puntos, monedas, mapa), los precios reales de la tienda y lo que hay en La Plaza
 - Archivos: `~/.barriomu-ia` (cuenta y token, dentro de Ubuntu), `~/openmu/data/sabio-secreto.txt`
   (secreto entre OpenMU y la API). Tablas: `barrio.sabio_uso`, `barrio.sabio_log`.
 
+### El Sabio por WhatsApp (bot en la tablet)
+El WhatsApp del servidor corre **en la tablet** (sin Railway ni Evolution): `babylon/whatsapp/bot.ts`
+(librería Baileys, como WhatsApp Web sin pantalla). Le pasa cada mensaje privado a la API
+(`/whatsapp`, solo desde la tablet, con el secreto del Sabio) y manda la respuesta.
+
+- **Vincular el número del bot** (una vez; usa un número aparte, no el personal: WhatsApp puede
+  bloquear números de bots): `bash ~/barriomu.sh whatsapp`. Pide el número del bot y muestra un
+  **código**; en el teléfono del bot: *WhatsApp → Dispositivos vinculados → Vincular un dispositivo →
+  Vincular con número de teléfono* y se escribe el código. Después se prende solo con `prender`.
+  `bash ~/barriomu.sh whatsapp desvincular` lo suelta.
+- **Cada jugador vincula su WhatsApp**: Mi cuenta → **📱 WhatsApp** → *Generar código* (vale 15
+  minutos) y le escribe al bot `vincular 123456`. Un número maneja una sola cuenta;
+  `desvincular` lo suelta. Con `whatsappBot` en `web/config.js` (número del bot, sin +), Mi cuenta
+  abre WhatsApp con el mensaje ya escrito.
+- **Conversar y consultar** con los datos reales de la cuenta y sus personajes. Comparte el
+  límite diario del Sabio. 5 códigos equivocados por hora como máximo.
+- **Acciones (Fase B): reset y repartir puntos.** Se piden hablando ("hazle reset a barrio02",
+  "ponle 500 a fuerza a barrio02") o con comando directo (`reset barrio02`,
+  `puntos barrio02 fuerza 500 agilidad 100`). El bot pregunta y se hace solo si el jugador
+  responde **sí** en 2 minutos (**no** cancela). Se hace con las mismas reglas de Mi cuenta: la
+  cuenta **fuera del juego**, nivel y zen del reset, puntos libres. Nada más: la IA no puede dar ni
+  cambiar otra cosa (si lo intenta, no se hace). Queda en el registro del Sabio como `[accion]`.
+- **Avisos automáticos (Fase C)** al WhatsApp vinculado (máximo 30 por cuenta al día):
+  - 💰 **Vendiste en La Plaza**: qué, por cuánto y cuánto recibes.
+  - ⬆️ **Reset listo**: un personaje que farmea sin conexión (`/offlevel`) llegó al nivel del reset.
+  - 💀 **Murió farmeando** sin conexión (uno cada 10 minutos como máximo).
+  Los del juego los manda `BarrioAvisosPlugIn.cs` a la API (`/aviso`, solo desde la tablet).
+- **Cuentas cargadas en el juego**: `BarrioAvisosPlugIn` escribe cada 10 s
+  `~/openmu/data/en-juego.json` con las cuentas que OpenMU tiene cargadas, **también las que
+  farmean con `/offlevel`** (que no pasan por el proxy). Mi cuenta, la tienda, La Plaza y WhatsApp
+  no tocan esas cuentas (OpenMU las guardaría encima al salir).
+- Sesión del bot: `~/barriomu-wa/auth` (dentro de Ubuntu). Tablas: `barrio.wa_link`, `barrio.wa_code`.
+
 ### Teclas en la computadora (web en PC y programa de Windows)
 | Tecla | Qué hace |
 |---|---|
