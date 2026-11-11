@@ -415,7 +415,7 @@ async function botMessage(sql: Sql, jid: string, text: string): Promise<string[]
     store(memoryKey, text.slice(0, 500), answer);
     await sql`insert into barrio.sabio_log (login, character, question, answer) values (${linked.login}, ${"WhatsApp"}, ${text.slice(0, 500)}, ${answer})`;
     const left = daily - used;
-    return left <= 3 ? [answer, `_(Te quedan ${left} preguntas ${periodWord(cfg)}.)_`] : [answer];
+    return daily > 0 && left <= 3 ? [answer, `_(Te quedan ${left} preguntas ${periodWord(cfg)}.)_`] : [answer];
   } catch (error) {
     console.error("whatsapp", error);
     await giveBack(sql, linked.login, cfg).catch(() => {});

@@ -310,7 +310,7 @@ El WhatsApp del servidor corre **en la tablet** (sin Railway ni Evolution): `bab
 - **Vender en La Plaza**: `baul` lista el baúl numerado; `vender 2 50` (item 2 a 50 WCoinP) o
   hablando ("vende mi Dragon Armor a 50"). Con el **sí** se publica con las mismas reglas de Mi
   cuenta (fuera del juego, máximo 20 ventas, impuesto) y dice cuánto recibe.
-- **Cupo de preguntas a la IA**: 20 (o lo que diga el admin) que se reinician **cada hora** o
+- **Cupo de preguntas a la IA**: **ilimitadas** de fábrica; el admin elige 10, 20, 30 o 60 que se reinician **cada hora** o
   **cada día** (Panel admin → 🧙 El Sabio). Los comandos directos (`baul`, `vender`, `parar`,
   `reset`, `puntos`) no gastan preguntas. Tabla: `barrio.sabio_cupo`.
 - **Avisos automáticos (Fase C)** al WhatsApp vinculado (máximo 30 por cuenta al día):

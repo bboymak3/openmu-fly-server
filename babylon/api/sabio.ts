@@ -9,7 +9,7 @@
 //   Cloudflare, linea 2 el token (permiso "Workers AI"), linea 3 opcional el modelo.
 // - Solo responde: no tiene ninguna herramienta que de o cambie nada. Los datos que usa
 //   (personaje, reset, tienda, La Plaza) salen del servidor y de la base, no de su memoria.
-// - Limite por cuenta (barrio.settings sabio_daily, 20 por defecto) que se reinicia cada hora
+// - Limite por cuenta (barrio.settings sabio_daily; 0 = ilimitado, lo de fabrica) que se reinicia cada hora
 //   o cada dia (sabio_periodo: "hora", por defecto mientras se prueba, o "dia"); se puede
 //   apagar con sabio_on = 0.
 
@@ -24,7 +24,8 @@ const SECRET_FILE = process.env.SABIO_SECRET_FILE ?? `${HOME}/openmu/data/sabio-
 const KEY_FILE = process.env.SABIO_KEY_FILE ?? `${HOME}/.barriomu-ia`;
 const DEFAULT_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 const AI_BASE = process.env.SABIO_AI_BASE ?? "https://api.cloudflare.com/client/v4";
-const DEFAULT_DAILY = 20;
+/** Preguntas por periodo: 0 = ilimitadas (lo de fabrica mientras se prueba). */
+const DEFAULT_DAILY = 0;
 /** Largo de cada renglon del susurro en el juego, y cuantos como mucho. */
 const LINE_LEN = 70;
 const MAX_LINES = 8;
@@ -156,7 +157,7 @@ export async function takeOne(sql: Sql, login: string, cfg: SabioSettings): Prom
   const [row] = await sql`
     insert into barrio.sabio_cupo (login, periodo, n) values (${login}, ${periodOf(cfg)}, 1)
     on conflict (login, periodo) do update set n = barrio.sabio_cupo.n + 1
-    where barrio.sabio_cupo.n < ${cfg.daily}
+    where ${cfg.daily} = 0 or barrio.sabio_cupo.n < ${cfg.daily}
     returning n`;
   return row ? row.n : null;
 }
@@ -334,7 +335,7 @@ export async function handleSabio(req: Request, url: URL, cors: Record<string, s
     await sql`insert into barrio.sabio_log (login, character, question, answer) values (${ask.login}, ${ask.character}, ${ask.message}, ${answer})`;
     const lines = toLines(answer);
     const left = daily - used;
-    if (left <= 3) lines.push(`(Te quedan ${left} preguntas ${periodWord(cfg)}.)`);
+    if (daily > 0 && left <= 3) lines.push(`(Te quedan ${left} preguntas ${periodWord(cfg)}.)`);
     return reply(cors, lines);
   } catch (error) {
     console.error("sabio", error);
@@ -355,7 +356,7 @@ export async function adminSabio(sql: Sql) {
 
 export async function adminSaveSabio(b: Record<string, unknown>, sql: Sql) {
   const daily = typeof b.daily === "number" && Number.isInteger(b.daily) && b.daily >= 0 && b.daily <= 1000 ? b.daily : null;
-  if (daily === null) throw new PanelError(400, "El limite diario debe ser un numero de 0 a 1000.");
+  if (daily === null) throw new PanelError(400, "El limite debe ser un numero de 0 (ilimitado) a 1000.");
   await ensureSabioTables(sql);
   await sql`
     insert into barrio.settings (key, value) values ('sabio_on', ${b.on === true ? "1" : "0"}), ('sabio_daily', ${String(daily)}),

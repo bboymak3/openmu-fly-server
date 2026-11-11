@@ -266,7 +266,8 @@
       const d = await call("/admin/sabio");
       const f = $("#sabio-form");
       f.on.checked = d.on;
-      f.daily.value = d.daily;
+      if (![...f.daily.options].some(o => Number(o.value) === d.daily)) f.daily.add(new Option(String(d.daily), String(d.daily)));
+      f.daily.value = String(d.daily);
       f.periodo.value = d.hourly ? "hora" : "dia";
       $("#sabio-state").textContent = `${d.configured ? "✅ Configurado" : "⚠️ Falta configurarlo en la tablet: bash ~/barriomu.sh ia"} · Preguntas hoy (juego + WhatsApp): ${d.today}`;
       $("#sabio-recent").innerHTML = d.recent.length
