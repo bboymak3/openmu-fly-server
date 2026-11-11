@@ -305,9 +305,14 @@ async function ownCharacter(tx: Sql, accountId: string, name: unknown) {
   return row;
 }
 
+/** Quien hace la accion: la sesion de Mi cuenta o el WhatsApp vinculado a la cuenta. */
+export type Who = { accountId: string; login: string };
+
 async function addPoints(req: Request, sql: Sql) {
-  const s = session(req);
-  const b = await body(req);
+  return doAddPoints(sql, session(req), await body(req));
+}
+
+export async function doAddPoints(sql: Sql, s: Who, b: Record<string, unknown>) {
   const wanted: Partial<Record<StatKey, number>> = {};
   let total = 0;
   for (const key of Object.keys(STATS) as StatKey[]) {
@@ -375,8 +380,10 @@ async function unstuck(req: Request, sql: Sql) {
 
 /** El reset de OpenMU (ResetCharacterAction), hecho sobre la base con la cuenta desconectada. */
 async function reset(req: Request, sql: Sql) {
-  const s = session(req);
-  const b = await body(req);
+  return doReset(sql, session(req), await body(req));
+}
+
+export async function doReset(sql: Sql, s: Who, b: Record<string, unknown>) {
   const cfg = await resetConfig(sql);
   if (!cfg) throw new PanelError(400, "Los resets no estan activos en BarrioMU.");
   if (!cfg.simple) throw new PanelError(400, "Este reset se hace dentro del juego: escribe /reset.");

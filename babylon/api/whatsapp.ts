@@ -6,10 +6,13 @@
 //   escribe al bot "vincular 123456". "desvincular" lo suelta.
 // - Con el numero vinculado, el Sabio contesta con los datos reales de la cuenta y sus
 //   personajes (de la base). Comparte el limite diario del /ia del juego.
-// - No hay herramientas: no da ni cambia nada (las acciones con "si" vienen despues).
+// - Fase B: reset y repartir puntos. La IA (o un comando directo: "reset barrio02",
+//   "puntos barrio02 fuerza 500") propone; el jugador confirma con "si" en 2 minutos y se
+//   hace con las mismas reglas y protecciones de Mi cuenta (cuenta fuera del juego). Nada
+//   mas: no da ni cambia otra cosa.
 
 import type { Sql } from "postgres";
-import { LEVEL, MASTER_LEVEL, RESETS, PanelError, json, presence, session } from "./panel";
+import { LEVEL, MASTER_LEVEL, RESETS, PanelError, doAddPoints, doReset, json, presence, session } from "./panel";
 import { ensureSettings } from "./economia";
 import {
   PERSONALITY, SERVER_FACTS, cloudflareKey, ensureSabioTables, giveBack, remember, runModel, sameSecret,
@@ -132,8 +135,105 @@ async function accountContext(sql: Sql, accountId: string, login: string): Promi
       ? chars.map(c => `- Personaje ${c.name}: ${CLASSES[c.class] ?? "?"}, nivel ${c.level}${c.masterLevel ? ` (master ${c.masterLevel})` : ""}, ${c.resets} resets, ${fmt(c.zen)} zen, ${c.points} puntos sin repartir, en ${MAPS[c.map] ?? (c.map == null ? "?" : `el mapa ${c.map}`)}.`).join("\n")
       : "- No tiene personajes todavia.",
     "- Si esta dentro del juego, estos datos son de su ultimo guardado y pueden estar un poco atrasados.",
-    "- Por WhatsApp todavia NO puedes hacer acciones (reset, comprar, mover): solo conversar y consultar. Dile que pronto podra.",
+    "- Por WhatsApp SOLO puedes proponer dos acciones: RESET de un personaje y REPARTIR PUNTOS (fuerza, agilidad, vitalidad, energia, comando).",
+    "  Cuando el jugador pida claramente una de esas dos, responde UNICAMENTE con una linea JSON, sin nada mas:",
+    '  {"accion":"reset","personaje":"NOMBRE"}  o  {"accion":"puntos","personaje":"NOMBRE","fuerza":0,"agilidad":0,"vitalidad":0,"energia":0,"comando":0}',
+    "  Si no dice el personaje y tiene uno solo, usa ese; si tiene varios, preguntale cual. El sistema le pedira confirmacion.",
+    "  Cualquier otra accion (comprar, mover, dar items o monedas) no se puede por WhatsApp todavia.",
   ].join("\n");
+}
+
+// ---------------------------------------------------------------- acciones con "si"
+
+const STAT_WORDS: Record<string, "str" | "agi" | "vit" | "ene" | "cmd"> = {
+  fuerza: "str", fue: "str", str: "str", agilidad: "agi", agi: "agi", vitalidad: "vit", vit: "vit",
+  energia: "ene", "energía": "ene", ene: "ene", comando: "cmd", cmd: "cmd",
+};
+const STAT_NAMES = { str: "Fuerza", agi: "Agilidad", vit: "Vitalidad", ene: "Energía", cmd: "Comando" } as const;
+const CONFIRM_MS = 2 * 60_000;
+
+type Action =
+  | { kind: "reset"; character: string }
+  | { kind: "puntos"; character: string; stats: Partial<Record<keyof typeof STAT_NAMES, number>> };
+const pending = new Map<string, { action: Action; expires: number }>();
+
+/** Lo que se va a hacer, dicho para el jugador. */
+function describe(a: Action): string {
+  if (a.kind === "reset") return `hacer *reset* a *${a.character}*`;
+  const parts = Object.entries(a.stats).map(([k, n]) => `${n} a ${STAT_NAMES[k as keyof typeof STAT_NAMES]}`);
+  return `repartir *${parts.join(", ")}* en *${a.character}*`;
+}
+
+/** Comandos directos, sin IA: "reset barrio02" o "puntos barrio02 fuerza 500 agilidad 100". */
+function parseCommand(text: string): Action | null {
+  const t = text.trim();
+  const r = t.match(/^reset(?:ear)?\s+(?:a\s+)?([A-Za-z0-9]{3,10})$/i);
+  if (r) return { kind: "reset", character: r[1] };
+  const p = t.match(/^puntos\s+([A-Za-z0-9]{3,10})\s+(.+)$/i);
+  if (p) {
+    const stats: Partial<Record<keyof typeof STAT_NAMES, number>> = {};
+    for (const [, word, n] of p[2].matchAll(/([a-zA-Zéí]+)\s+(\d{1,5})/g)) {
+      const key = STAT_WORDS[word.toLowerCase()];
+      if (!key) return null;
+      stats[key] = (stats[key] ?? 0) + Number(n);
+    }
+    return Object.keys(stats).length ? { kind: "puntos", character: p[1], stats } : null;
+  }
+  return null;
+}
+
+/** La accion que propuso la IA (una linea JSON), validada. */
+function parseAiAction(answer: string): Action | null {
+  const m = answer.match(/\{[^{}]*"accion"[^{}]*\}/);
+  if (!m) return null;
+  let o: Record<string, unknown>;
+  try {
+    o = JSON.parse(m[0]);
+  } catch {
+    return null;
+  }
+  const character = typeof o.personaje === "string" ? o.personaje.trim() : "";
+  if (!/^[A-Za-z0-9]{3,10}$/.test(character)) return null;
+  if (o.accion === "reset") return { kind: "reset", character };
+  if (o.accion === "puntos") {
+    const stats: Partial<Record<keyof typeof STAT_NAMES, number>> = {};
+    for (const [word, key] of [["fuerza", "str"], ["agilidad", "agi"], ["vitalidad", "vit"], ["energia", "ene"], ["comando", "cmd"]] as const) {
+      const n = o[word];
+      if (typeof n === "number" && Number.isInteger(n) && n > 0 && n <= 32767) stats[key] = n;
+    }
+    return Object.keys(stats).length ? { kind: "puntos", character, stats } : null;
+  }
+  return null;
+}
+
+/** Propone la accion: el personaje tiene que ser de la cuenta (con su nombre exacto). */
+async function propose(sql: Sql, jid: string, accountId: string, action: Action): Promise<string[]> {
+  const chars = await sql`select "Name" as name from data."Character" where "AccountId" = ${accountId} order by "CharacterSlot"`;
+  const match = chars.find(c => String(c.name).toLowerCase() === action.character.toLowerCase());
+  if (!match) {
+    return [`No tienes un personaje llamado *${action.character}*. Tus personajes: ${chars.map(c => c.name).join(", ") || "ninguno"}.`];
+  }
+  const fixed = { ...action, character: String(match.name) } as Action;
+  pending.set(jid, { action: fixed, expires: Date.now() + CONFIRM_MS });
+  return [`¿Quieres ${describe(fixed)}? 🧙\nTu cuenta tiene que estar *fuera del juego*.\nResponde *sí* para hacerlo o *no* para cancelar (tienes 2 minutos).`];
+}
+
+async function confirm(sql: Sql, jid: string, linked: { account: string; login: string }): Promise<string[]> {
+  const p = pending.get(jid);
+  pending.delete(jid);
+  if (!p || p.expires < Date.now()) return ["No hay nada pendiente por confirmar (o ya pasaron los 2 minutos). Pídemelo otra vez."];
+  const who = { accountId: linked.account, login: linked.login };
+  try {
+    const res = p.action.kind === "reset"
+      ? await doReset(sql, who, { character: p.action.character })
+      : await doAddPoints(sql, who, { character: p.action.character, ...p.action.stats });
+    await sql`insert into barrio.sabio_log (login, character, question, answer) values (${linked.login}, ${"WhatsApp"}, ${`[accion] ${describe(p.action)}`}, ${res.message})`;
+    return [`✅ ${res.message}`];
+  } catch (error) {
+    if (error instanceof PanelError) return [`❌ ${error.message}`];
+    console.error("whatsapp accion", error);
+    return ["❌ Algo salió mal y no se hizo nada. Intenta en un rato."];
+  }
 }
 
 async function botMessage(sql: Sql, jid: string, text: string): Promise<string[]> {
@@ -165,6 +265,14 @@ async function botMessage(sql: Sql, jid: string, text: string): Promise<string[]
     from barrio.wa_link l join data."Account" a on a."Id" = l.account where l.jid = ${jid}`;
   if (!linked) return [HELP];
 
+  if (/^(s[ií]|si+|dale|ok|confirmo)[.! ]*$/.test(lower) && pending.has(jid)) return confirm(sql, jid, linked);
+  if (/^(no|cancela(r)?)[.! ]*$/.test(lower) && pending.has(jid)) {
+    pending.delete(jid);
+    return ["Listo, cancelado. No se hizo nada."];
+  }
+  const direct = parseCommand(text);
+  if (direct) return propose(sql, jid, linked.account, direct);
+
   if (lower === "desvincular") {
     await sql`delete from barrio.wa_link where jid = ${jid}`;
     return ["Listo: este WhatsApp ya no maneja tu cuenta. Para volver, genera otro código en Mi cuenta."];
@@ -190,6 +298,16 @@ async function botMessage(sql: Sql, jid: string, text: string): Promise<string[]
     ];
     // WhatsApp marca las negritas con un solo asterisco.
     const answer = (await runModel(key, messages)).trim().replace(/\*\*(.+?)\*\*/g, "*$1*");
+    const aiAction = parseAiAction(answer);
+    if (aiAction) {
+      store(memoryKey, text.slice(0, 500), `(propuse ${aiAction.kind} a ${aiAction.character})`);
+      return propose(sql, jid, linked.account, aiAction);
+    }
+    // Una "accion" que no es reset ni puntos (dar monedas, items...) no existe: no se hace ni se muestra.
+    if (/"accion"/.test(answer)) {
+      store(memoryKey, text.slice(0, 500), "(eso no se puede por WhatsApp)");
+      return ["Eso no lo puedo hacer, pana. Por WhatsApp solo puedo hacer *reset* y *repartir puntos* de tus personajes (siempre con tu *sí*). Lo demás se gana jugando. 😉"];
+    }
     store(memoryKey, text.slice(0, 500), answer);
     await sql`insert into barrio.sabio_log (login, character, question, answer) values (${linked.login}, ${"WhatsApp"}, ${text.slice(0, 500)}, ${answer})`;
     const left = daily - used;

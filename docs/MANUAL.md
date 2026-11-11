@@ -296,8 +296,14 @@ El WhatsApp del servidor corre **en la tablet** (sin Railway ni Evolution): `bab
   minutos) y le escribe al bot `vincular 123456`. Un número maneja una sola cuenta;
   `desvincular` lo suelta. Con `whatsappBot` en `web/config.js` (número del bot, sin +), Mi cuenta
   abre WhatsApp con el mensaje ya escrito.
-- **Fase A (ahora):** conversar y consultar con los datos reales de la cuenta y sus personajes.
-  Sin acciones. Comparte el límite diario del Sabio. 5 códigos equivocados por hora como máximo.
+- **Conversar y consultar** con los datos reales de la cuenta y sus personajes. Comparte el
+  límite diario del Sabio. 5 códigos equivocados por hora como máximo.
+- **Acciones (Fase B): reset y repartir puntos.** Se piden hablando ("hazle reset a barrio02",
+  "ponle 500 a fuerza a barrio02") o con comando directo (`reset barrio02`,
+  `puntos barrio02 fuerza 500 agilidad 100`). El bot pregunta y se hace solo si el jugador
+  responde **sí** en 2 minutos (**no** cancela). Se hace con las mismas reglas de Mi cuenta: la
+  cuenta **fuera del juego**, nivel y zen del reset, puntos libres. Nada más: la IA no puede dar ni
+  cambiar otra cosa (si lo intenta, no se hace). Queda en el registro del Sabio como `[accion]`.
 - Sesión del bot: `~/barriomu-wa/auth` (dentro de Ubuntu). Tablas: `barrio.wa_link`, `barrio.wa_code`.
 
 ### Teclas en la computadora (web en PC y programa de Windows)
