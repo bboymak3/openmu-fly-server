@@ -545,6 +545,41 @@ type Slot = TagSlot<TagEntity, HTMLDivElement>;""",
         "  }, [learned]);\n",
     ),
 
+    # El Sabio del Barrio (IA): el NPC 522 se llama asi en el juego...
+    (
+        "src/controllers/assets/mu/npcNameFile.ts",
+        "export function localisedNpcName(type: number): string | undefined {\n  return names.get().get(type);\n}",
+        "export function localisedNpcName(type: number): string | undefined {\n"
+        "  // BarrioMU: el NPC 522 (Adviser Jerinteu) es el Sabio del Barrio en Lorencia.\n"
+        "  if (type === 522) return 'Sabio del Barrio';\n"
+        "  return names.get().get(type);\n}",
+    ),
+    # ...al hablarle saluda por susurro y ese saludo abre el chat dirigido al Sabio
+    # (el texto es BarrioSabioPlugIn.Greeting, del servidor)...
+    (
+        "src/modules/chat/net.ts",
+        "      if (!Social.whisperTarget) Social.setWhisperTarget(sender);\n",
+        "      // BarrioMU: el saludo del NPC Sabio abre el chat dirigido a el.\n"
+        "      if (sender === 'Sabio' && message.startsWith('Hola pana, soy el Sabio del Barrio')) {\n"
+        "        Social.setWhisperTarget('Sabio');\n"
+        "        Social.openChatInput();\n"
+        "        return;\n"
+        "      }\n"
+        "      if (!Social.whisperTarget) Social.setWhisperTarget(sender);\n",
+    ),
+    # ...y lo que se le susurra al Sabio se manda como pregunta /ia (no existe un jugador Sabio).
+    (
+        "src/modules/social/social.ts",
+        "    if (!text.trim()) return false;\n",
+        "    if (!text.trim()) return false;\n"
+        "    // BarrioMU: un susurro al Sabio del Barrio es una pregunta a la IA del servidor (/ia).\n"
+        "    if (this.whisperEnabled && !text.startsWith('/') && this.whisperTarget.trim().toLowerCase() === 'sabio') {\n"
+        "      const question = clipChatText(rawText.replace(/[\\r\\n]/g, ''), MAX_CHAT_LENGTH - 4);\n"
+        "      this.addChatLine(Hero.name, question, ChatLineType.Whisper);\n"
+        "      return this.sendChat(`/ia ${question}`);\n"
+        "    }\n",
+    ),
+
 ]
 
 for path, old, new in PATCHES:
