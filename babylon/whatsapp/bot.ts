@@ -47,6 +47,9 @@ if (pairIndex >= 0 && !/^\d{10,15}$/.test(pairNumber)) {
 
 let sock: WASocket | null = null;
 let pairingAsked = false;
+/** Cierres seguidos sin llegar a conectar: para esperar cada vez mas y avisar si la sesion se daño. */
+let failures = 0;
+const MAX_FAILURES = 12;
 const busy = new Set<string>();
 const recent = new Map<string, number[]>();
 
@@ -114,23 +117,39 @@ async function start(): Promise<void> {
       }
     }
     if (connection === "open") {
+      failures = 0;
       log("WhatsApp conectado");
       if (pairNumber) {
-        console.log("Listo: el WhatsApp del bot quedo vinculado. Ahora: bash ~/barriomu.sh prender");
-        setTimeout(() => process.exit(0), 3000);
+        // WhatsApp sigue mandando llaves y datos de la sesion un rato despues de conectar:
+        // cerrar antes dejaba la sesion a medio guardar (y despues no volvia a entrar, error 428).
+        console.log("Vinculado. Guardando la sesion, espera 40 segundos y no cierres Termux...");
+        setTimeout(() => {
+          console.log("Listo: el WhatsApp del bot quedo vinculado.");
+          process.exit(0);
+        }, 40_000);
       }
     }
     if (connection === "close") {
       const code = (lastDisconnect?.error as { output?: { statusCode?: number } } | undefined)?.output?.statusCode;
+      const why = lastDisconnect?.error?.message ?? "";
       if (code === DisconnectReason.loggedOut) {
         log("WhatsApp cerro la sesion (se desvinculo). Hay que vincular de nuevo: bash ~/barriomu.sh whatsapp");
         process.exit(2);
       }
-      if (pairNumber && code !== DisconnectReason.restartRequired) {
-        log("Se corto mientras se vinculaba:", code ?? lastDisconnect?.error?.message);
+      if (code === DisconnectReason.restartRequired) {
+        setTimeout(() => void start(), 500);
+        return;
       }
-      log("WhatsApp desconectado, reconectando...", code ?? "");
-      setTimeout(() => void start(), code === DisconnectReason.restartRequired ? 500 : 5000);
+      failures++;
+      if (failures >= MAX_FAILURES) {
+        log(`WhatsApp rechazo la conexion ${failures} veces seguidas (${code ?? "?"} ${why}).`);
+        log("La sesion del bot parece dañada. En el telefono del bot borra el dispositivo vinculado viejo y");
+        log("vuelve a vincular: bash ~/barriomu.sh whatsapp");
+        process.exit(2);
+      }
+      const wait = Math.min(60_000, 5_000 * 2 ** Math.min(failures - 1, 4));
+      log(`WhatsApp desconectado (${code ?? "?"} ${why}), reconectando en ${wait / 1000} s... (intento ${failures})`);
+      setTimeout(() => void start(), wait);
     }
   });
 
@@ -143,6 +162,7 @@ async function start(): Promise<void> {
       if (m.key.fromMe || !(jid.endsWith("@s.whatsapp.net") || jid.endsWith("@lid"))) continue;
       const text = textOf(m.message).trim();
       if (!text) continue;
+      log("mensaje de", jid.split("@")[0].slice(-4), "->", text.slice(0, 40));
       if (busy.has(jid) || tooMany(jid)) continue;
       busy.add(jid);
       try {

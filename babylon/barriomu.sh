@@ -272,6 +272,7 @@ whatsapp() {
   if [ "$1" = desvincular ]; then
     pkill -f whatsapp/bot.ts
     proot-distro login ubuntu -- bash -c 'rm -rf ~/barriomu-wa/auth' && echo "Listo: el bot quedo desvinculado de la tablet."
+    echo "En el telefono del bot: WhatsApp > Dispositivos vinculados > cierra la sesion de BarrioMU (Ubuntu/Chrome)."
     return
   fi
   echo "Numero del WhatsApp del BOT, con codigo de pais y solo numeros (ej: 584121234567):"
@@ -282,6 +283,10 @@ whatsapp() {
     echo "Ese numero no parece valido. No se hizo nada."; return 1
   fi
   pkill -f whatsapp/bot.ts
+  # Siempre desde cero: una sesion a medio guardar no vuelve a entrar (error 428).
+  proot-distro login ubuntu -- bash -c 'rm -rf ~/barriomu-wa/auth'
+  echo "Antes de seguir: en el telefono del bot, WhatsApp > Dispositivos vinculados: si hay un"
+  echo "'Ubuntu' o 'Chrome' viejo de BarrioMU, tocalo y cierra su sesion."
   echo "Pidiendo el codigo a WhatsApp (tarda unos segundos)..."
   proot-distro login ubuntu -- bash -c "cd ~/babylon/proxy && ./bun whatsapp/bot.ts --vincular $numero" \
     || { echo "No se pudo vincular. Intenta de nuevo."; return 1; }
