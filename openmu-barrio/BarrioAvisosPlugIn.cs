@@ -25,8 +25,9 @@ using MUnique.OpenMU.PlugIns;
 /// <remarks>
 /// <para>
 /// 1. Quien esta dentro del juego: cada 10 segundos escribe data/en-juego.json con las cuentas
-///    que tiene cargadas, tambien las que farmean sin conexion (/offlevel). La API no toca una
-///    cuenta que este ahi: el juego la guardaria encima al salir.
+///    que tiene cargadas, tambien las que farmean sin conexion (/offlevel, en "offline"). La API
+///    no toca una cuenta que este ahi: el juego la guardaria encima al salir.
+///    Y cumple las ordenes de la API (data/ordenes/*.json): "parar" detiene el farmeo sin conexion.
 /// </para>
 /// <para>
 /// 2. Avisos por WhatsApp (el Sabio): cuando un personaje que farmea sin conexion llega al nivel
@@ -56,6 +57,14 @@ public class BarrioAvisosPlugIn : IPeriodicTaskPlugIn, ICharacterLevelUpPlugIn, 
     /// <summary>Las cuentas cargadas en cada servidor de juego (hay dos en el mismo proceso).</summary>
     private static readonly ConditionalWeakTable<GameContext, string[]> LoginsByServer = new();
 
+    /// <summary>Las cuentas que farmean sin conexion (/offlevel) en cada servidor de juego.</summary>
+    private static readonly ConditionalWeakTable<GameContext, string[]> OfflineByServer = new();
+
+    /// <summary>Ordenes de la API (WhatsApp): un archivo .json por orden.</summary>
+    private static readonly string OrdersDir = Path.Combine(DataDir, "ordenes");
+
+    private static readonly TimeSpan OrderMaxAge = TimeSpan.FromMinutes(3);
+
     /// <summary>Cuando se miro por ultima vez cada servidor de juego.</summary>
     private static readonly ConditionalWeakTable<GameContext, StrongBox<DateTime>> CheckedAt = new();
 
@@ -82,6 +91,15 @@ public class BarrioAvisosPlugIn : IPeriodicTaskPlugIn, ICharacterLevelUpPlugIn, 
                 .Where(l => !string.IsNullOrEmpty(l))
                 .Select(l => l!)
                 .ToArray());
+        OfflineByServer.AddOrUpdate(
+            gameContext,
+            gameContext.OfflinePlayerManager.OfflinePlayers
+                .Select(p => p.Account?.LoginName)
+                .Where(l => !string.IsNullOrEmpty(l))
+                .Select(l => l!)
+                .ToArray());
+
+        await RunOrdersAsync(gameContext).ConfigureAwait(false);
 
         if (DateTime.UtcNow < nextWrite)
         {
@@ -93,7 +111,8 @@ public class BarrioAvisosPlugIn : IPeriodicTaskPlugIn, ICharacterLevelUpPlugIn, 
         {
             Directory.CreateDirectory(DataDir);
             var all = LoginsByServer.SelectMany(pair => pair.Value).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
-            var json = JsonSerializer.Serialize(new InGame(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), all));
+            var offline = OfflineByServer.SelectMany(pair => pair.Value).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+            var json = JsonSerializer.Serialize(new InGame(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), all, offline));
             var tmp = InGamePath + ".tmp";
             await File.WriteAllTextAsync(tmp, json).ConfigureAwait(false);
             File.Move(tmp, InGamePath, true);
@@ -101,6 +120,85 @@ public class BarrioAvisosPlugIn : IPeriodicTaskPlugIn, ICharacterLevelUpPlugIn, 
         catch
         {
             // Sin archivo, la API cree que nadie esta: por eso ella exige que sea reciente.
+        }
+    }
+
+    /// <summary>
+    /// Cumple las ordenes de la API que le tocan a este servidor de juego. Hoy: "parar" (detiene
+    /// el farmeo sin conexion de la cuenta; el juego guarda al personaje). La orden se borra antes
+    /// de cumplirla, asi no se hace dos veces.
+    /// </summary>
+    private static async ValueTask RunOrdersAsync(GameContext gameContext)
+    {
+        string[] files;
+        try
+        {
+            files = Directory.Exists(OrdersDir) ? Directory.GetFiles(OrdersDir, "*.json") : Array.Empty<string>();
+        }
+        catch
+        {
+            return;
+        }
+
+        foreach (var file in files)
+        {
+            Order? order;
+            try
+            {
+                order = JsonSerializer.Deserialize<Order>(await File.ReadAllTextAsync(file).ConfigureAwait(false));
+            }
+            catch
+            {
+                TryDelete(file);
+                continue;
+            }
+
+            var age = DateTimeOffset.UtcNow - DateTimeOffset.FromUnixTimeMilliseconds(order?.At ?? 0);
+            if (order?.Login is not { Length: > 0 } login || age > OrderMaxAge)
+            {
+                if (order?.Login is { Length: > 0 } late && order.Accion == "parar")
+                {
+                    Send(late, "No encontre tu personaje farmeando para pararlo. Si sigue farmeando, entra al juego y sal.");
+                }
+
+                TryDelete(file);
+                continue;
+            }
+
+            if (order.Accion != "parar" || !gameContext.OfflinePlayerManager.IsActive(login))
+            {
+                continue; // Puede ser del otro servidor de juego: se queda hasta que venza.
+            }
+
+            if (!TryDelete(file))
+            {
+                continue; // El otro servidor de juego ya la tomo.
+            }
+
+            gameContext.OfflinePlayerManager.TryGetPlayer(login, out var farming);
+            var name = farming?.SelectedCharacter?.Name ?? "Tu personaje";
+            try
+            {
+                await gameContext.OfflinePlayerManager.StopAsync(login).ConfigureAwait(false);
+                Send(login, $"🛑 Farmeo detenido: *{name}* quedo guardado y fuera del juego. En un minuto ya puedes hacer reset o vender por aqui.");
+            }
+            catch
+            {
+                Send(login, "No pude parar el farmeo. Entra al juego y sal para detenerlo.");
+            }
+        }
+    }
+
+    private static bool TryDelete(string file)
+    {
+        try
+        {
+            File.Delete(file);
+            return !File.Exists(file);
+        }
+        catch
+        {
+            return false;
         }
     }
 
@@ -179,7 +277,12 @@ public class BarrioAvisosPlugIn : IPeriodicTaskPlugIn, ICharacterLevelUpPlugIn, 
         });
     }
 
-    private sealed record InGame([property: JsonPropertyName("at")] long At, [property: JsonPropertyName("logins")] string[] Logins);
+    private sealed record InGame(
+        [property: JsonPropertyName("at")] long At,
+        [property: JsonPropertyName("logins")] string[] Logins,
+        [property: JsonPropertyName("offline")] string[] Offline);
+
+    private sealed record Order([property: JsonPropertyName("accion")] string? Accion, [property: JsonPropertyName("login")] string? Login, [property: JsonPropertyName("at")] long At);
 
     private sealed record Aviso(
         [property: JsonPropertyName("secret")] string Secret,

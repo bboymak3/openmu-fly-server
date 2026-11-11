@@ -304,6 +304,15 @@ El WhatsApp del servidor corre **en la tablet** (sin Railway ni Evolution): `bab
   responde **sí** en 2 minutos (**no** cancela). Se hace con las mismas reglas de Mi cuenta: la
   cuenta **fuera del juego**, nivel y zen del reset, puntos libres. Nada más: la IA no puede dar ni
   cambiar otra cosa (si lo intenta, no se hace). Queda en el registro del Sabio como `[accion]`.
+- **Parar el farmeo sin conexión** (`parar`, o "deja de farmear"): con el **sí**, la API deja una
+  orden en `~/openmu/data/ordenes/` y `BarrioAvisosPlugIn` detiene el `/offlevel` de la cuenta en
+  unos segundos (el personaje queda guardado) y avisa por WhatsApp.
+- **Vender en La Plaza**: `baul` lista el baúl numerado; `vender 2 50` (item 2 a 50 WCoinP) o
+  hablando ("vende mi Dragon Armor a 50"). Con el **sí** se publica con las mismas reglas de Mi
+  cuenta (fuera del juego, máximo 20 ventas, impuesto) y dice cuánto recibe.
+- **Cupo de preguntas a la IA**: 20 (o lo que diga el admin) que se reinician **cada hora** o
+  **cada día** (Panel admin → 🧙 El Sabio). Los comandos directos (`baul`, `vender`, `parar`,
+  `reset`, `puntos`) no gastan preguntas. Tabla: `barrio.sabio_cupo`.
 - **Avisos automáticos (Fase C)** al WhatsApp vinculado (máximo 30 por cuenta al día):
   - 💰 **Vendiste en La Plaza**: qué, por cuánto y cuánto recibes.
   - ⬆️ **Reset listo**: un personaje que farmea sin conexión (`/offlevel`) llegó al nivel del reset.

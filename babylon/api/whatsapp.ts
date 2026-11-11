@@ -13,10 +13,12 @@
 
 import type { Sql } from "postgres";
 import { LEVEL, MASTER_LEVEL, RESETS, PanelError, doAddPoints, doReset, json, presence, session } from "./panel";
-import { ensureSettings } from "./economia";
+import { economy, ensureSettings } from "./economia";
+import { doSell, vaultItems } from "./mercado";
+import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import {
   PERSONALITY, SERVER_FACTS, cloudflareKey, ensureSabioTables, giveBack, remember, runModel, sameSecret,
-  secret, settings, store, takeOne,
+  periodWord, secret, settings, store, takeOne,
 } from "./sabio";
 
 const CLASSES: Record<number, string> = {
@@ -135,11 +137,17 @@ async function accountContext(sql: Sql, accountId: string, login: string): Promi
       ? chars.map(c => `- Personaje ${c.name}: ${CLASSES[c.class] ?? "?"}, nivel ${c.level}${c.masterLevel ? ` (master ${c.masterLevel})` : ""}, ${c.resets} resets, ${fmt(c.zen)} zen, ${c.points} puntos sin repartir, en ${MAPS[c.map] ?? (c.map == null ? "?" : `el mapa ${c.map}`)}.`).join("\n")
       : "- No tiene personajes todavia.",
     "- Si esta dentro del juego, estos datos son de su ultimo guardado y pueden estar un poco atrasados.",
-    "- Por WhatsApp SOLO puedes proponer dos acciones: RESET de un personaje y REPARTIR PUNTOS (fuerza, agilidad, vitalidad, energia, comando).",
-    "  Cuando el jugador pida claramente una de esas dos, responde UNICAMENTE con una linea JSON, sin nada mas:",
-    '  {"accion":"reset","personaje":"NOMBRE"}  o  {"accion":"puntos","personaje":"NOMBRE","fuerza":0,"agilidad":0,"vitalidad":0,"energia":0,"comando":0}',
-    "  Si no dice el personaje y tiene uno solo, usa ese; si tiene varios, preguntale cual. El sistema le pedira confirmacion.",
-    "  Cualquier otra accion (comprar, mover, dar items o monedas) no se puede por WhatsApp todavia.",
+    "- Por WhatsApp SOLO puedes proponer estas acciones (el sistema le pide confirmacion al jugador):",
+    "  RESET de un personaje, REPARTIR PUNTOS (fuerza, agilidad, vitalidad, energia, comando), PARAR el farmeo sin conexion (/offlevel)",
+    "  y VENDER en La Plaza un item de su baul por un precio en WCoinP.",
+    "  Cuando el jugador pida claramente una de ellas, responde UNICAMENTE con una linea JSON, sin nada mas:",
+    '  {"accion":"reset","personaje":"NOMBRE"}',
+    '  {"accion":"puntos","personaje":"NOMBRE","fuerza":0,"agilidad":0,"vitalidad":0,"energia":0,"comando":0}',
+    '  {"accion":"parar"}',
+    '  {"accion":"vender","item":"NOMBRE DEL ITEM","precio":0}',
+    "  Si no dice el personaje y tiene uno solo, usa ese; si tiene varios, preguntale cual. Para vender sin precio, preguntale el precio.",
+    "  Cualquier otra accion (comprar, mover, dar items o monedas) no se puede por WhatsApp.",
+    "- Comandos directos que le puedes recomendar: *baul* (lista su baul), *vender 3 50* (item 3 del baul a 50 WCoinP), *parar*, *reset NOMBRE*, *puntos NOMBRE fuerza 100*.",
   ].join("\n");
 }
 
@@ -154,11 +162,39 @@ const CONFIRM_MS = 2 * 60_000;
 
 type Action =
   | { kind: "reset"; character: string }
-  | { kind: "puntos"; character: string; stats: Partial<Record<keyof typeof STAT_NAMES, number>> };
+  | { kind: "puntos"; character: string; stats: Partial<Record<keyof typeof STAT_NAMES, number>> }
+  | { kind: "parar" }
+  | { kind: "vender"; item?: string; index?: number; price: number; itemId?: string; label?: string };
+
+/** El ultimo "baul" que se le mostro a cada chat, para "vender 3 50". */
+const lastVault = new Map<string, { at: number; items: { id: string; label: string }[] }>();
+
+/** Las cuentas que farmean sin conexion ahora (BarrioAvisosPlugIn las escribe en en-juego.json). */
+const DATA_DIR = process.env.OPENMU_DATA_DIR ?? `${process.env.HOME ?? "/root"}/openmu/data`;
+function farmingOffline(login: string): boolean | null {
+  try {
+    const data = JSON.parse(readFileSync(`${DATA_DIR}/en-juego.json`, "utf8")) as { at?: number; offline?: unknown[] };
+    if (typeof data.at !== "number" || Date.now() - data.at > 60_000 || !Array.isArray(data.offline)) return null;
+    return data.offline.some(l => typeof l === "string" && l.toLowerCase() === login.toLowerCase());
+  } catch {
+    return null;
+  }
+}
+
+/** Una orden para el servidor de juego (BarrioAvisosPlugIn la lee en unos segundos). */
+function orderGame(action: string, login: string): void {
+  const dir = `${DATA_DIR}/ordenes`;
+  mkdirSync(dir, { recursive: true });
+  const name = `${Date.now()}-${crypto.randomUUID()}.json`;
+  writeFileSync(`${dir}/${name}.tmp`, JSON.stringify({ accion: action, login, at: Date.now() }));
+  renameSync(`${dir}/${name}.tmp`, `${dir}/${name}`);
+}
 const pending = new Map<string, { action: Action; expires: number }>();
 
 /** Lo que se va a hacer, dicho para el jugador. */
 function describe(a: Action): string {
+  if (a.kind === "parar") return "*parar el farmeo* sin conexión (tu personaje se guarda y sale del juego)";
+  if (a.kind === "vender") return `publicar *${a.label ?? a.item ?? "?"}* en La Plaza por *${a.price.toLocaleString("es")} WCoinP*`;
   if (a.kind === "reset") return `hacer *reset* a *${a.character}*`;
   const parts = Object.entries(a.stats).map(([k, n]) => `${n} a ${STAT_NAMES[k as keyof typeof STAT_NAMES]}`);
   return `repartir *${parts.join(", ")}* en *${a.character}*`;
@@ -167,6 +203,9 @@ function describe(a: Action): string {
 /** Comandos directos, sin IA: "reset barrio02" o "puntos barrio02 fuerza 500 agilidad 100". */
 function parseCommand(text: string): Action | null {
   const t = text.trim();
+  if (/^(parar|detener|para|deten)( (el )?(farmeo|farm|offlevel))?[.!]*$/i.test(t)) return { kind: "parar" };
+  const v = t.match(/^vender\s+(\d{1,3})\s+(\d{1,9})$/i);
+  if (v) return { kind: "vender", index: Number(v[1]), price: Number(v[2]) };
   const r = t.match(/^reset(?:ear)?\s+(?:a\s+)?([A-Za-z0-9]{3,10})$/i);
   if (r) return { kind: "reset", character: r[1] };
   const p = t.match(/^puntos\s+([A-Za-z0-9]{3,10})\s+(.+)$/i);
@@ -192,6 +231,12 @@ function parseAiAction(answer: string): Action | null {
   } catch {
     return null;
   }
+  if (o.accion === "parar") return { kind: "parar" };
+  if (o.accion === "vender") {
+    const price = typeof o.precio === "number" && Number.isInteger(o.precio) && o.precio > 0 ? o.precio : 0;
+    const item = typeof o.item === "string" ? o.item.trim().slice(0, 60) : "";
+    return item && price ? { kind: "vender", item, price } : null;
+  }
   const character = typeof o.personaje === "string" ? o.personaje.trim() : "";
   if (!/^[A-Za-z0-9]{3,10}$/.test(character)) return null;
   if (o.accion === "reset") return { kind: "reset", character };
@@ -206,16 +251,60 @@ function parseAiAction(answer: string): Action | null {
   return null;
 }
 
-/** Propone la accion: el personaje tiene que ser de la cuenta (con su nombre exacto). */
-async function propose(sql: Sql, jid: string, accountId: string, action: Action): Promise<string[]> {
-  const chars = await sql`select "Name" as name from data."Character" where "AccountId" = ${accountId} order by "CharacterSlot"`;
+const CONFIRM_TEXT = "Responde *sí* para hacerlo o *no* para cancelar (tienes 2 minutos).";
+
+/** La lista del baul para el chat (y la guarda para "vender N precio"). */
+async function showVault(sql: Sql, jid: string, accountId: string): Promise<string[]> {
+  const items = await vaultItems(sql, accountId);
+  lastVault.set(jid, { at: Date.now(), items });
+  if (!items.length) return ["Tu baúl está vacío. Guarda en el baúl lo que quieras vender (dentro del juego) y vuelve a escribirme *baul*."];
+  const lines = items.slice(0, 40).map((it, i) => `${i + 1}. ${it.label}`);
+  return [`🎒 *Tu baúl:*\n${lines.join("\n")}\n\nPara vender: *vender NÚMERO PRECIO* (ej: vender 1 50).`];
+}
+
+/** Propone la accion, ya validada contra la cuenta. */
+async function propose(sql: Sql, jid: string, linked: { account: string; login: string }, action: Action): Promise<string[]> {
+  if (action.kind === "parar") {
+    const farming = farmingOffline(linked.login);
+    if (farming === false) return ["Ninguno de tus personajes está farmeando sin conexión ahora mismo. (Se arranca dentro del juego con el MU Helper y /offlevel.)"];
+    if (farming === null) return ["No pude ver el estado del servidor ahora mismo. Intenta en un minuto."];
+    pending.set(jid, { action, expires: Date.now() + CONFIRM_MS });
+    return [`¿Quieres ${describe(action)}? 🧙\n${CONFIRM_TEXT}`];
+  }
+
+  if (action.kind === "vender") {
+    if (action.price > 100_000_000) return ["Ese precio es demasiado alto. El máximo es 100.000.000 WCoinP."];
+    let items = lastVault.get(jid);
+    if (!items || Date.now() - items.at > 10 * 60_000) items = { at: Date.now(), items: await vaultItems(sql, linked.account) };
+    lastVault.set(jid, items);
+    let chosen: { id: string; label: string } | undefined;
+    if (action.index) {
+      chosen = items.items[action.index - 1];
+      if (!chosen) return [`No hay item número ${action.index} en tu baúl. Escribe *baul* para ver la lista.`, ...(await showVault(sql, jid, linked.account))];
+    } else {
+      const want = (action.item ?? "").toLowerCase().replace(/\s+/g, " ");
+      const matches = items.items.filter(it => it.label.toLowerCase().includes(want) || want.includes(it.label.toLowerCase()));
+      if (matches.length !== 1) {
+        const vault = await showVault(sql, jid, linked.account);
+        return [matches.length ? `Tienes varios items que se parecen a *${action.item}*. Dime cuál con su número:` : `No encontré *${action.item}* en tu baúl.`, ...vault];
+      }
+      chosen = matches[0];
+    }
+    const { tax } = await economy(sql);
+    const net = action.price - Math.floor((action.price * tax) / 100);
+    const fixed: Action = { kind: "vender", price: action.price, itemId: chosen.id, label: chosen.label };
+    pending.set(jid, { action: fixed, expires: Date.now() + CONFIRM_MS });
+    return [`¿Quieres ${describe(fixed)}? 🧙\nSi se vende recibes *${net.toLocaleString("es")} WCoinP* (impuesto ${tax}%). Tu cuenta tiene que estar *fuera del juego*.\n${CONFIRM_TEXT}`];
+  }
+
+  const chars = await sql`select "Name" as name from data."Character" where "AccountId" = ${linked.account} order by "CharacterSlot"`;
   const match = chars.find(c => String(c.name).toLowerCase() === action.character.toLowerCase());
   if (!match) {
     return [`No tienes un personaje llamado *${action.character}*. Tus personajes: ${chars.map(c => c.name).join(", ") || "ninguno"}.`];
   }
   const fixed = { ...action, character: String(match.name) } as Action;
   pending.set(jid, { action: fixed, expires: Date.now() + CONFIRM_MS });
-  return [`¿Quieres ${describe(fixed)}? 🧙\nTu cuenta tiene que estar *fuera del juego*.\nResponde *sí* para hacerlo o *no* para cancelar (tienes 2 minutos).`];
+  return [`¿Quieres ${describe(fixed)}? 🧙\nTu cuenta tiene que estar *fuera del juego*.\n${CONFIRM_TEXT}`];
 }
 
 async function confirm(sql: Sql, jid: string, linked: { account: string; login: string }): Promise<string[]> {
@@ -224,9 +313,19 @@ async function confirm(sql: Sql, jid: string, linked: { account: string; login: 
   if (!p || p.expires < Date.now()) return ["No hay nada pendiente por confirmar (o ya pasaron los 2 minutos). Pídemelo otra vez."];
   const who = { accountId: linked.account, login: linked.login };
   try {
-    const res = p.action.kind === "reset"
-      ? await doReset(sql, who, { character: p.action.character })
-      : await doAddPoints(sql, who, { character: p.action.character, ...p.action.stats });
+    let res: { message: string };
+    if (p.action.kind === "parar") {
+      if (!farmingOffline(linked.login)) return ["Ya no está farmeando sin conexión. No hice nada."];
+      orderGame("parar", linked.login);
+      res = { message: "Le pedí al servidor que pare el farmeo. Te aviso por aquí cuando quede guardado (unos segundos)." };
+    } else if (p.action.kind === "vender") {
+      res = await doSell(sql, who, { item: p.action.itemId, price: p.action.price });
+      lastVault.delete(jid);
+    } else if (p.action.kind === "reset") {
+      res = await doReset(sql, who, { character: p.action.character });
+    } else {
+      res = await doAddPoints(sql, who, { character: p.action.character, ...p.action.stats });
+    }
     await sql`insert into barrio.sabio_log (login, character, question, answer) values (${linked.login}, ${"WhatsApp"}, ${`[accion] ${describe(p.action)}`}, ${res.message})`;
     return [`✅ ${res.message}`];
   } catch (error) {
@@ -271,8 +370,9 @@ async function botMessage(sql: Sql, jid: string, text: string): Promise<string[]
     pending.delete(jid);
     return ["Listo, cancelado. No se hizo nada."];
   }
+  if (/^(ba[uú]l|mi ba[uú]l|ver ba[uú]l)[.!?]*$/.test(lower)) return showVault(sql, jid, linked.account);
   const direct = parseCommand(text);
-  if (direct) return propose(sql, jid, linked.account, direct);
+  if (direct) return propose(sql, jid, linked, direct);
 
   if (lower === "desvincular") {
     await sql`delete from barrio.wa_link where jid = ${jid}`;
@@ -280,12 +380,15 @@ async function botMessage(sql: Sql, jid: string, text: string): Promise<string[]
   }
 
   await ensureSabioTables(sql);
-  const { on, daily } = await settings(sql);
+  const cfg = await settings(sql);
+  const { on, daily } = cfg;
   if (!on) return ["El Sabio está de vacaciones por ahora. Vuelve pronto, pana."];
   const key = cloudflareKey();
   if (!key) return ["El Sabio está durmiendo (falta configurarlo). Avísale al admin."];
-  const used = await takeOne(sql, linked.login, daily);
-  if (used === null) return [`Ya me hiciste tus ${daily} preguntas de hoy, pana. Mañana seguimos.`];
+  const used = await takeOne(sql, linked.login, cfg);
+  if (used === null) {
+    return [`Ya me hiciste tus ${daily} preguntas de ${periodWord(cfg)}, pana. ${cfg.hourly ? "En la próxima hora seguimos." : "Mañana seguimos."} (Los comandos *reset*, *puntos*, *vender* y *baúl* no gastan preguntas.)`];
+  }
 
   const memoryKey = `wa:${linked.login}`;
   try {
@@ -301,21 +404,21 @@ async function botMessage(sql: Sql, jid: string, text: string): Promise<string[]
     const answer = (await runModel(key, messages)).trim().replace(/\*\*(.+?)\*\*/g, "*$1*");
     const aiAction = parseAiAction(answer);
     if (aiAction) {
-      store(memoryKey, text.slice(0, 500), `(propuse ${aiAction.kind} a ${aiAction.character})`);
-      return propose(sql, jid, linked.account, aiAction);
+      store(memoryKey, text.slice(0, 500), `(propuse ${aiAction.kind})`);
+      return propose(sql, jid, linked, aiAction);
     }
     // Una "accion" que no es reset ni puntos (dar monedas, items...) no existe: no se hace ni se muestra.
     if (/"accion"/.test(answer)) {
       store(memoryKey, text.slice(0, 500), "(eso no se puede por WhatsApp)");
-      return ["Eso no lo puedo hacer, pana. Por WhatsApp solo puedo hacer *reset* y *repartir puntos* de tus personajes (siempre con tu *sí*). Lo demás se gana jugando. 😉"];
+      return ["Eso no lo puedo hacer, pana. Por WhatsApp puedo hacer *reset*, *repartir puntos*, *parar el farmeo* y *vender en La Plaza* (siempre con tu *sí*). Lo demás se gana jugando. 😉"];
     }
     store(memoryKey, text.slice(0, 500), answer);
     await sql`insert into barrio.sabio_log (login, character, question, answer) values (${linked.login}, ${"WhatsApp"}, ${text.slice(0, 500)}, ${answer})`;
     const left = daily - used;
-    return left <= 3 ? [answer, `_(Te quedan ${left} preguntas hoy.)_`] : [answer];
+    return left <= 3 ? [answer, `_(Te quedan ${left} preguntas ${periodWord(cfg)}.)_`] : [answer];
   } catch (error) {
     console.error("whatsapp", error);
-    await giveBack(sql, linked.login).catch(() => {});
+    await giveBack(sql, linked.login, cfg).catch(() => {});
     return ["Se me cruzaron los cables, pana. Intenta en un rato."];
   }
 }

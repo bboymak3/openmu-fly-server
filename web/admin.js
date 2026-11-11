@@ -267,7 +267,8 @@
       const f = $("#sabio-form");
       f.on.checked = d.on;
       f.daily.value = d.daily;
-      $("#sabio-state").textContent = `${d.configured ? "✅ Configurado" : "⚠️ Falta configurarlo en la tablet: bash ~/barriomu.sh ia"} · Preguntas hoy: ${d.today}`;
+      f.periodo.value = d.hourly ? "hora" : "dia";
+      $("#sabio-state").textContent = `${d.configured ? "✅ Configurado" : "⚠️ Falta configurarlo en la tablet: bash ~/barriomu.sh ia"} · Preguntas hoy (juego + WhatsApp): ${d.today}`;
       $("#sabio-recent").innerHTML = d.recent.length
         ? d.recent.map(r => `<tr><td><small>${new Date(r.at).toLocaleString("es", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</small><br />${esc(r.character)}</td><td><b>${esc(r.question)}</b><br /><small class="muted">${esc(r.answer ?? "")}</small></td></tr>`).join("")
         : '<tr><td class="skeleton">Nadie le ha preguntado todavía.</td></tr>';
@@ -282,7 +283,7 @@
     const btn = f.querySelector("button");
     btn.disabled = true;
     try {
-      toast((await call("/admin/sabio/guardar", { method: "POST", body: { on: f.on.checked, daily: Number(f.daily.value) } })).message);
+      toast((await call("/admin/sabio/guardar", { method: "POST", body: { on: f.on.checked, daily: Number(f.daily.value), periodo: f.periodo.value } })).message);
       await loadSabio();
     } catch (err) {
       toast(err.message, true);
