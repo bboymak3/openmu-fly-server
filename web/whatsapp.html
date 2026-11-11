@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>WhatsApp del Sabio · BarrioMU</title>
+  <meta name="description" content="Maneja tus personajes de BarrioMU por WhatsApp con el Sabio del Barrio: estado, ranking, eventos, reset, puntos, La Plaza y spots de farmeo." />
+  <meta name="theme-color" content="#0b0a0f" />
+  <link rel="icon" type="image/png" href="assets/favicon.png" />
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css?v=20261112b" />
+  <script src="config.js?v=20261112b"></script>
+  <script src="whatsapp.js?v=20261112b" defer></script>
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="index.html">
+      <img src="assets/logo.webp" alt="" width="40" height="40" />
+      <span>BARRIO<b>MU</b></span>
+    </a>
+    <nav class="menu-inline">
+      <a href="index.html">Inicio</a>
+      <a class="btn btn-small btn-gold" data-link="play" href="#">Jugar</a>
+    </nav>
+  </header>
+
+  <main class="section account">
+    <h1 class="title">📱 El Sabio por WhatsApp</h1>
+    <p class="subtitle">Escríbele al <b>Sabio del Barrio</b> y maneja tus personajes desde el celular, sin entrar al juego.</p>
+    <div class="ref-cta"><a class="btn btn-gold btn-big" id="wa-open" href="cuenta.html#whatsapp" target="_blank" rel="noopener">💬 Abrir el WhatsApp de BarrioMU</a></div>
+
+    <section class="card ref">
+      <div class="ref-head"><h2>🔗 Primero: vincula tu cuenta</h2></div>
+      <ol class="ref-steps">
+        <li><span class="start-num">1</span><div><h4>Entra a Mi cuenta</h4><p>En la web, entra a <b>Mi cuenta</b> con tu usuario y clave del juego.</p></div></li>
+        <li><span class="start-num">2</span><div><h4>Genera tu código</h4><p>Baja hasta <b>📱 WhatsApp</b> y toca <b>Generar código</b>. Te sale un número de 6 cifras (dura unos minutos).</p></div></li>
+        <li><span class="start-num">3</span><div><h4>Mándalo por WhatsApp</h4><p>Toca <b>Abrir WhatsApp y vincular</b>, o escríbele al bot <b>vincular 123456</b> con tu código. Cuando te conteste, ya está.</p></div></li>
+      </ol>
+      <div class="ref-cta"><a class="btn btn-ghost btn-big" href="cuenta.html#whatsapp">🔑 Ir a Mi cuenta</a></div>
+      <p class="ref-rule small">Para soltar el número escribe <b>desvincular</b>. El Sabio <b>nunca</b> te pide tu clave.</p>
+    </section>
+
+    <section class="card ref">
+      <div class="ref-head"><h2>💬 Habla normal</h2></div>
+      <p class="ref-lead">No hace falta saberse comandos: pregúntale lo que quieras en tus palabras.</p>
+      <ul class="wa-examples">
+        <li>“¿Cuánto me falta para el reset?”</li>
+        <li>“¿Cuántas WCoinC tengo?”</li>
+        <li>“¿Dónde subo de nivel con mi elfa?”</li>
+        <li>“Dale el reset a barrio02”</li>
+      </ul>
+      <p class="ref-rule small">Si le pides hacer algo (un reset, repartir puntos, vender…), primero te lo explica y <b>solo lo hace si respondes “sí”</b> en los próximos 2 minutos. Con “no” se cancela.</p>
+    </section>
+
+    <section class="card ref">
+      <div class="ref-head"><h2>📋 Comandos</h2></div>
+      <p class="ref-lead">Escribe el comando tal cual. Los comandos son gratis: no gastan preguntas.</p>
+
+      <h3 class="wa-group">🔎 Consultar</h3>
+      <div class="table-wrap">
+        <table class="ranking ref-table wa-table">
+          <thead><tr><th>Escribe</th><th>Qué hace</th></tr></thead>
+          <tbody>
+            <tr><td><code>estado</code></td><td>Si el servidor está prendido y cuántos jugadores hay.</td></tr>
+            <tr><td><code>top</code></td><td>Los 5 mejores del ranking.</td></tr>
+            <tr><td><code>mi puesto</code></td><td>En qué puesto del ranking van tus personajes.</td></tr>
+            <tr><td><code>eventos</code></td><td>A qué hora son los próximos eventos (hora de Venezuela).</td></tr>
+            <tr><td><code>ayuda</code></td><td>La lista corta de comandos.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="wa-group">⏰ Avisos</h3>
+      <div class="table-wrap">
+        <table class="ranking ref-table wa-table">
+          <thead><tr><th>Escribe</th><th>Qué hace</th></tr></thead>
+          <tbody>
+            <tr><td><code>avisar todos</code></td><td>Te avisa <b>10 minutos antes</b> de cada evento.</td></tr>
+            <tr><td><code>avisar blood castle</code><br /><code>avisar devil square</code><br /><code>avisar chaos castle</code></td><td>Solo el evento que tú quieras.</td></tr>
+            <tr><td><code>no avisar todos</code></td><td>Quita los avisos (o <code>no avisar blood castle</code>…).</td></tr>
+            <tr><td><code>resumen si</code></td><td>Cada mañana a las <b>8:00</b> te manda cómo van tus personajes.</td></tr>
+            <tr><td><code>resumen no</code></td><td>Ya no te manda el resumen.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="ref-rule small">También te escribe solo cuando tu personaje que farmea sin conexión llega al <b>nivel del reset</b>, cuando <b>muere</b> y cuando alguien <b>compra lo que vendes</b> en La Plaza.</p>
+
+      <h3 class="wa-group">🗨️ Chatear con el juego</h3>
+      <div class="table-wrap">
+        <table class="ranking ref-table wa-table">
+          <thead><tr><th>Escribe</th><th>Qué hace</th></tr></thead>
+          <tbody>
+            <tr><td><code>@Nombre hola pana</code></td><td>Le llega a ese jugador <b>dentro del juego</b>, como susurro.</td></tr>
+            <tr><td>En el juego: <code>/wa Nombre mensaje</code></td><td>Le llega a ese jugador por <b>WhatsApp</b> (si tiene WhatsApp vinculado).</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 class="wa-group">🧙 Tus personajes</h3>
+      <div class="table-wrap">
+        <table class="ranking ref-table wa-table">
+          <thead><tr><th>Escribe</th><th>Qué hace</th></tr></thead>
+          <tbody>
+            <tr><td><code>reset barrio02</code></td><td>Le hace el reset a ese personaje (si ya tiene el nivel).</td></tr>
+            <tr><td><code>puntos barrio02 fuerza 100</code></td><td>Reparte puntos libres. Puedes poner varios: <code>puntos barrio02 fuerza 100 agilidad 50</code>. Se vale <i>fuerza, agilidad, vitalidad, energia</i> y <i>comando</i>.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="ref-rule small">Para el reset y los puntos tienes que estar <b>fuera del juego</b> (sin el personaje conectado ni farmeando con /offlevel).</p>
+
+      <h3 class="wa-group">🏪 Vender en La Plaza</h3>
+      <div class="table-wrap">
+        <table class="ranking ref-table wa-table">
+          <thead><tr><th>Escribe</th><th>Qué hace</th></tr></thead>
+          <tbody>
+            <tr><td><code>baul</code></td><td>Te muestra lo que tienes en el baúl, con un número cada cosa.</td></tr>
+            <tr><td><code>vender 3 50</code></td><td>Publica en La Plaza la cosa número <b>3</b> del baúl por <b>50 WCoinP</b>.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="ref-rule small">Primero guarda en el baúl (dentro del juego) lo que quieres vender y sal del juego.</p>
+    </section>
+
+    <section class="card ref">
+      <div class="ref-head"><h2>⚔️ Farmear sin conexión y spots</h2></div>
+      <p class="ref-lead">Deja tu personaje subiendo de nivel solo y muévelo de spot desde el celular.</p>
+      <ol class="ref-steps">
+        <li><span class="start-num">1</span><div><h4>En el juego</h4><p>Prende el <b>MU Helper</b> y escribe <b>/offlevel</b>. Ya puedes cerrar el juego: tu personaje sigue farmeando.</p></div></li>
+        <li><span class="start-num">2</span><div><h4>Mira los spots</h4><p>Por WhatsApp escribe <b>spots</b>. Te sale la lista con su número (por ejemplo las <b>jaulas de la Arena</b>: la Jaula 1 es la más fácil y la 8 la más difícil).</p></div></li>
+        <li><span class="start-num">3</span><div><h4>Muévelo</h4><p>Escribe <b>mover 2</b> y responde <b>sí</b>. Tu personaje viaja a ese spot y se pone a farmear ahí.</p></div></li>
+      </ol>
+      <div class="table-wrap">
+        <table class="ranking ref-table wa-table">
+          <thead><tr><th>Escribe</th><th>Qué hace</th></tr></thead>
+          <tbody>
+            <tr><td><code>spots</code></td><td>La lista de spots de farmeo.</td></tr>
+            <tr><td><code>mover 2</code></td><td>Lleva a tu personaje que farmea al spot número 2.</td></tr>
+            <tr><td><code>parar</code></td><td>Detiene el farmeo sin conexión (/offlevel).</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="ref-rule small">💀 <b>Si muere en el spot</b>, revive y vuelve solo al spot. A la <b>tercera muerte</b> se queda en la ciudad y te avisa: muévelo a un spot más fácil con <b>mover</b>. Algunos spots piden un nivel mínimo.</p>
+    </section>
+
+    <section class="card ref">
+      <div class="ref-head"><h2>✅ Bueno saber</h2></div>
+      <ul class="wa-examples">
+        <li>El Sabio no regala nada: no da WCoin, items ni niveles gratis.</li>
+        <li>Solo maneja <b>tu</b> cuenta y <b>tus</b> personajes.</li>
+        <li>Si el bot no contesta, puede estar en mantenimiento: prueba más tarde.</li>
+        <li>BarrioMU nunca te pedirá tu clave por WhatsApp.</li>
+      </ul>
+    </section>
+  </main>
+</body>
+</html>
