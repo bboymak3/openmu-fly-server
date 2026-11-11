@@ -70,7 +70,7 @@ const listOf = (v: unknown): unknown[] =>
   Array.isArray(v) ? v : Array.isArray((v as { $values?: unknown[] })?.$values) ? (v as { $values: unknown[] }).$values : [];
 
 /** La configuracion del reset si esta activo; null si no. */
-async function resetConfig(sql: Sql): Promise<ResetConfig | null> {
+export async function resetConfig(sql: Sql): Promise<ResetConfig | null> {
   const [row] = await sql`
     select "IsActive" as active, "CustomConfiguration" as config
     from config."PlugInConfiguration" where "TypeId" = ${RESET_PLUGIN} limit 1`;

@@ -16,6 +16,7 @@
 #   bash ~/barriomu.sh extras      prende puntos por hora, /addstr..., /openware, /resetstats y anuncios (reinicia OpenMU)
 #   bash ~/barriomu.sh gm CUENTA   hace GM una cuenta (para el panel admin; con la cuenta fuera del juego)
 #   bash ~/barriomu.sh cloudflare  guarda el token de Cloudflare del panel admin
+#   bash ~/barriomu.sh ia          configura El Sabio del Barrio (/ia): ID de cuenta y token de Workers AI
 #   bash ~/barriomu.sh npcs        lista los NPCs de las ciudades y cuantos estan apagados
 #   bash ~/barriomu.sh npcs activar  vuelve a prender todos los NPCs y monstruos (reinicia OpenMU)
 #   bash ~/barriomu.sh mapas       monstruos de Lorencia, portales y /move: que sirve y que esta roto
@@ -212,6 +213,46 @@ cloudflare() {
   printf '%s\n' "$token" | proot-distro login ubuntu -- bash -c 'umask 077; cat > ~/.barriomu-cloudflare' \
     || { echo "No se pudo guardar."; return 1; }
   echo "Listo: token guardado. El panel admin ya puede ver las visitas y borrar la cache."
+}
+
+# El Sabio del Barrio (/ia en el juego): guarda en la tablet el ID de la cuenta de
+# Cloudflare y el token de Workers AI (~/.barriomu-ia, dentro de Ubuntu), crea el
+# secreto que comparten OpenMU y la API (~/openmu/data/sabio-secreto.txt) y prueba
+# que la IA conteste. El token no se ve mientras se pega.
+ia() {
+  echo "ID de tu cuenta de Cloudflare (32 letras y numeros; esta en la portada del panel de Cloudflare, a la derecha):"
+  local cuenta token
+  read -r cuenta
+  cuenta=$(printf '%s' "$cuenta" | tr -d '[:space:]')
+  if ! [[ "$cuenta" =~ ^[0-9a-fA-F]{32}$ ]]; then
+    echo "Eso no parece un ID de cuenta de Cloudflare. No se guardo nada."; return 1
+  fi
+  echo "Pega el token de Workers AI y dale Enter (no se ve mientras lo pegas):"
+  read -rs token; echo
+  token=$(printf '%s' "$token" | tr -d '[:space:]')
+  if ! [[ "$token" =~ ^[A-Za-z0-9_-]{20,}$ ]]; then
+    echo "Eso no parece un token de Cloudflare. No se guardo nada."; return 1
+  fi
+  printf '%s\n%s\n' "$cuenta" "$token" | proot-distro login ubuntu -- bash -c 'umask 077; cat > ~/.barriomu-ia' \
+    || { echo "No se pudo guardar."; return 1; }
+  local secreto
+  secreto=$(head -c 48 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 40)
+  printf '%s\n' "$secreto" | proot-distro login ubuntu -- bash -c \
+    'mkdir -p ~/openmu/data; if [ -s ~/openmu/data/sabio-secreto.txt ]; then cat >/dev/null; else umask 077; cat > ~/openmu/data/sabio-secreto.txt; fi' \
+    || { echo "No se pudo crear el secreto."; return 1; }
+  echo "Probando la IA..."
+  # La prueba lee el token del archivo, dentro de Ubuntu (no va en la linea de comandos).
+  if proot-distro login ubuntu -- bash -c '
+      a=$(sed -n 1p ~/.barriomu-ia); t=$(sed -n 2p ~/.barriomu-ia)
+      curl -s -m 40 -X POST "https://api.cloudflare.com/client/v4/accounts/$a/ai/run/@cf/meta/llama-3.3-70b-instruct-fp8-fast" \
+        -H @<(printf "Authorization: Bearer %s\n" "$t") -H "Content-Type: application/json" \
+        -d "{\"messages\":[{\"role\":\"user\",\"content\":\"Saluda en 5 palabras\"}],\"max_tokens\":30}"' | grep -q '"success":true'; then
+    echo "Listo: el Sabio del Barrio ya puede hablar. En el juego: /ia y tu pregunta."
+    echo "Si OpenMU estaba prendido, no hace falta reiniciar."
+  else
+    echo "Se guardo, pero la IA no contesto. Revisa que el token tenga el permiso 'Workers AI' y que el ID de cuenta sea el correcto."
+    return 1
+  fi
 }
 
 # Diagnostico: los NPCs (no monstruos) de Lorencia, Devias, Noria y Elbeland en la
@@ -554,6 +595,7 @@ case "$1" in
   resets) resets "$2" ;;
   gm) gm "$2" ;;
   cloudflare) cloudflare ;;
+  ia) ia ;;
   npcs) npcs "$2" ;;
   mapas) mapas ;;
   spot) spot "$2" ;;
