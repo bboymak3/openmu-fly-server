@@ -14,6 +14,7 @@ using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using MUnique.OpenMU.GameLogic.Attributes;
+using MUnique.OpenMU.GameLogic.NPC;
 using MUnique.OpenMU.GameLogic.Offline;
 using MUnique.OpenMU.GameLogic.Resets;
 using MUnique.OpenMU.PlugIns;
