@@ -145,10 +145,11 @@ async function accountContext(sql: Sql, accountId: string, login: string): Promi
     '  {"accion":"reset","personaje":"NOMBRE"}',
     '  {"accion":"puntos","personaje":"NOMBRE","fuerza":0,"agilidad":0,"vitalidad":0,"energia":0,"comando":0}',
     '  {"accion":"parar"}',
+    '  {"accion":"mover","spot":"NUMERO O NOMBRE DEL SPOT"}  (mover al personaje que farmea sin conexion a un spot de farmeo)',
     '  {"accion":"vender","item":"NOMBRE DEL ITEM","precio":0}',
     "  Si no dice el personaje y tiene uno solo, usa ese; si tiene varios, preguntale cual. Para vender sin precio, preguntale el precio.",
-    "  Cualquier otra accion (comprar, mover, dar items o monedas) no se puede por WhatsApp.",
-    "- Comandos directos que le puedes recomendar: *baul* (lista su baul), *vender 3 50* (item 3 del baul a 50 WCoinP), *parar*, *reset NOMBRE*, *puntos NOMBRE fuerza 100*.",
+    "  Cualquier otra accion (comprar, mover a lugares que no son spots, dar items o monedas) no se puede por WhatsApp.",
+    "- Comandos directos que le puedes recomendar: *baul* (lista su baul), *vender 3 50* (item 3 del baul a 50 WCoinP), *parar*, *spots* y *mover 2* (spots de farmeo), *reset NOMBRE*, *puntos NOMBRE fuerza 100*.",
   ].join("\n");
 }
 
@@ -165,6 +166,7 @@ type Action =
   | { kind: "reset"; character: string }
   | { kind: "puntos"; character: string; stats: Partial<Record<keyof typeof STAT_NAMES, number>> }
   | { kind: "parar" }
+  | { kind: "mover"; spot?: string; spotId?: number; spotName?: string }
   | { kind: "vender"; item?: string; index?: number; price: number; itemId?: string; label?: string };
 
 /** El ultimo "baul" que se le mostro a cada chat, para "vender 3 50". */
@@ -183,18 +185,36 @@ function farmingOffline(login: string): boolean | null {
 }
 
 /** Una orden para el servidor de juego (BarrioAvisosPlugIn la lee en unos segundos). */
-function orderGame(action: string, login: string): void {
+function orderGame(action: string, login: string, text?: string): void {
   const dir = `${DATA_DIR}/ordenes`;
   mkdirSync(dir, { recursive: true });
   const name = `${Date.now()}-${crypto.randomUUID()}.json`;
-  writeFileSync(`${dir}/${name}.tmp`, JSON.stringify({ accion: action, login, at: Date.now() }));
+  writeFileSync(`${dir}/${name}.tmp`, JSON.stringify({ accion: action, login, text, at: Date.now() }));
   renameSync(`${dir}/${name}.tmp`, `${dir}/${name}`);
 }
+/** Los spots de farmeo que guardo el GM en el juego (/guardarspot), en data/spots.json. */
+type Spot = { id: number; nombre: string; mapa: number; mapaNombre: string; x: number; y: number; nivel: number };
+function loadSpots(): Spot[] {
+  try {
+    const d = JSON.parse(readFileSync(`${DATA_DIR}/spots.json`, "utf8")) as { spots?: Spot[] };
+    return Array.isArray(d.spots) ? d.spots : [];
+  } catch {
+    return [];
+  }
+}
+
+function spotsText(): string {
+  const spots = loadSpots();
+  if (!spots.length) return "Todavía no hay spots de farmeo. (El staff los crea en el juego con /guardarspot.)";
+  return `📍 *Spots de farmeo:*\n${spots.map(s => `${s.id}. *${s.nombre}* (${s.mapaNombre})${s.nivel > 0 ? ` · nivel ${s.nivel}+` : ""}`).join("\n")}\n\nCon tu personaje farmeando (MU Helper + /offlevel): *mover NÚMERO* (ej: mover 1).`;
+}
+
 const pending = new Map<string, { action: Action; expires: number }>();
 
 /** Lo que se va a hacer, dicho para el jugador. */
 function describe(a: Action): string {
   if (a.kind === "parar") return "*parar el farmeo* sin conexión (tu personaje se guarda y sale del juego)";
+  if (a.kind === "mover") return `llevar a tu personaje que farmea a *${a.spotName ?? a.spot ?? "?"}* y dejarlo farmeando ahí (si muere vuelve solo, hasta 3 veces)`;
   if (a.kind === "vender") return `publicar *${a.label ?? a.item ?? "?"}* en La Plaza por *${a.price.toLocaleString("es")} WCoinP*`;
   if (a.kind === "reset") return `hacer *reset* a *${a.character}*`;
   const parts = Object.entries(a.stats).map(([k, n]) => `${n} a ${STAT_NAMES[k as keyof typeof STAT_NAMES]}`);
@@ -205,6 +225,8 @@ function describe(a: Action): string {
 function parseCommand(text: string): Action | null {
   const t = text.trim();
   if (/^(parar|detener|para|deten)( (el )?(farmeo|farm|offlevel))?[.!]*$/i.test(t)) return { kind: "parar" };
+  const mv = t.match(/^mover(?: a)?(?: (?:al )?spot)?\s+(\d{1,3})$/i);
+  if (mv) return { kind: "mover", spot: mv[1] };
   const v = t.match(/^vender\s+(\d{1,3})\s+(\d{1,9})$/i);
   if (v) return { kind: "vender", index: Number(v[1]), price: Number(v[2]) };
   const r = t.match(/^reset(?:ear)?\s+(?:a\s+)?([A-Za-z0-9]{3,10})$/i);
@@ -233,6 +255,7 @@ function parseAiAction(answer: string): Action | null {
     return null;
   }
   if (o.accion === "parar") return { kind: "parar" };
+  if (o.accion === "mover" && (typeof o.spot === "string" || typeof o.spot === "number")) return { kind: "mover", spot: String(o.spot).slice(0, 40) };
   if (o.accion === "vender") {
     const price = typeof o.precio === "number" && Number.isInteger(o.precio) && o.precio > 0 ? o.precio : 0;
     const item = typeof o.item === "string" ? o.item.trim().slice(0, 60) : "";
@@ -271,6 +294,20 @@ async function propose(sql: Sql, jid: string, linked: { account: string; login: 
     if (farming === null) return ["No pude ver el estado del servidor ahora mismo. Intenta en un minuto."];
     pending.set(jid, { action, expires: Date.now() + CONFIRM_MS });
     return [`¿Quieres ${describe(action)}? 🧙\n${CONFIRM_TEXT}`];
+  }
+
+  if (action.kind === "mover") {
+    const spots = loadSpots();
+    const want = (action.spot ?? "").toLowerCase().trim();
+    const spot = spots.find(sp => String(sp.id) === want) ?? spots.find(sp => sp.nombre.toLowerCase() === want)
+      ?? (spots.filter(sp => sp.nombre.toLowerCase().includes(want)).length === 1 ? spots.find(sp => sp.nombre.toLowerCase().includes(want)) : undefined);
+    if (!spot) return [`No encontré ese spot.`, spotsText()];
+    const farming = farmingOffline(linked.login);
+    if (farming === false) return ["Para moverlo tu personaje tiene que estar *farmeando sin conexión*: entra al juego, prende el MU Helper y escribe /offlevel. Después me dices *mover " + spot.id + "*."];
+    if (farming === null) return ["No pude ver el estado del servidor ahora mismo. Intenta en un minuto."];
+    const fixed: Action = { kind: "mover", spotId: spot.id, spotName: `${spot.nombre} (${spot.mapaNombre})` };
+    pending.set(jid, { action: fixed, expires: Date.now() + CONFIRM_MS });
+    return [`¿Quieres ${describe(fixed)}?${spot.nivel > 0 ? ` (pide nivel ${spot.nivel})` : ""} 🧙\n${CONFIRM_TEXT}`];
   }
 
   if (action.kind === "vender") {
@@ -319,6 +356,10 @@ async function confirm(sql: Sql, jid: string, linked: { account: string; login: 
       if (!farmingOffline(linked.login)) return ["Ya no está farmeando sin conexión. No hice nada."];
       orderGame("parar", linked.login);
       res = { message: "Le pedí al servidor que pare el farmeo. Te aviso por aquí cuando quede guardado (unos segundos)." };
+    } else if (p.action.kind === "mover") {
+      if (!farmingOffline(linked.login)) return ["Ya no está farmeando sin conexión. No hice nada."];
+      orderGame("mover", linked.login, String(p.action.spotId));
+      res = { message: "Le pedí al servidor que lo mueva. Te aviso por aquí cuando llegue (unos segundos)." };
     } else if (p.action.kind === "vender") {
       res = await doSell(sql, who, { item: p.action.itemId, price: p.action.price });
       lastVault.delete(jid);
@@ -376,6 +417,7 @@ async function botMessage(sql: Sql, jid: string, text: string): Promise<string[]
   const extra = await extrasCommand(sql, jid, linked, text);
   if (extra) return extra;
   if (/^(ba[uú]l|mi ba[uú]l|ver ba[uú]l)[.!?]*$/.test(lower)) return showVault(sql, jid, linked.account);
+  if (/^(spots?|lugares|mapas de farmeo)[.!?]*$/.test(lower)) return [spotsText()];
   const direct = parseCommand(text);
   if (direct) return propose(sql, jid, linked, direct);
 

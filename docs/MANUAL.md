@@ -122,6 +122,7 @@ Se usa en **Termux normal** (`~ $`), **no** dentro de Ubuntu.
 | `bash ~/barriomu.sh spot` | Lorencia con el **triple** de monstruos en todas las salidas de la ciudad (norte, este, sur y oeste: Bull Fighter, Hound, Budge Dragon, Spider, Elite Bull Fighter, Lich, Gigante, Esqueleto) y el **spot del sur** (x 140-170, y 185-215: 25 Gigantes, 25 Esqueletos, 20 Lich). Repone las zonas que falten, no duplica. Unos 940 monstruos. Reinicia OpenMU |
 | `bash ~/barriomu.sh spot 1` / `spot 2` | Lo mismo con la cantidad normal (unos 360) o el doble |
 | `bash ~/barriomu.sh spot quitar` | Quita solo el spot del sur. Reinicia OpenMU |
+| `bash ~/barriomu.sh arena` | Las **8 jaulas** de la Arena con **10 monstruos** cada una (de menos a más difíciles desde la llegada) y sus **spots de farmeo** `Jaula 1`…`Jaula 8` para mover personajes por WhatsApp. `arena 20` = 20 por jaula. Quita los otros monstruos de la Arena (no los NPC). Reinicia OpenMU |
 | `bash ~/barriomu.sh joyas` | Muestra con qué porcentaje caen Bless, Soul, Chaos, Life y Creation y en cuántos mapas |
 | `bash ~/barriomu.sh joyas 1` | Las hace caer con 1% por monstruo (o el número que pongas, hasta 10) en todos los mapas. ALTOBARINAS y el buff de Fortuna lo duplican. Reinicia OpenMU |
 | `bash ~/barriomu.sh reset-db` | ⚠️ **BORRA TODA LA BASE** y la crea de nuevo (pide escribir `SI`) |
@@ -332,6 +333,18 @@ El WhatsApp del servidor corre **en la tablet** (sin Railway ni Evolution): `bab
   - **Admin** (solo cuentas GM): `admin estado`, `admin jugadores`, `admin anuncio TEXTO` (aviso dorado
     en el juego), `admin dar wcoinc CUENTA N` (con sí), `admin resumen` (manda el resumen ya).
     Funcionan aunque el bot esté en pausa y quedan en el Registro del admin.
+- **Spots de farmeo** (`openmu-barrio/BarrioSpotsPlugIn.cs`, `data/spots.json`):
+  - Las 8 jaulas de la Arena ya vienen listas: **`bash ~/barriomu.sh arena`** (10 monstruos por jaula y spots `Jaula 1`…`Jaula 8`).
+  - El GM, parado donde quiere el spot: **`/guardarspot Jaula 1`** (o `/guardarspot Jaula 3 nivel 200`
+    con nivel mínimo). **`/quitarspot Jaula 1`** lo borra. **`/spots`** los lista en el juego.
+  - El jugador arranca el farmeo en el juego (MU Helper + `/offlevel`) y por WhatsApp: **`spots`** y
+    **`mover 2`** (o "pon a farmear en la jaula 2") → **sí**. El servidor lo teletransporta y fija ahí
+    su punto de caza.
+  - **Si muere en el spot**: revive y vuelve solo al spot. A la **3ª muerte** se queda en la ciudad
+    esperando otro `mover` (o `parar`). Avisa cada muerte por WhatsApp.
+  - Para eso `build-arm64.yml` cambia `OfflinePlayer.RespawnAndContinue` (en OpenMU el farmeo sin
+    conexión se apaga al morir) para que pregunte a `BarrioOfflineRespawnPolicy`: solo quien está en
+    un spot sigue al revivir.
 - **Pausar las respuestas** (el bot sigue vinculado pero no contesta ni marca leído): Panel admin
   → 🧙 El Sabio → desmarcar *"El bot de WhatsApp contesta"*, o `bash ~/barriomu.sh whatsapp pausar`
   (`reanudar` para volver). Los avisos automáticos siguen saliendo.

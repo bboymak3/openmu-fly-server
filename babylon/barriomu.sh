@@ -27,6 +27,8 @@
 #   bash ~/barriomu.sh spot quitar quita el spot de las afueras (reinicia OpenMU)
 #   bash ~/barriomu.sh joyas       muestra como caen Bless, Soul, Chaos, Life y Creation
 #   bash ~/barriomu.sh joyas 1     las hace caer con 1% por monstruo en todos los mapas (reinicia OpenMU)
+#   bash ~/barriomu.sh arena       las 8 jaulas de la Arena con 10 monstruos cada una y sus spots de
+#                                  farmeo (Jaula 1..8, para WhatsApp); arena 20 = 20 por jaula (reinicia OpenMU)
 #
 # Al prender tambien arranca un vigilante que cada 5 minutos revisa que todo
 # siga prendido y vuelve a prender lo que se haya caido.
@@ -482,6 +484,74 @@ SQL
   echo "Listo. Entra a Lorencia y sal por cualquier lado de la ciudad."
 }
 
+# Las 8 jaulas de entrenamiento de la Arena (mapa 6), de menos a mas dificiles desde
+# la llegada. Pone N monstruos por jaula (por defecto 10, repartidos entre sus tipos),
+# quita los otros monstruos de la Arena (no los NPC) y guarda cada jaula como spot de
+# farmeo (Jaula 1..8 en ~/openmu/data/spots.json) para moverse por WhatsApp.
+arena() {
+  pg_ctl -D "$PGDATA" status >/dev/null 2>&1 || { echo "PostgreSQL esta apagado: bash ~/barriomu.sh prender"; return 1; }
+  local n=${1:-10}
+  if ! [[ "$n" =~ ^[0-9]+$ ]] || [ "$n" -lt 2 ] || [ "$n" -gt 40 ]; then
+    echo "Pon cuantos monstruos por jaula, entre 2 y 40. Por ejemplo: bash ~/barriomu.sh arena 10"; return 1
+  fi
+  local salida
+  salida=$(psql -U postgres -d openmu -tAq -v ON_ERROR_STOP=1 -v n="$n" <<'SQL'
+UPDATE config."GameMapDefinition" SET "IsActive" = true WHERE "Number" = 6 AND NOT "IsActive";
+CREATE TEMP TABLE arena AS SELECT "Id" FROM config."GameMapDefinition" WHERE "Number" = 6 LIMIT 1;
+-- jaula, monstruo, orden dentro de la jaula, tipos en la jaula, x1, y1, x2, y2
+CREATE TEMP TABLE jaulas(j int, num int, i int, k int, x1 int, y1 int, x2 int, y2 int);
+INSERT INTO jaulas VALUES
+  (1, 19, 0, 3, 78, 94, 89, 105), (1, 20, 1, 3, 78, 94, 89, 105), (1, 5, 2, 3, 78, 94, 89, 105),
+  (2, 9, 0, 3, 79, 78, 90, 89), (2, 47, 1, 3, 79, 78, 90, 89), (2, 10, 2, 3, 79, 78, 90, 89),
+  (3, 52, 0, 3, 79, 62, 90, 73), (3, 48, 1, 3, 79, 62, 90, 73), (3, 62, 2, 3, 79, 62, 90, 73),
+  (4, 60, 0, 3, 79, 34, 90, 45), (4, 57, 1, 3, 79, 34, 90, 45), (4, 61, 2, 3, 79, 34, 90, 45),
+  (5, 353, 0, 3, 80, 18, 91, 29), (5, 355, 1, 3, 80, 18, 91, 29), (5, 356, 2, 3, 80, 18, 91, 29),
+  (6, 350, 0, 3, 88, 2, 99, 13), (6, 455, 1, 3, 88, 2, 99, 13), (6, 573, 2, 3, 88, 2, 99, 13),
+  (7, 574, 0, 3, 27, 108, 38, 119), (7, 489, 1, 3, 27, 108, 38, 119), (7, 490, 2, 3, 27, 108, 38, 119),
+  (8, 456, 0, 2, 11, 108, 22, 119), (8, 457, 1, 2, 11, 108, 22, 119);
+-- Fuera los monstruos que tenga la Arena (los del editor de mapas o de antes); los NPC se quedan.
+DELETE FROM config."MonsterSpawnArea" s USING config."MonsterDefinition" m
+WHERE s."MonsterDefinitionId" = m."Id" AND m."ObjectKind" = 0 AND s."GameMapId" = (SELECT "Id" FROM arena);
+INSERT INTO config."MonsterSpawnArea"
+  ("Id", "GameMapId", "MonsterDefinitionId", "X1", "X2", "Y1", "Y2", "Quantity", "Direction", "SpawnTrigger", "WaveNumber")
+SELECT ('ba000000-0000-4000-8000-0000000004' || lpad((j * 10 + i)::text, 2, '0'))::uuid,
+       (SELECT "Id" FROM arena), m."Id", x1, x2, y1, y2,
+       :n / k + CASE WHEN i < :n % k THEN 1 ELSE 0 END, 0, 0, 0
+FROM jaulas JOIN config."MonsterDefinition" m ON m."Number" = jaulas.num AND m."ObjectKind" = 0;
+UPDATE config."MonsterDefinition" SET "IsActive" = true
+WHERE NOT "IsActive" AND "ObjectKind" = 0 AND "Number" IN (SELECT num FROM jaulas);
+SELECT 'total ' || coalesce(sum(s."Quantity"), 0) FROM config."MonsterSpawnArea" s
+JOIN config."MonsterDefinition" m ON m."Id" = s."MonsterDefinitionId"
+WHERE s."GameMapId" = (SELECT "Id" FROM arena) AND m."ObjectKind" = 0;
+SELECT 'jaulas ' || count(DISTINCT j) FROM jaulas JOIN config."MonsterDefinition" m ON m."Number" = jaulas.num AND m."ObjectKind" = 0;
+SQL
+) || { echo "No se pudo (revisa el mensaje de arriba)."; return 1; }
+  # Los spots: el centro de cada jaula. Si ya hay un spot "Jaula N" se actualiza, los demas quedan.
+  proot-distro login ubuntu -- bash -c 'mkdir -p ~/openmu/data && cat > ~/openmu/data/.jaulas.js && ~/babylon/proxy/bun ~/openmu/data/.jaulas.js; r=$?; rm -f ~/openmu/data/.jaulas.js; exit $r' <<'JS' || { echo "Los monstruos quedaron, pero no se pudieron guardar los spots."; return 1; }
+const fs = require("fs");
+const file = process.env.HOME + "/openmu/data/spots.json";
+let spots = [];
+try { spots = JSON.parse(fs.readFileSync(file, "utf8")).spots ?? []; } catch {}
+const centros = [[83, 99], [84, 83], [84, 67], [84, 39], [85, 23], [93, 7], [32, 113], [16, 113]];
+centros.forEach(([x, y], i) => {
+  const nombre = "Jaula " + (i + 1);
+  const viejo = spots.find(s => s.nombre.toLowerCase() === nombre.toLowerCase());
+  const id = viejo ? viejo.id : spots.reduce((m, s) => Math.max(m, s.id), 0) + 1;
+  spots = spots.filter(s => s !== viejo);
+  spots.push({ id, nombre, mapa: 6, mapaNombre: "Arena", x, y, nivel: viejo ? viejo.nivel : 0 });
+});
+spots.sort((a, b) => a.id - b.id);
+fs.writeFileSync(file + ".tmp", JSON.stringify({ spots }));
+fs.renameSync(file + ".tmp", file);
+console.log("spots " + spots.length);
+JS
+  echo "Arena: $(echo "$salida" | sed -n 's/^jaulas //p') jaulas con $n monstruos cada una ($(echo "$salida" | sed -n 's/^total //p') en total)."
+  echo "Spots de farmeo guardados: Jaula 1 (la mas facil, junto a la llegada) hasta Jaula 8 (la mas dificil)."
+  echo "En el juego: /spots. Por WhatsApp: spots y mover N."
+  reiniciar_openmu
+  echo "Listo."
+}
+
 # Joyas que caen de los monstruos: Bless (14,13), Soul (14,14), Chaos (12,15),
 # Life (14,16) y Creation (14,22). OpenMU trae un grupo con 0.1% por monstruo.
 joyas() {
@@ -654,7 +724,8 @@ case "$1" in
   mapas) mapas ;;
   spot) spot "$2" ;;
   joyas) joyas "$2" ;;
+  arena) arena "$2" ;;
   extras) extras "$2" ;;
   vigilar) vigilar ;;
-  *) sed -n '2,30p' "$0" | sed 's/^# \{0,1\}//' ;;
+  *) sed -n '2,32p' "$0" | sed 's/^# \{0,1\}//' ;;
 esac

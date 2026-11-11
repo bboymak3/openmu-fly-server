@@ -47,7 +47,10 @@ jobs:
              openmu-barrio/BarrioMasterResetPlugIn.cs openmu-barrio/BarrioBuffNpcsPlugIn.cs \
              openmu-barrio/BarrioTownNpcsPlugIn.cs openmu-barrio/BarrioStarterSetPlugIn.cs \
              openmu-barrio/BarrioPointsPlugIn.cs openmu-barrio/BarrioOnlineNpcPlugIn.cs \
-             openmu-barrio/BarrioSabioPlugIn.cs openmu-barrio/BarrioAvisosPlugIn.cs $S/GameLogic/PlugIns/
+             openmu-barrio/BarrioSabioPlugIn.cs openmu-barrio/BarrioAvisosPlugIn.cs \
+             openmu-barrio/BarrioSpotsPlugIn.cs openmu-barrio/BarrioOfflineRespawnPolicy.cs $S/GameLogic/PlugIns/
+          # Spots de farmeo: quien farmea con /offlevel en un spot sigue al revivir (BarrioSpots decide)
+          sed -i 's/public virtual bool RespawnAndContinue => false;/public virtual bool RespawnAndContinue => OfflineRespawnPolicy.ShouldContinue?.Invoke(this) ?? false;/' $S/GameLogic/Offline/OfflinePlayer.cs
           # 2 game servers con nombre propio
           sed -i 's/CreateInitialDataAsync(3, true)/CreateInitialDataAsync(2, true)/' $S/Startup/Program.cs
           sed -i 's/server.Description = \$"Server {i}";/server.Description = i switch { 0 => "MIJAGUA", 1 => "ALTOBARINAS", _ => $"Server {i}" };/' $S/Persistence/Initialization/DataInitializationBase.cs
@@ -66,6 +69,7 @@ jobs:
           grep -c 'DropRateMultiplier' $S/GameServer/GameServer.cs
           grep -c 'FortunaEffectNumber' $S/GameLogic/DefaultDropGenerator.cs
           grep -c 'BarrioMasterResetPlugIn.BonusPoints' $S/GameLogic/Resets/ResetCharacterAction.cs
+          grep -c 'OfflineRespawnPolicy.ShouldContinue' $S/GameLogic/Offline/OfflinePlayer.cs
 
       - uses: actions/setup-dotnet@v4
         with:
