@@ -602,3 +602,14 @@ td.bad { color: var(--red); }
 .wa-code { margin-top: 12px; padding: 14px; border-radius: 12px; border: 1px dashed var(--card-border); display: grid; gap: 8px; }
 .wa-code p { margin: 0; }
 .wa-big { font-size: 1.6rem; letter-spacing: 0.15em; color: var(--gold-2); }
+
+/* Pagina del WhatsApp del Sabio */
+.wa-group { margin: 22px 0 8px; font-size: 1.05rem; }
+.wa-table td:first-child { white-space: normal; }
+.wa-table code, .ref-rule code { background: rgba(255, 255, 255, 0.08); border-radius: 6px; padding: 2px 6px; color: var(--text); font-size: 0.9em; }
+.wa-examples { margin: 0 0 12px; padding-left: 20px; color: var(--muted); line-height: 1.8; }
+.wa-examples b { color: var(--text); }
+@media (max-width: 560px) { .wa-table td:first-child { white-space: normal; } }
+.ref-table.wa-table td, .ref-table.wa-table td:last-child { font-weight: 400; color: var(--text); text-align: left; vertical-align: top; }
+.wa-table td:first-child { width: 42%; }
+.wa-table code { display: inline-block; margin: 2px 0; white-space: normal; }

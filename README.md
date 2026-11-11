@@ -90,6 +90,24 @@ instalador de Windows.
   dar puntos), jugadores en línea, cuentas y personajes por día, visitas
   por país y caché (Cloudflare), descargas del instalador y botón para purgar la caché.
 
+**El Sabio del Barrio y WhatsApp** (guía para jugadores: https://barriomu.makeseo.app/whatsapp.html)
+- **En el juego**: el NPC **Sabio del Barrio** al lado del herrero de Lorencia; al hablarle
+  abre el chat. También `/ia pregunta`. Con `/wa Nombre mensaje` le llega a ese jugador por WhatsApp.
+- **Por WhatsApp** (se vincula en Mi cuenta → 📱 WhatsApp → Generar código, y se manda
+  `vincular 123456` al bot). Se le puede hablar normal; lo que cambia algo pide un **sí**.
+  Comandos de los jugadores (no gastan preguntas):
+  - `estado`, `top`, `mi puesto`, `eventos`, `ayuda`
+  - `avisar todos` / `avisar blood castle` / `no avisar todos` (10 min antes de cada evento)
+  - `resumen si` / `resumen no` (resumen de tus personajes a las 8:00)
+  - `@Nombre mensaje` (le llega dentro del juego como susurro)
+  - `reset NOMBRE`, `puntos NOMBRE fuerza 100 agilidad 50` (con la cuenta fuera del juego)
+  - `baul` y `vender 3 50` (el item 3 del baúl a 50 WCoinP en La Plaza)
+  - `spots`, `mover 2`, `parar`: mover al personaje que farmea con `/offlevel` a un spot de
+    farmeo (las 8 **jaulas de la Arena** o los que guarde el GM). Si muere vuelve solo al
+    spot; a la 3ª muerte se queda en la ciudad y avisa.
+  - `desvincular` suelta el número.
+- Los comandos de admin y de la tablet están en [docs/MANUAL.md](docs/MANUAL.md).
+
 **Vigilancia**
 - **Vigilante**: cada hora GitHub entra al juego como un jugador (cuenta `VIGIA_USUARIO`),
   camina por Lorencia y, si algo falla, abre un aviso (issue) que llega a la app de GitHub.
