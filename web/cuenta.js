@@ -183,6 +183,7 @@
       loadRef();
       loadShop();
       loadMarket();
+      loadWhatsapp();
     } catch (e) {
       if (!$("#panel-view").hidden) toast(e.message, true);
       else showLogin(store.get() ? e.message : "");
@@ -599,6 +600,57 @@
         </tr>`).join("")
       : '<tr><td class="skeleton">Todavía no vendiste nada.</td></tr>';
   }
+
+  // ---------- WhatsApp (el Sabio del Barrio) ----------
+  async function loadWhatsapp() {
+    try {
+      const w = await call("/me/whatsapp");
+      $("#wa-linked").hidden = !w.linked;
+      $("#wa-unlinked").hidden = w.linked;
+      $("#wa-number").textContent = w.number ?? "";
+    } catch {
+      $("#whatsapp").hidden = true;
+    }
+  }
+
+  $("#wa-code-btn").addEventListener("click", async e => {
+    e.target.disabled = true;
+    try {
+      const r = await call("/me/whatsapp/codigo", { method: "POST" });
+      const msg = `vincular ${r.code}`;
+      const bot = (cfg.whatsappBot || "").replace(/\D/g, "");
+      $("#wa-code").innerHTML = `
+        <p>Tu código: <b class="wa-big">${esc(r.code)}</b> <small class="muted">(vale ${r.minutes} minutos)</small></p>
+        ${bot
+          ? `<a class="btn btn-gold" href="https://wa.me/${bot}?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">💬 Abrir WhatsApp y vincular</a>`
+          : `<p>Escríbele al WhatsApp de BarrioMU: <b>${esc(msg)}</b></p>`}
+        <p class="muted small">Cuando te responda, toca <b>Ya lo vinculé</b>.</p>
+        <button class="btn btn-ghost btn-small" id="wa-check" type="button">Ya lo vinculé</button>`;
+      $("#wa-code").hidden = false;
+    } catch (err) {
+      toast(err.message, true);
+    } finally {
+      e.target.disabled = false;
+    }
+  });
+
+  $("#wa-code").addEventListener("click", e => {
+    if (e.target.closest("#wa-check")) loadWhatsapp();
+  });
+
+  $("#wa-unlink").addEventListener("click", async e => {
+    if (!confirm("¿Desvincular tu WhatsApp de esta cuenta?")) return;
+    e.target.disabled = true;
+    try {
+      toast((await call("/me/whatsapp/desvincular", { method: "POST" })).message);
+      $("#wa-code").hidden = true;
+      await loadWhatsapp();
+    } catch (err) {
+      toast(err.message, true);
+    } finally {
+      e.target.disabled = false;
+    }
+  });
 
   // ---------- Ficha del item (imagen y caracteristicas) ----------
   const TINTS = [15, 13, 11, 9, 7, 5, 3, 0];

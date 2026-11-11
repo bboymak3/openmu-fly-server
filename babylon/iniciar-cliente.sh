@@ -55,5 +55,12 @@ if [ -f proxy/api/main.ts ]; then
   PIDS+=($!)
 fi
 
+# WhatsApp del servidor (el Sabio por WhatsApp): solo si ya se vinculo el numero
+# (bash ~/barriomu.sh whatsapp). Si se cae, se vuelve a prender solo.
+if [ -f proxy/whatsapp/bot.ts ] && [ -f "$HOME/barriomu-wa/auth/creds.json" ]; then
+  (cd proxy && while true; do ./bun whatsapp/bot.ts; [ $? -eq 2 ] && break; sleep 15; done) &
+  PIDS+=($!)
+fi
+
 echo "En el celular abre: http://IP-DE-LA-TABLET:8081"
 ROOT="$BASE/client" PORT="${PORT:-8081}" API_TARGET=http://127.0.0.1:3100 ./mu-servir

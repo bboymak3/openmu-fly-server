@@ -282,6 +282,24 @@ puntos, monedas, mapa), los precios reales de la tienda y lo que hay en La Plaza
 - Archivos: `~/.barriomu-ia` (cuenta y token, dentro de Ubuntu), `~/openmu/data/sabio-secreto.txt`
   (secreto entre OpenMU y la API). Tablas: `barrio.sabio_uso`, `barrio.sabio_log`.
 
+### El Sabio por WhatsApp (bot en la tablet)
+El WhatsApp del servidor corre **en la tablet** (sin Railway ni Evolution): `babylon/whatsapp/bot.ts`
+(librería Baileys, como WhatsApp Web sin pantalla). Le pasa cada mensaje privado a la API
+(`/whatsapp`, solo desde la tablet, con el secreto del Sabio) y manda la respuesta.
+
+- **Vincular el número del bot** (una vez; usa un número aparte, no el personal: WhatsApp puede
+  bloquear números de bots): `bash ~/barriomu.sh whatsapp`. Pide el número del bot y muestra un
+  **código**; en el teléfono del bot: *WhatsApp → Dispositivos vinculados → Vincular un dispositivo →
+  Vincular con número de teléfono* y se escribe el código. Después se prende solo con `prender`.
+  `bash ~/barriomu.sh whatsapp desvincular` lo suelta.
+- **Cada jugador vincula su WhatsApp**: Mi cuenta → **📱 WhatsApp** → *Generar código* (vale 15
+  minutos) y le escribe al bot `vincular 123456`. Un número maneja una sola cuenta;
+  `desvincular` lo suelta. Con `whatsappBot` en `web/config.js` (número del bot, sin +), Mi cuenta
+  abre WhatsApp con el mensaje ya escrito.
+- **Fase A (ahora):** conversar y consultar con los datos reales de la cuenta y sus personajes.
+  Sin acciones. Comparte el límite diario del Sabio. 5 códigos equivocados por hora como máximo.
+- Sesión del bot: `~/barriomu-wa/auth` (dentro de Ubuntu). Tablas: `barrio.wa_link`, `barrio.wa_code`.
+
 ### Teclas en la computadora (web en PC y programa de Windows)
 | Tecla | Qué hace |
 |---|---|

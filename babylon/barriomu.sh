@@ -17,6 +17,7 @@
 #   bash ~/barriomu.sh gm CUENTA   hace GM una cuenta (para el panel admin; con la cuenta fuera del juego)
 #   bash ~/barriomu.sh cloudflare  guarda el token de Cloudflare del panel admin
 #   bash ~/barriomu.sh ia          configura El Sabio del Barrio (/ia): ID de cuenta y token de Workers AI
+#   bash ~/barriomu.sh whatsapp    vincula el WhatsApp del bot (el Sabio por WhatsApp); 'whatsapp desvincular' lo suelta
 #   bash ~/barriomu.sh npcs        lista los NPCs de las ciudades y cuantos estan apagados
 #   bash ~/barriomu.sh npcs activar  vuelve a prender todos los NPCs y monstruos (reinicia OpenMU)
 #   bash ~/barriomu.sh mapas       monstruos de Lorencia, portales y /move: que sirve y que esta roto
@@ -262,6 +263,33 @@ ia() {
     echo "Se guardo, pero la IA no contesto. Revisa que el token tenga el permiso 'Workers AI' y que el ID de cuenta sea el correcto."
     return 1
   fi
+}
+
+# WhatsApp del servidor (el Sabio por WhatsApp), en la tablet: vincula el numero del bot
+# con un codigo (WhatsApp > Dispositivos vinculados > Vincular con numero de telefono).
+# Usa un numero aparte, no el personal: WhatsApp puede bloquear numeros de bots.
+whatsapp() {
+  if [ "$1" = desvincular ]; then
+    pkill -f whatsapp/bot.ts
+    proot-distro login ubuntu -- bash -c 'rm -rf ~/barriomu-wa/auth' && echo "Listo: el bot quedo desvinculado de la tablet."
+    return
+  fi
+  echo "Numero del WhatsApp del BOT, con codigo de pais y solo numeros (ej: 584121234567):"
+  local numero
+  read -r numero
+  numero=$(printf '%s' "$numero" | tr -cd '0-9')
+  if ! [[ "$numero" =~ ^[0-9]{10,15}$ ]]; then
+    echo "Ese numero no parece valido. No se hizo nada."; return 1
+  fi
+  pkill -f whatsapp/bot.ts
+  echo "Pidiendo el codigo a WhatsApp (tarda unos segundos)..."
+  proot-distro login ubuntu -- bash -c "cd ~/babylon/proxy && ./bun whatsapp/bot.ts --vincular $numero" \
+    || { echo "No se pudo vincular. Intenta de nuevo."; return 1; }
+  echo "Prendiendo el bot..."
+  pkill -f proxy/main.ts; pkill -f register/server/main.ts; pkill -f api/main.ts; pkill -f mu-servir
+  sleep 2
+  in_ubuntu cliente.log "cd ~/babylon && exec ./iniciar-cliente.sh"; wait_port 3000 proxy 120
+  echo "Listo: escribele al numero del bot desde tu WhatsApp para probar."
 }
 
 # Diagnostico: los NPCs (no monstruos) de Lorencia, Devias, Noria y Elbeland en la
@@ -557,7 +585,7 @@ apagar() {
   echo "Apagando..."
   stop_watchdog
   pkill -f "cloudflared tunnel run"
-  pkill -f proxy/main.ts; pkill -f register/server/main.ts; pkill -f api/main.ts; pkill -f mu-servir
+  pkill -f proxy/main.ts; pkill -f register/server/main.ts; pkill -f api/main.ts; pkill -f mu-servir; pkill -f whatsapp/bot.ts
   stop_openmu
   pg_ctl -D "$PGDATA" -w stop >/dev/null 2>&1
   termux-wake-unlock 2>/dev/null
@@ -574,6 +602,8 @@ estado() {
   show 8081 "Pagina del juego  (8081)"
   show 8082 "Pagina registro   (8082)"
   show 3400 "API de la landing (3400)"
+  if pgrep -f whatsapp/bot.ts >/dev/null; then echo "  [OK]  WhatsApp del bot"
+  else echo "  [..]  WhatsApp del bot  (sin vincular: bash ~/barriomu.sh whatsapp)"; fi
   if pgrep -f "cloudflared tunnel run" >/dev/null; then echo "  [OK]  Tunel Cloudflare"
   else echo "  [--]  Tunel Cloudflare"; fi
   if watchdog_running; then echo "  [OK]  Vigilante"; else echo "  [--]  Vigilante"; fi
@@ -605,6 +635,7 @@ case "$1" in
   gm) gm "$2" ;;
   cloudflare) cloudflare ;;
   ia) ia ;;
+  whatsapp) whatsapp "$2" ;;
   npcs) npcs "$2" ;;
   mapas) mapas ;;
   spot) spot "$2" ;;

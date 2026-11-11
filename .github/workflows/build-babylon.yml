@@ -92,6 +92,11 @@ jobs:
           cp -r client-src/register/server out/proxy/register/
           # API de BarrioMU para la landing (usa el paquete postgres del proxy)
           cp -r babylon/api out/proxy/api
+          # Bot de WhatsApp de la tablet (el Sabio por WhatsApp), con sus librerias para ARM64
+          mkdir -p out/proxy/whatsapp
+          cp babylon/whatsapp/package.json babylon/whatsapp/bot.ts out/proxy/whatsapp/
+          (cd out/proxy/whatsapp && npm install --omit=dev --no-audit --no-fund --os=linux --cpu=arm64)
+          du -sh out/proxy/whatsapp
           (cd out/proxy && bun install --production --frozen-lockfile --ignore-scripts)
           curl -fsSL -o bun.zip https://github.com/oven-sh/bun/releases/download/bun-v1.4.2/bun-linux-aarch64.zip
           unzip -q bun.zip

@@ -20,6 +20,7 @@ import { handleReferidos } from "./referidos";
 import { handleTienda } from "./tienda";
 import { handleCashShop } from "./cashshop";
 import { handleSabio } from "./sabio";
+import { handleWhatsapp } from "./whatsapp";
 import { handleMercado } from "./mercado";
 
 const PORT = Number(process.env.PORT || 3400);
@@ -283,6 +284,8 @@ Bun.serve({
 
     const sabio = await handleSabio(req, url, cors, sql);
     if (sabio) return sabio;
+    const whatsapp = await handleWhatsapp(req, url, cors, sql);
+    if (whatsapp) return whatsapp;
     const referidos = await handleReferidos(req, url, cors, sql);
     if (referidos) return referidos;
     const tienda = await handleTienda(req, url, cors, sql);

@@ -11,9 +11,9 @@ import bcrypt from "bcryptjs";
 import { BONUS_POINTS, REQUIRED_RESETS, masterResetsOf, readMasterResets, setMasterResets } from "./masterReset";
 
 // Atributos de OpenMU (MUnique.OpenMU.GameLogic.Attributes.Stats).
-const LEVEL = "560931ad-0901-4342-b7f4-fd2e2fcc0563";
-const MASTER_LEVEL = "70cd8c10-391a-4c51-9aa4-a854600e3a9f";
-const RESETS = "89a891a7-f9f9-4ab5-af36-12056e53a5f7";
+export const LEVEL = "560931ad-0901-4342-b7f4-fd2e2fcc0563";
+export const MASTER_LEVEL = "70cd8c10-391a-4c51-9aa4-a854600e3a9f";
+export const RESETS = "89a891a7-f9f9-4ab5-af36-12056e53a5f7";
 const STATS = {
   str: "123282fe-fead-448e-ad2c-baece939b4b1",
   agi: "1ae9c014-e3cd-4703-bd05-1b65f5f94ceb",
@@ -172,7 +172,7 @@ export function session(req: Request) {
 
 type Presence = { online: boolean; lastSeenAt: number | null; startedAt: number; now: number; unidentifiedConnections: number };
 
-async function presence(login: string): Promise<Presence> {
+export async function presence(login: string): Promise<Presence> {
   const res = await fetch(`${PRESENCE_URL}/presence/${encodeURIComponent(login)}`, { signal: AbortSignal.timeout(3000) });
   if (!res.ok) throw new Error(`presence ${res.status}`);
   return (await res.json()) as Presence;
