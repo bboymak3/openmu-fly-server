@@ -241,12 +241,21 @@ ia() {
     'mkdir -p ~/openmu/data; if [ -s ~/openmu/data/sabio-secreto.txt ]; then cat >/dev/null; else umask 077; cat > ~/openmu/data/sabio-secreto.txt; fi' \
     || { echo "No se pudo crear el secreto."; return 1; }
   echo "Probando la IA..."
-  # La prueba lee el token del archivo, dentro de Ubuntu (no va en la linea de comandos).
-  if proot-distro login ubuntu -- bash -c '
-      a=$(sed -n 1p ~/.barriomu-ia); t=$(sed -n 2p ~/.barriomu-ia)
-      curl -s -m 40 -X POST "https://api.cloudflare.com/client/v4/accounts/$a/ai/run/@cf/meta/llama-3.3-70b-instruct-fp8-fast" \
-        -H @<(printf "Authorization: Bearer %s\n" "$t") -H "Content-Type: application/json" \
-        -d "{\"messages\":[{\"role\":\"user\",\"content\":\"Saluda en 5 palabras\"}],\"max_tokens\":30}"' | grep -q '"success":true'; then
+  # La prueba la hace el mismo Bun de la API, leyendo el token del archivo dentro de Ubuntu
+  # (no va en la linea de comandos y no depende de curl).
+  local prueba
+  prueba=$(proot-distro login ubuntu -- bash -c 'cd ~ && ~/babylon/proxy/bun -e "
+      const fs = require(\"fs\");
+      const [a, t] = fs.readFileSync(process.env.HOME + \"/.barriomu-ia\", \"utf8\").split(/\\r?\\n/).map(l => l.trim());
+      const r = await fetch(\"https://api.cloudflare.com/client/v4/accounts/\" + a + \"/ai/run/@cf/meta/llama-3.3-70b-instruct-fp8-fast\", {
+        method: \"POST\", headers: { Authorization: \"Bearer \" + t, \"Content-Type\": \"application/json\" },
+        body: JSON.stringify({ messages: [{ role: \"user\", content: \"Saluda en 5 palabras\" }], max_tokens: 30 }),
+        signal: AbortSignal.timeout(40000) });
+      const d = await r.json().catch(() => ({}));
+      console.log(d.success ? \"IA-OK \" + d.result.response : \"IA-ERROR \" + r.status + \" \" + JSON.stringify(d.errors ?? []));
+    "' 2>&1)
+  echo "$prueba" | tail -n 2
+  if echo "$prueba" | grep -q 'IA-OK'; then
     echo "Listo: el Sabio del Barrio ya puede hablar. En el juego: /ia y tu pregunta."
     echo "Si OpenMU estaba prendido, no hace falta reiniciar."
   else
