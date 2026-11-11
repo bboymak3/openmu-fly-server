@@ -44,14 +44,14 @@ public class BarrioSabioPlugIn : IChatCommandPlugIn, IObjectAddedToMapPlugIn, IP
     /// </summary>
     public const string Greeting = "Hola pana, soy el Sabio del Barrio. Escribe tu pregunta en el chat y te respondo.";
 
-    /// <summary>Adviser Jerinteu: en el cliente de BarrioMU se llama "Sabio del Barrio".</summary>
+    /// <summary>Adviser Jerinteu: en el cliente de BarrioMU se llama "Sabio del Barrio". Va al lado del herrero Hanzo (116, 141).</summary>
     private const short SabioNpcNumber = 522;
 
     private const short LorenciaMapNumber = 0;
 
-    private const byte SabioX = 146;
+    private const byte SabioX = 119;
 
-    private const byte SabioY = 126;
+    private const byte SabioY = 141;
 
     private static readonly ConditionalWeakTable<NonPlayerCharacter, object> OwnNpcs = new();
 

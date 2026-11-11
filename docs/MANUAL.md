@@ -261,7 +261,7 @@ Se guarda en `~/openmu/data/premio-diario.json`.
 
 ### El Sabio del Barrio (IA, comando /ia)
 En el juego hay dos formas:
-- **El NPC "Sabio del Barrio"** en Lorencia, junto al Cambista (cerca de 146, 126): al hacerle
+- **El NPC "Sabio del Barrio"** en Lorencia, al lado del herrero Hanzo, hacia la salida (cerca de 119, 141): al hacerle
   clic saluda y **se abre el chat dirigido al Sabio**; se escribe la pregunta normal, sin `/ia`
   (el cliente la manda como `/ia`). Mientras el susurro siga apuntando al Sabio, cada mensaje
   es otra pregunta; para hablar con otros, se cambia el destinatario del susurro.
