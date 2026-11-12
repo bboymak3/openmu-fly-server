@@ -14,6 +14,7 @@
 #   bash ~/barriomu.sh resets      activa los resets de BarrioMU (reinicia OpenMU)
 #   bash ~/barriomu.sh resets estado  dice si los resets estan prendidos
 #   bash ~/barriomu.sh extras      prende puntos por hora, /addstr..., /openware, /resetstats y anuncios (reinicia OpenMU)
+#   bash ~/barriomu.sh gmcomandos  prende /setlevel, /setmasterlevel, /setresets y /setleveluppoints (solo GM; reinicia OpenMU)
 #   bash ~/barriomu.sh gm CUENTA   hace GM una cuenta (para el panel admin; con la cuenta fuera del juego)
 #   bash ~/barriomu.sh cloudflare  guarda el token de Cloudflare del panel admin
 #   bash ~/barriomu.sh ia          configura El Sabio del Barrio (/ia): ID de cuenta y token de Workers AI
@@ -652,6 +653,27 @@ extras() {
   echo "  - anuncios del servidor cada 20 minutos"
 }
 
+# Comandos de GM de OpenMU que vienen apagados: subir nivel, nivel master, resets y
+# puntos libres de un personaje. Solo los usan cuentas GM (bash ~/barriomu.sh gm CUENTA).
+GMSET_PLUGINS="4BE779C9-E6B6-47F2-BC23-2E71D82A6C1D E401CA16-7827-495B-9DD0-EABDFF39901E 47A8644C-B6C5-439E-BAB0-C1A7AE72691C 50EF670A-DF7A-4FEE-8E42-7C7A18A68941"
+gmcomandos() {
+  pg_ctl -D "$PGDATA" status >/dev/null 2>&1 || { echo "PostgreSQL esta apagado: bash ~/barriomu.sh prender"; return 1; }
+  echo "Prendiendo los comandos de GM..."
+  stop_watchdog
+  stop_openmu
+  local id
+  for id in $GMSET_PLUGINS; do plugin_on "$(echo "$id" | tr 'A-Z' 'a-z')" || true; done
+  echo "Listo. Prendiendo OpenMU..."
+  start_openmu ""
+  wait_port 44405 OpenMU 600
+  start_watchdog
+  echo "Con una cuenta GM, en el chat del juego (el personaje tiene que estar conectado o en /offlevel):"
+  echo "  /setlevel 400 Nombre          pone el nivel (sin Nombre, a tu personaje)"
+  echo "  /setmasterlevel 100 Nombre    pone el nivel master"
+  echo "  /setresets 5 Nombre           pone los resets"
+  echo "  /setleveluppoints 500 Nombre  pone los puntos libres para repartir"
+}
+
 arranque() {
   mkdir -p "$HOME/.termux/boot"
   cat >"$HOME/.termux/boot/barriomu" <<'BOOT'
@@ -726,6 +748,7 @@ case "$1" in
   joyas) joyas "$2" ;;
   arena) arena "$2" ;;
   extras) extras "$2" ;;
+  gmcomandos) gmcomandos ;;
   vigilar) vigilar ;;
-  *) sed -n '2,32p' "$0" | sed 's/^# \{0,1\}//' ;;
+  *) sed -n '2,33p' "$0" | sed 's/^# \{0,1\}//' ;;
 esac
