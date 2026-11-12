@@ -126,7 +126,7 @@ Se usa en **Termux normal** (`~ $`), **no** dentro de Ubuntu.
 | `bash ~/barriomu.sh evolution estado` / `evolution quitar` | Dice si el número está conectado / vuelve al bot de la tablet |
 | `bash ~/barriomu.sh memoria` | Memoria de la tablet, cuánto usa cada parte de BarrioMU y cuántos procesos tiene Termux |
 | `bash ~/barriomu.sh optimizar` | Una vez: le quita a Android el límite de procesos de Termux (el que mata con `signal 9`) y saca a Termux del ahorro de batería. Usa adb por la **Depuración inalámbrica** de la misma tablet; la primera vez explica cómo vincular (`optimizar vincular PUERTO CODIGO`, `optimizar conectar PUERTO`) |
-| `bash ~/barriomu.sh limpiar` | Cierra las demás apps de la tablet (no borra nada; quedan Termux, Tailscale y el teclado) y libera memoria |
+| `bash ~/barriomu.sh limpiar` | Cierra las demás apps de la tablet (no borra nada; quedan Termux, Tailscale, WhatsApp y el teclado) y libera memoria |
 | `bash ~/barriomu.sh gmcomandos` | Prende los comandos de GM de OpenMU que vienen apagados: `/setlevel 400 Nombre`, `/setmasterlevel 100 Nombre`, `/setresets 5 Nombre`, `/setleveluppoints 500 Nombre` (sin Nombre se aplica a tu personaje; el otro tiene que estar conectado o en /offlevel). Solo cuentas GM. Reinicia OpenMU |
 | `bash ~/barriomu.sh arena` | Las **8 jaulas** de la Arena con **10 monstruos** cada una (de menos a más difíciles desde la llegada) y sus **spots de farmeo** `Jaula 1`…`Jaula 8` para mover personajes por WhatsApp. `arena 20` = 20 por jaula. Quita los otros monstruos de la Arena (no los NPC). Reinicia OpenMU |
 | `bash ~/barriomu.sh joyas` | Muestra con qué porcentaje caen Bless, Soul, Chaos, Life y Creation y en cuántos mapas |
