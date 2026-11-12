@@ -30,6 +30,9 @@
 #   bash ~/barriomu.sh joyas 1     las hace caer con 1% por monstruo en todos los mapas (reinicia OpenMU)
 #   bash ~/barriomu.sh arena       las 8 jaulas de la Arena con 10 monstruos cada una y sus spots de
 #                                  farmeo (Jaula 1..8, para WhatsApp); arena 20 = 20 por jaula (reinicia OpenMU)
+#   bash ~/barriomu.sh memoria     muestra la memoria de la tablet y cuanto usa cada parte de BarrioMU
+#   bash ~/barriomu.sh optimizar   le dice a Android que no mate a Termux (una vez; necesita Depuracion inalambrica)
+#   bash ~/barriomu.sh limpiar     cierra las demas apps de la tablet y deja solo BarrioMU
 #
 # Al prender tambien arranca un vigilante que cada 5 minutos revisa que todo
 # siga prendido y vuelve a prender lo que se haya caido.
@@ -680,6 +683,99 @@ gmcomandos() {
   echo "  /setleveluppoints 500 Nombre  pone los puntos libres para repartir"
 }
 
+# ---------------------------------------------------------------------------
+# Memoria: Android mata procesos de Termux ("signal 9") cuando cree que sobran
+# (el "phantom process killer" de Android 12+, maximo 32 procesos hijos) o
+# cuando otras apps piden memoria. 'optimizar' quita ese limite y saca a Termux
+# del ahorro de bateria; 'limpiar' cierra las demas apps. Los dos usan adb por
+# la Depuracion inalambrica de la misma tablet (no hace falta root ni PC).
+# ---------------------------------------------------------------------------
+memoria() {
+  echo "Android $(getprop ro.build.version.release 2>/dev/null) - $(getprop ro.product.model 2>/dev/null)"
+  echo
+  free -m 2>/dev/null | sed -n '1,3p'
+  echo
+  echo "Lo que usa BarrioMU (MB):"
+  ps -eo rss,args 2>/dev/null | awk '
+    $2 ~ /awk$/ {next}
+    /MUnique.OpenMU/ {a["OpenMU (juego)"]+=$1} /postgres/ {a["PostgreSQL"]+=$1}
+    /proxy\/main.ts/ {a["Proxy del juego"]+=$1} /api\/main.ts/ {a["API de la landing"]+=$1}
+    /register\/server/ {a["Pagina de registro"]+=$1} /mu-servir/ {a["Pagina del juego"]+=$1}
+    /whatsapp\/bot/ {a["Bot de WhatsApp"]+=$1} /cloudflared/ {a["Tunel Cloudflare"]+=$1}
+    /proot/ {a["proot (Ubuntu)"]+=$1}
+    END {for (k in a) {printf "  %6d  %s\n", a[k]/1024, k; t+=a[k]}; printf "  %6d  TOTAL\n", t/1024}' | sort -rn
+  echo
+  echo "Procesos de Termux: $(ps -e 2>/dev/null | wc -l) (Android 12+ mata desde 32 si no se corre 'optimizar')"
+  if [ -z "$(panel_arg)" ]; then echo "OJO: el panel de admin esta prendido y gasta mucha memoria: bash ~/barriomu.sh panel off"; fi
+}
+
+adb_listo() {
+  command -v adb >/dev/null || { echo "Instalando adb..."; pkg install -y android-tools >/dev/null 2>&1; }
+  command -v adb >/dev/null || { echo "No se pudo instalar adb (pkg install android-tools)."; return 1; }
+  adb devices 2>/dev/null | grep -qw device && return 0
+  cat <<'AYUDA'
+Falta conectar Termux con la Depuracion inalambrica de la tablet (se hace una vez):
+
+ 1. Ajustes > Opciones de desarrollador > Depuracion inalambrica: prendela (con WiFi).
+ 2. Abre Termux en PANTALLA DIVIDIDA con Ajustes (el codigo se borra si sales de esa pantalla).
+ 3. En Depuracion inalambrica toca "Vincular dispositivo con codigo de vinculacion".
+    Sale un CODIGO de 6 numeros y un PUERTO (IP:PUERTO). En Termux:
+        bash ~/barriomu.sh optimizar vincular PUERTO CODIGO
+ 4. En la misma pantalla, arriba, dice "Direccion IP y puerto" (otro puerto). En Termux:
+        bash ~/barriomu.sh optimizar conectar PUERTO
+ 5. Repite: bash ~/barriomu.sh optimizar
+AYUDA
+  return 1
+}
+
+optimizar() {
+  case "$1" in
+    vincular)
+      [[ "$2" =~ ^[0-9]{4,5}$ && "$3" =~ ^[0-9]{6}$ ]] || { echo "Uso: bash ~/barriomu.sh optimizar vincular PUERTO CODIGO"; return 1; }
+      command -v adb >/dev/null || pkg install -y android-tools >/dev/null 2>&1
+      adb pair "localhost:$2" "$3"; return ;;
+    conectar)
+      [[ "$2" =~ ^[0-9]{4,5}$ ]] || { echo "Uso: bash ~/barriomu.sh optimizar conectar PUERTO"; return 1; }
+      adb connect "localhost:$2"; return ;;
+  esac
+  adb_listo || return 1
+  echo "Aplicando..."
+  # Android 12+: sin limite de procesos hijos, y que no lo vuelva a poner al sincronizar.
+  adb shell device_config set_sync_disabled_for_tests persistent >/dev/null 2>&1
+  adb shell device_config put activity_manager max_phantom_processes 2147483647 >/dev/null 2>&1
+  adb shell settings put global settings_enable_monitor_phantom_procs false >/dev/null 2>&1
+  # Termux fuera del ahorro de bateria y con permiso de correr en segundo plano.
+  local app
+  for app in com.termux com.termux.boot; do
+    adb shell dumpsys deviceidle whitelist "+$app" >/dev/null 2>&1
+    adb shell cmd appops set "$app" RUN_ANY_IN_BACKGROUND allow >/dev/null 2>&1
+    adb shell cmd appops set "$app" RUN_IN_BACKGROUND allow >/dev/null 2>&1
+  done
+  echo "  procesos hijos sin limite: $(adb shell device_config get activity_manager max_phantom_processes 2>/dev/null | tr -d '\r')"
+  echo "  vigilancia de procesos:    $(adb shell settings get global settings_enable_monitor_phantom_procs 2>/dev/null | tr -d '\r') (false = apagada)"
+  echo "  Termux sin ahorro de bateria: $(adb shell dumpsys deviceidle whitelist 2>/dev/null | grep -c 'com.termux$' | sed 's/^0$/NO/; s/^[1-9].*/si/')"
+  echo "Listo. Queda guardado aunque reinicies la tablet. Para cerrar las demas apps: bash ~/barriomu.sh limpiar"
+}
+
+# Cierra las apps que no son del servidor (las instaladas por el usuario) y pide a Android
+# que suelte la memoria de las que quedan en segundo plano. No desinstala ni borra nada:
+# cada app vuelve a funcionar cuando se abre. Se quedan Termux, Tailscale y el teclado.
+limpiar() {
+  adb_listo || return 1
+  local teclado antes despues n=0 app
+  teclado=$(adb shell settings get secure default_input_method 2>/dev/null | tr -d '\r' | cut -d/ -f1)
+  antes=$(free -m | awk '/^Mem/ {print $7}')
+  for app in $(adb shell pm list packages -3 2>/dev/null | tr -d '\r' | sed 's/^package://'); do
+    case "$app" in com.termux | com.termux.* | com.tailscale.ipn | "$teclado") continue ;; esac
+    adb shell am force-stop "$app" >/dev/null 2>&1 && n=$((n + 1))
+  done
+  adb shell am kill-all >/dev/null 2>&1
+  sleep 2
+  despues=$(free -m | awk '/^Mem/ {print $7}')
+  echo "Listo: $n apps cerradas. Memoria disponible: ${antes:-?} MB -> ${despues:-?} MB."
+  echo "(Las apps cerradas no avisan ni reciben mensajes hasta que las abras de nuevo.)"
+}
+
 arranque() {
   mkdir -p "$HOME/.termux/boot"
   cat >"$HOME/.termux/boot/barriomu" <<'BOOT'
@@ -755,6 +851,9 @@ case "$1" in
   arena) arena "$2" ;;
   extras) extras "$2" ;;
   gmcomandos) gmcomandos ;;
+  memoria) memoria ;;
+  optimizar) optimizar "$2" "$3" "$4" ;;
+  limpiar) limpiar ;;
   vigilar) vigilar ;;
-  *) sed -n '2,33p' "$0" | sed 's/^# \{0,1\}//' ;;
+  *) sed -n '2,36p' "$0" | sed 's/^# \{0,1\}//' ;;
 esac
