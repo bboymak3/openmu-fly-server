@@ -114,7 +114,7 @@ Se usa en **Termux normal** (`~ $`), **no** dentro de Ubuntu.
 | `bash ~/barriomu.sh panel on` | Prende el panel de admin (reinicia OpenMU) |
 | `bash ~/barriomu.sh panel off` | Lo apaga para ahorrar memoria (reinicia OpenMU) |
 | `bash ~/barriomu.sh resets` | Activa o reaplica la configuración de resets (reinicia OpenMU) |
-| `bash ~/barriomu.sh gm CUENTA` | Hace GM una cuenta, para entrar al panel admin (con la cuenta fuera del juego) |
+| `bash ~/barriomu.sh gm CUENTA` | Hace GM una cuenta (panel admin) **y todos sus personajes** (comandos de GM del chat: `/setlevel`, `/guardarspot`…). Con la cuenta fuera del juego. Si creas un personaje nuevo en esa cuenta, repite el comando |
 | `bash ~/barriomu.sh cloudflare` | Guarda en la tablet el token de Cloudflare del panel admin |
 | `bash ~/barriomu.sh npcs` | Lista los NPCs de las ciudades en la base y cuántos NPCs/monstruos están apagados |
 | `bash ~/barriomu.sh npcs activar` | Vuelve a prender todos los NPCs y monstruos apagados (reinicia OpenMU) |

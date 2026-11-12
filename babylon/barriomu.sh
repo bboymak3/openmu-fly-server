@@ -198,7 +198,11 @@ gm() {
   local n
   n=$(psql -U postgres -d openmu -tAq -c "UPDATE data.\"Account\" SET \"State\" = 2 WHERE lower(\"LoginName\") = lower('$cuenta') RETURNING 1" | grep -cx 1)
   if [ "$n" = 1 ]; then
-    echo "Listo: la cuenta $cuenta ahora es GM. Si estaba dentro del juego, sal y vuelve a entrar."
+    # Los comandos de GM del chat (/setlevel, /guardarspot...) miran el PERSONAJE, no la cuenta.
+    local p
+    p=$(psql -U postgres -d openmu -tAq -c "UPDATE data.\"Character\" c SET \"CharacterStatus\" = 32 FROM data.\"Account\" a WHERE c.\"AccountId\" = a.\"Id\" AND lower(a.\"LoginName\") = lower('$cuenta') RETURNING c.\"Name\"" | tr '\n' ' ')
+    echo "Listo: la cuenta $cuenta ahora es GM. Personajes GM: ${p:-ninguno (crea uno y repite este comando)}"
+    echo "Si estaba dentro del juego, sal y vuelve a entrar."
   else
     echo "No existe la cuenta $cuenta."; return 1
   fi
