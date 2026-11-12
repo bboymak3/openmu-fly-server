@@ -122,6 +122,8 @@ Se usa en **Termux normal** (`~ $`), **no** dentro de Ubuntu.
 | `bash ~/barriomu.sh spot` | Lorencia con el **triple** de monstruos en todas las salidas de la ciudad (norte, este, sur y oeste: Bull Fighter, Hound, Budge Dragon, Spider, Elite Bull Fighter, Lich, Gigante, Esqueleto) y el **spot del sur** (x 140-170, y 185-215: 25 Gigantes, 25 Esqueletos, 20 Lich). Repone las zonas que falten, no duplica. Unos 940 monstruos. Reinicia OpenMU |
 | `bash ~/barriomu.sh spot 1` / `spot 2` | Lo mismo con la cantidad normal (unos 360) o el doble |
 | `bash ~/barriomu.sh spot quitar` | Quita solo el spot del sur. Reinicia OpenMU |
+| `bash ~/barriomu.sh evolution` | Pasa el WhatsApp del bot a **Evolution API en Railway** (proyecto `barriomu-whatsapp`): pide la dirección, la clave (`AUTHENTICATION_API_KEY`, se copia de Railway → evolution-api → Variables) y el número, crea la instancia `barriomu` con su webhook a `https://mu-api.makeseo.app/evolution` y da el código para vincular. Apaga el bot de la tablet. La tablet sigue armando las respuestas |
+| `bash ~/barriomu.sh evolution estado` / `evolution quitar` | Dice si el número está conectado / vuelve al bot de la tablet |
 | `bash ~/barriomu.sh memoria` | Memoria de la tablet, cuánto usa cada parte de BarrioMU y cuántos procesos tiene Termux |
 | `bash ~/barriomu.sh optimizar` | Una vez: le quita a Android el límite de procesos de Termux (el que mata con `signal 9`) y saca a Termux del ahorro de batería. Usa adb por la **Depuración inalámbrica** de la misma tablet; la primera vez explica cómo vincular (`optimizar vincular PUERTO CODIGO`, `optimizar conectar PUERTO`) |
 | `bash ~/barriomu.sh limpiar` | Cierra las demás apps de la tablet (no borra nada; quedan Termux, Tailscale y el teclado) y libera memoria |

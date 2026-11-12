@@ -17,6 +17,8 @@ import { economy, ensureSettings } from "./economia";
 import { doSell, vaultItems } from "./mercado";
 import { cancelExtraPending, confirmExtra, extrasCommand, extrasContext, hasExtraPending, waChatFromGame } from "./wa-extras";
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { timingSafeEqual } from "node:crypto";
 import {
   PERSONALITY, SERVER_FACTS, cloudflareKey, ensureSabioTables, giveBack, remember, runModel, sameSecret,
   periodWord, secret, settings, store, takeOne,
@@ -473,6 +475,45 @@ async function botMessage(sql: Sql, jid: string, text: string): Promise<string[]
 // ---------------------------------------------------------------- avisos (Fase C)
 
 const BOT_SEND = process.env.WA_SEND_URL ?? "http://127.0.0.1:3410/send";
+
+// Evolution API (Railway): si existe ~/.barriomu-evolution (lo crea `barriomu.sh evolution`), el
+// WhatsApp del bot vive alla: los mensajes llegan por POST /evolution (con el token del archivo)
+// y se contestan por su API. Si no existe, se usa el bot de la tablet (babylon/whatsapp/bot.mjs).
+const EVOLUTION_FILE = process.env.EVOLUTION_FILE ?? `${homedir()}/.barriomu-evolution`;
+type Evolution = { url: string; key: string; instance: string; token: string };
+function evolution(): Evolution | null {
+  try {
+    const [url, key, instance, token] = readFileSync(EVOLUTION_FILE, "utf8").split(/\r?\n/).map(l => l.trim());
+    if (!/^(https:\/\/[a-z0-9.-]+|http:\/\/127\.0\.0\.1:\d+)$/i.test(url ?? "") || !key || !/^[A-Za-z0-9_-]{1,40}$/.test(instance ?? "") || (token ?? "").length < 24) return null;
+    return { url, key, instance, token };
+  } catch {
+    return null;
+  }
+}
+
+/** Manda un texto a un chat: por Evolution API si esta configurada; si no, por el bot de la tablet. */
+async function deliver(jid: string, text: string): Promise<boolean> {
+  const evo = evolution();
+  if (evo) {
+    const res = await fetch(`${evo.url}/message/sendText/${evo.instance}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: evo.key },
+      body: JSON.stringify({ number: jid, text }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    return res.ok;
+  }
+  const botSecret = secret();
+  if (!botSecret) return false;
+  const res = await fetch(BOT_SEND, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ secret: botSecret, to: jid, text }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  return res.ok;
+}
+
 /** Avisos por cuenta y por dia como maximo (protege el numero del bot). */
 const MAX_AVISOS_DIA = 30;
 const avisosHoy = new Map<string, { day: string; n: number }>();
@@ -492,15 +533,7 @@ export async function notifyAccount(sql: Sql, who: { accountId?: string; login?:
     const n = count?.day === day ? count.n : 0;
     if (n >= MAX_AVISOS_DIA) return false;
     avisosHoy.set(row.account, { day, n: n + 1 });
-    const botSecret = secret();
-    if (!botSecret) return false;
-    const res = await fetch(BOT_SEND, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ secret: botSecret, to: row.jid, text: text.slice(0, 1000) }),
-      signal: AbortSignal.timeout(10_000),
-    });
-    return res.ok;
+    return await deliver(row.jid, text.slice(0, 1000));
   } catch {
     return false;
   }
@@ -509,17 +542,55 @@ export async function notifyAccount(sql: Sql, who: { accountId?: string; login?:
 /** Manda un mensaje a un chat de WhatsApp por el bot de la tablet. Nunca falla hacia afuera. */
 export async function sendToJid(jid: string, text: string): Promise<boolean> {
   try {
-    const botSecret = secret();
-    if (!botSecret || !JID_RE.test(jid)) return false;
-    const res = await fetch(BOT_SEND, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ secret: botSecret, to: jid, text: text.slice(0, 1500) }),
-      signal: AbortSignal.timeout(10_000),
-    });
-    return res.ok;
+    if (!JID_RE.test(jid)) return false;
+    return await deliver(jid, text.slice(0, 1500));
   } catch {
     return false;
+  }
+}
+
+// ---------------------------------------------------------------- Evolution API
+
+const EVO_PER_MINUTE = 8;
+const evoSeen = new Set<string>();
+const evoBusy = new Set<string>();
+const evoRecent = new Map<string, number[]>();
+
+/** Saca de un webhook de Evolution el chat y el texto de un mensaje privado que no es nuestro. */
+export function evolutionMessage(b: Record<string, any>, instance: string): { jid: string; text: string } | null {
+  if (String(b?.event ?? "").toLowerCase().replace(/_/g, ".") !== "messages.upsert" || b?.instance !== instance) return null;
+  const d = b.data;
+  const key = d?.key;
+  if (!key || key.fromMe || typeof key.id !== "string") return null;
+  const jid = typeof key.remoteJid === "string" ? key.remoteJid : "";
+  if (!JID_RE.test(jid)) return null; // grupos, estados y canales no
+  const m = d.message ?? {};
+  const text = String(m.conversation ?? m.extendedTextMessage?.text ?? m.ephemeralMessage?.message?.extendedTextMessage?.text ?? "").trim();
+  if (!text || text.length > 2000) return null;
+  if (evoSeen.has(key.id)) return null; // Evolution reintenta el webhook
+  evoSeen.add(key.id);
+  if (evoSeen.size > 2000) evoSeen.clear();
+  return { jid, text };
+}
+
+async function answerEvolution(sql: Sql, jid: string, text: string): Promise<void> {
+  const now = Date.now();
+  const times = (evoRecent.get(jid) ?? []).filter(t => now - t < 60_000);
+  times.push(now);
+  evoRecent.set(jid, times);
+  if (times.length > EVO_PER_MINUTE || evoBusy.has(jid)) return;
+  evoBusy.add(jid);
+  try {
+    await ensureTables(sql);
+    const [paused] = await sql`select 1 from barrio.settings where key = 'wa_on' and value = '0'`;
+    if (paused && !/^admin\b/i.test(text)) return;
+    const replies = await botMessage(sql, jid, text);
+    for (const reply of replies.slice(0, 4)) await deliver(jid, reply.slice(0, 3000));
+  } catch (error) {
+    console.error("evolution", error);
+    await deliver(jid, "Se me cruzaron los cables, pana. Intenta en un rato.").catch(() => {});
+  } finally {
+    evoBusy.delete(jid);
   }
 }
 
@@ -581,6 +652,27 @@ export async function handleWhatsapp(req: Request, url: URL, cors: Record<string
     // Los comandos de admin siguen funcionando en pausa (asi el staff maneja el servidor igual).
     if (paused && !/^admin\b/i.test(text)) return json({ messages: [] }, 200, cors);
     return json({ messages: await botMessage(sql, jid, text) }, 200, cors);
+  }
+
+  if (url.pathname === "/evolution") {
+    // Mensajes que llegan al WhatsApp del bot en Evolution API (Railway). Entra por el tunel, asi
+    // que la llave es el token del archivo (cabecera Authorization que Evolution manda en el webhook).
+    const evo = evolution();
+    const given = Buffer.from(req.headers.get("authorization") ?? "");
+    const want = Buffer.from(`Bearer ${evo?.token ?? ""}`);
+    if (req.method !== "POST" || !evo || given.length !== want.length || !timingSafeEqual(given, want)) return new Response("Not found", { status: 404 });
+    const raw = await req.text();
+    if (raw.length > 65_536) return new Response("Too large", { status: 413 });
+    let b: Record<string, any>;
+    try {
+      b = JSON.parse(raw);
+    } catch {
+      return new Response("Bad request", { status: 400 });
+    }
+    const incoming = evolutionMessage(b, evo.instance);
+    // Se contesta de una vez a Evolution y el mensaje se atiende aparte (la IA puede tardar).
+    if (incoming) void answerEvolution(sql, incoming.jid, incoming.text);
+    return json({ ok: true }, 200, cors);
   }
 
   const routes: Record<string, [string, (req: Request, sql: Sql) => Promise<unknown>]> = {
