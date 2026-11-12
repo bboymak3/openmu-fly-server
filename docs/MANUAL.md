@@ -86,7 +86,7 @@ ALTOBARINAS **45903/45904**. Registro interno **3100**, presencia del proxy **30
 ## 3. Entrar a la tablet
 
 ### En la misma red (WiFi de la casa)
-1. En la tablet, Termux debe tener `sshd` prendido (se prende con `sshd`).
+1. En la tablet, Termux debe tener `sshd` prendido (se prende con `sshd`). `bash ~/barriomu.sh prender` y el vigilante lo prenden solos; con `bash ~/barriomu.sh arranque` + Termux:Boot tambien al encender la tablet. Si Termux se cierra con `[Process completed (signal 9)]`, es Android matandolo: quitale el ahorro de bateria a Termux y, en Opciones de desarrollador, activa "Inhabilitar restricciones de procesos secundarios".
 2. En **Termius**: host = IP de la tablet en la casa (ej. `192.168.20.x`), puerto **8022**,
    usuario **u0_a208**.
 

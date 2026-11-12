@@ -97,6 +97,8 @@ panel() {
 
 prender() {
   termux-wake-lock 2>/dev/null
+  # SSH para entrar desde afuera: si no esta prendido, se prende (tambien lo revisa el vigilante).
+  command -v sshd >/dev/null && { pgrep -x sshd >/dev/null || sshd 2>/dev/null; }
 
   echo "1) PostgreSQL"
   if pg_ctl -D "$PGDATA" status >/dev/null 2>&1; then echo "   ya estaba prendido"
