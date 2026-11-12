@@ -869,14 +869,15 @@ optimizar() {
 
 # Cierra las apps que no son del servidor (las instaladas por el usuario) y pide a Android
 # que suelte la memoria de las que quedan en segundo plano. No desinstala ni borra nada:
-# cada app vuelve a funcionar cuando se abre. Se quedan Termux, Tailscale y el teclado.
+# cada app vuelve a funcionar cuando se abre. Se quedan Termux, Tailscale, WhatsApp (el numero
+# del bot vive en el WhatsApp Business de la tablet) y el teclado.
 limpiar() {
   adb_listo || return 1
   local teclado antes despues n=0 app
   teclado=$(adb shell settings get secure default_input_method 2>/dev/null | tr -d '\r' | cut -d/ -f1)
   antes=$(free -m | awk '/^Mem/ {print $7}')
   for app in $(adb shell pm list packages -3 2>/dev/null | tr -d '\r' | sed 's/^package://'); do
-    case "$app" in com.termux | com.termux.* | com.tailscale.ipn | "$teclado") continue ;; esac
+    case "$app" in com.termux | com.termux.* | com.tailscale.ipn | com.whatsapp | com.whatsapp.w4b | "$teclado") continue ;; esac
     adb shell am force-stop "$app" >/dev/null 2>&1 && n=$((n + 1))
   done
   adb shell am kill-all >/dev/null 2>&1
