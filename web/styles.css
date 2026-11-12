@@ -46,12 +46,13 @@ img { display: block; max-width: 100%; }
 .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
 .brand span { font-family: var(--display); font-weight: 800; letter-spacing: 0.08em; font-size: 1.1rem; }
 .brand b { color: var(--gold); }
-.menu { display: flex; align-items: center; gap: 22px; }
+.menu { display: flex; align-items: center; gap: 18px; }
+.menu a { white-space: nowrap; }
 .menu a { text-decoration: none; color: var(--muted); font-weight: 500; font-size: 0.95rem; transition: color 0.2s; }
 .menu a:hover { color: var(--text); }
 .menu-toggle { display: none; background: none; border: 0; color: var(--text); font-size: 1.6rem; cursor: pointer; }
 
-@media (max-width: 760px) {
+@media (max-width: 1240px) {
   .menu-toggle { display: block; }
   .menu {
     position: absolute; top: 100%; left: 0; right: 0;
@@ -59,7 +60,7 @@ img { display: block; max-width: 100%; }
     background: var(--bg-2); border-bottom: 1px solid var(--card-border);
     max-height: 0; overflow: hidden; transition: max-height 0.3s ease;
   }
-  .menu.is-open { max-height: 420px; }
+  .menu.is-open { max-height: 80vh; overflow-y: auto; }
   .menu a { padding: 14px 24px; border-top: 1px solid rgba(255, 255, 255, 0.04); }
   .menu .btn { margin: 12px 24px 16px; text-align: center; }
 }
@@ -613,3 +614,13 @@ td.bad { color: var(--red); }
 .ref-table.wa-table td, .ref-table.wa-table td:last-child { font-weight: 400; color: var(--text); text-align: left; vertical-align: top; }
 .wa-table td:first-child { width: 42%; }
 .wa-table code { display: inline-block; margin: 2px 0; white-space: normal; }
+
+/* ---------- Entrar: botones grandes de login ---------- */
+.btn-huge { padding: 18px 40px; font-size: 1.25rem; letter-spacing: 0.02em; }
+.hero-login { display: flex; width: min(100%, 420px); margin: 22px auto 6px; }
+.header-login { margin-left: auto; }
+@media (min-width: 1241px) { .header-login { display: none; } }
+.login-big { max-width: 460px; border: 1px solid rgba(232, 183, 92, 0.55); box-shadow: 0 0 40px rgba(232, 183, 92, 0.12); }
+.login-big label { font-size: 1.05rem; color: var(--gold-2); font-weight: 700; }
+.login-big input { padding: 16px 18px; font-size: 1.15rem; border: 2px solid rgba(232, 183, 92, 0.5); }
+.login-big .btn-huge { width: 100%; }

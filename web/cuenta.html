@@ -12,9 +12,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=20261112a" />
-  <script src="config.js?v=20261112a"></script>
-  <script src="cuenta.js?v=20261112a" defer></script>
+  <link rel="stylesheet" href="styles.css?v=20261112c" />
+  <script src="config.js?v=20261112c"></script>
+  <script src="cuenta.js?v=20261112c" defer></script>
 </head>
 <body>
   <header class="top">
@@ -31,17 +31,17 @@
   <main class="section account">
     <!-- Login -->
     <section id="login-view" hidden>
-      <h1 class="title">Mi cuenta</h1>
-      <p class="subtitle">Entra con el mismo usuario y clave del juego.</p>
+      <h1 class="title">🔑 Entrar</h1>
+      <p class="subtitle">Usa el mismo <b>usuario</b> y <b>clave</b> del juego.</p>
       <p class="ref-login-hint" id="ref-login-hint" hidden>🎁 Te invitaron a BarrioMU. Entra (o crea tu cuenta y vuelve aquí) para activar tu invitación.</p>
-      <form id="login-form" class="card form" autocomplete="on">
+      <form id="login-form" class="card form login-big" autocomplete="on">
         <label>Usuario
           <input name="username" required minlength="4" maxlength="10" autocomplete="username" autocapitalize="off" spellcheck="false" />
         </label>
         <label>Clave
           <input name="password" type="password" required minlength="4" maxlength="10" autocomplete="current-password" />
         </label>
-        <button class="btn btn-gold" type="submit">Entrar</button>
+        <button class="btn btn-gold btn-huge" type="submit">🔑 Entrar</button>
         <p class="form-msg" id="login-msg" role="alert"></p>
         <p class="form-foot">¿No tienes cuenta? <a data-link="register" href="#">Créala aquí</a></p>
       </form>
