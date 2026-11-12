@@ -57,7 +57,8 @@ fi
 
 # WhatsApp del servidor (el Sabio por WhatsApp): solo si ya se vinculo el numero
 # (bash ~/barriomu.sh whatsapp). Si se cae, se vuelve a prender solo.
-if [ -f proxy/whatsapp/bot.mjs ] && [ -f "$HOME/barriomu-wa/auth/creds.json" ]; then
+# Con Evolution API (~/.barriomu-evolution) el WhatsApp vive en Railway y este bot no se prende.
+if [ -f proxy/whatsapp/bot.mjs ] && [ -f "$HOME/barriomu-wa/auth/creds.json" ] && [ ! -s "$HOME/.barriomu-evolution" ]; then
   (cd proxy && while true; do whatsapp/node whatsapp/bot.mjs; [ $? -eq 2 ] && break; sleep 15; done) &
   PIDS+=($!)
 fi

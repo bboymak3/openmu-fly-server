@@ -20,6 +20,7 @@
 #   bash ~/barriomu.sh ia          configura El Sabio del Barrio (/ia): ID de cuenta y token de Workers AI
 #   bash ~/barriomu.sh whatsapp    vincula el WhatsApp del bot (el Sabio por WhatsApp); 'whatsapp desvincular' lo suelta
 #   bash ~/barriomu.sh whatsapp pausar   el bot no contesta (sigue vinculado); 'whatsapp reanudar' vuelve
+#   bash ~/barriomu.sh evolution   pasa el WhatsApp del bot a Evolution API (Railway); 'evolution estado', 'evolution quitar'
 #   bash ~/barriomu.sh npcs        lista los NPCs de las ciudades y cuantos estan apagados
 #   bash ~/barriomu.sh npcs activar  vuelve a prender todos los NPCs y monstruos (reinicia OpenMU)
 #   bash ~/barriomu.sh mapas       monstruos de Lorencia, portales y /move: que sirve y que esta roto
@@ -494,6 +495,115 @@ SQL
   echo "Listo. Entra a Lorencia y sal por cualquier lado de la ciudad."
 }
 
+# WhatsApp del bot en Evolution API (Railway) en vez de en la tablet: el numero queda
+# conectado alla aunque Android cierre procesos aqui. La tablet sigue armando las respuestas:
+# Evolution le pasa cada mensaje a https://mu-api.makeseo.app/evolution (con un token que se
+# crea aqui) y la API contesta por Evolution. Todo queda en ~/.barriomu-evolution (en Ubuntu).
+#   evolution          configura y da el codigo para vincular el numero
+#   evolution estado   dice si el numero esta conectado
+#   evolution quitar   vuelve al bot de la tablet
+EVOLUTION_URL_DEFECTO="https://evolution-api-production-6311cca2.up.railway.app"
+EVOLUTION_WEBHOOK="https://mu-api.makeseo.app/evolution"
+evolution_js() {
+  proot-distro login ubuntu -- bash -c 'cat > ~/.barriomu-evolution.js' <<'JS'
+const fs = require("fs");
+const file = process.env.HOME + "/.barriomu-evolution";
+const [mode, url0, key0, number, webhook] = fs.readFileSync(0, "utf8").split("\n").map(l => l.trim());
+let saved = [];
+try { saved = fs.readFileSync(file, "utf8").split(/\r?\n/).map(l => l.trim()); } catch {}
+const url = (url0 || saved[0] || "").replace(/\/+$/, "");
+const key = key0 || saved[1] || "";
+const instance = "barriomu";
+const call = async (method, path, body) => {
+  const r = await fetch(url + path, { method, headers: { apikey: key, "Content-Type": "application/json" },
+    body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(40000) });
+  const text = await r.text();
+  let data = {}; try { data = JSON.parse(text); } catch {}
+  return { status: r.status, data, text };
+};
+const state = async () => (await call("GET", "/instance/connectionState/" + instance)).data?.instance?.state ?? "no existe";
+if (!url || !key) { console.log("EVO-ERROR Falta configurar: bash ~/barriomu.sh evolution"); process.exit(1); }
+if (mode === "estado") { console.log("EVO-ESTADO " + await state()); process.exit(0); }
+const token = (saved[3] && saved[3].length >= 24) ? saved[3] : require("crypto").randomBytes(30).toString("base64url");
+const hook = { enabled: true, url: webhook, byEvents: false, base64: false, headers: { authorization: "Bearer " + token }, events: ["MESSAGES_UPSERT"] };
+const ping = await call("GET", "/instance/fetchInstances");
+if (ping.status === 401 || ping.status === 403) { console.log("EVO-ERROR La clave (AUTHENTICATION_API_KEY) no es correcta."); process.exit(1); }
+if (ping.status !== 200) { console.log("EVO-ERROR Evolution no responde (" + ping.status + "). Revisa la direccion."); process.exit(1); }
+let code = "";
+const exists = Array.isArray(ping.data) && ping.data.some(i => (i.name ?? i.instance?.instanceName) === instance);
+if (!exists) {
+  const r = await call("POST", "/instance/create", { instanceName: instance, integration: "WHATSAPP-BAILEYS", qrcode: true, number,
+    groupsIgnore: true, rejectCall: false, alwaysOnline: false, readMessages: true, readStatus: false, syncFullHistory: false, webhook: hook });
+  if (r.status >= 300) { console.log("EVO-ERROR No se pudo crear la instancia: " + r.text.slice(0, 200)); process.exit(1); }
+  code = r.data?.qrcode?.pairingCode ?? "";
+} else {
+  const w = await call("POST", "/webhook/set/" + instance, { webhook: hook });
+  if (w.status >= 300) { console.log("EVO-ERROR No se pudo poner el webhook: " + w.text.slice(0, 200)); process.exit(1); }
+}
+fs.writeFileSync(file, [url, key, instance, token].join("\n") + "\n", { mode: 0o600 });
+fs.chmodSync(file, 0o600);
+if ((await state()) === "open") { console.log("EVO-OK El numero ya esta conectado."); process.exit(0); }
+if (!code) code = (await call("GET", "/instance/connect/" + instance + "?number=" + number)).data?.pairingCode ?? "";
+console.log(code ? "EVO-CODIGO " + code : "EVO-SINCODIGO");
+JS
+}
+
+evolution() {
+  if [ "$1" = quitar ]; then
+    proot-distro login ubuntu -- bash -c 'rm -f ~/.barriomu-evolution ~/.barriomu-evolution.js'
+    echo "Listo: la tablet vuelve a usar su propio bot de WhatsApp (si estaba vinculado: bash ~/barriomu.sh whatsapp)."
+    echo "Para que se prenda: bash ~/barriomu.sh apagar y bash ~/barriomu.sh prender."
+    return
+  fi
+  if [ "$1" = estado ]; then
+    evolution_js || return 1
+    local e
+    e=$(printf 'estado\n\n\n\n\n' | proot-distro login ubuntu -- bash -c 'cd ~ && ~/babylon/proxy/bun ~/.barriomu-evolution.js' 2>&1 | grep '^EVO-' | tail -n 1)
+    case "$e" in
+      "EVO-ESTADO open") echo "WhatsApp del bot en Evolution: CONECTADO" ;;
+      EVO-ESTADO*) echo "WhatsApp del bot en Evolution: NO conectado (${e#EVO-ESTADO }). Vincula con: bash ~/barriomu.sh evolution" ;;
+      *) echo "${e#EVO-ERROR }" ;;
+    esac
+    return
+  fi
+  local url clave numero
+  echo "Direccion de Evolution API (Enter = $EVOLUTION_URL_DEFECTO):"
+  read -r url
+  url=$(printf '%s' "${url:-$EVOLUTION_URL_DEFECTO}" | tr -d '[:space:]')
+  [[ "$url" =~ ^https://[A-Za-z0-9.-]+/?$ ]] || { echo "Esa direccion no parece valida (debe empezar con https://). No se hizo nada."; return 1; }
+  echo "Clave de Evolution (en Railway: proyecto barriomu-whatsapp > evolution-api > Variables > AUTHENTICATION_API_KEY)."
+  echo "Pegala y dale Enter (no se ve mientras la pegas):"
+  read -rs clave; echo
+  clave=$(printf '%s' "$clave" | tr -d '[:space:]')
+  [[ "$clave" =~ ^[A-Za-z0-9_-]{16,}$ ]] || { echo "Esa clave no parece valida. No se hizo nada."; return 1; }
+  echo "Numero del WhatsApp del BOT, con codigo de pais y solo numeros (ej: 584121234567):"
+  read -r numero
+  numero=$(printf '%s' "$numero" | tr -cd '0-9')
+  [[ "$numero" =~ ^[0-9]{10,15}$ ]] || { echo "Ese numero no parece valido. No se hizo nada."; return 1; }
+  evolution_js || { echo "No se pudo preparar."; return 1; }
+  echo "Hablando con Evolution (tarda unos segundos)..."
+  local r
+  r=$(printf 'configurar\n%s\n%s\n%s\n%s\n' "$url" "$clave" "$numero" "$EVOLUTION_WEBHOOK" \
+    | proot-distro login ubuntu -- bash -c 'cd ~ && ~/babylon/proxy/bun ~/.barriomu-evolution.js' 2>&1 | grep '^EVO-' | tail -n 1)
+  case "$r" in
+    EVO-ERROR*) echo "${r#EVO-ERROR }"; return 1 ;;
+    EVO-CODIGO*)
+      echo
+      echo "   CODIGO PARA VINCULAR:  ${r#EVO-CODIGO }"
+      echo
+      echo "En el telefono del bot: WhatsApp > Dispositivos vinculados > Vincular un dispositivo >"
+      echo "Vincular con numero de telefono > escribe ese codigo. (Vale un par de minutos; si se"
+      echo "vence, repite este comando.)" ;;
+    EVO-OK*) echo "${r#EVO-OK }" ;;
+    *) echo "Evolution no dio codigo. Abre $url/manager en el navegador, entra con la clave y"
+       echo "escanea el QR de la instancia 'barriomu' desde WhatsApp > Dispositivos vinculados." ;;
+  esac
+  # El bot de la tablet se apaga: el mismo numero no puede estar en los dos lados.
+  pkill -f whatsapp/bot
+  echo "Listo. Cuando el telefono diga que quedo vinculado: bash ~/barriomu.sh evolution estado"
+  echo "y escribele 'ayuda' al bot. Para volver al bot de la tablet: bash ~/barriomu.sh evolution quitar"
+}
+
 # Las 8 jaulas de entrenamiento de la Arena (mapa 6), de menos a mas dificiles desde
 # la llegada. Pone N monstruos por jaula (por defecto 10, repartidos entre sus tipos),
 # quita los otros monstruos de la Arena (no los NPC) y guarda cada jaula como spot de
@@ -810,7 +920,8 @@ estado() {
   show 8081 "Pagina del juego  (8081)"
   show 8082 "Pagina registro   (8082)"
   show 3400 "API de la landing (3400)"
-  if pgrep -f whatsapp/bot >/dev/null; then echo "  [OK]  WhatsApp del bot"
+  if proot-distro login ubuntu -- test -s .barriomu-evolution 2>/dev/null; then echo "  [OK]  WhatsApp del bot  (Evolution API en Railway: bash ~/barriomu.sh evolution estado)"
+  elif pgrep -f whatsapp/bot >/dev/null; then echo "  [OK]  WhatsApp del bot"
   else echo "  [..]  WhatsApp del bot  (sin vincular: bash ~/barriomu.sh whatsapp)"; fi
   if pgrep -f "cloudflared tunnel run" >/dev/null; then echo "  [OK]  Tunel Cloudflare"
   else echo "  [--]  Tunel Cloudflare"; fi
@@ -844,6 +955,7 @@ case "$1" in
   cloudflare) cloudflare ;;
   ia) ia ;;
   whatsapp) whatsapp "$2" ;;
+  evolution) evolution "$2" ;;
   npcs) npcs "$2" ;;
   mapas) mapas ;;
   spot) spot "$2" ;;
@@ -855,5 +967,5 @@ case "$1" in
   optimizar) optimizar "$2" "$3" "$4" ;;
   limpiar) limpiar ;;
   vigilar) vigilar ;;
-  *) sed -n '2,36p' "$0" | sed 's/^# \{0,1\}//' ;;
+  *) sed -n '2,37p' "$0" | sed 's/^# \{0,1\}//' ;;
 esac
