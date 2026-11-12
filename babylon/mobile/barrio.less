@@ -393,3 +393,15 @@
   bottom: @bar + 58px;
   left: 6px;
 }
+
+// ---- buffs (Guerrero, Fortuna...): rincon de arriba a la izquierda ------------
+// En el telefono la fila de iconos caia en el centro de arriba, detras del boton
+// del MU Helper y de la camara. La lista de objetivos baja para no taparlos.
+.mu-mobile .buff-bar {
+  left: 6px !important;
+  top: 6px !important;
+}
+
+.mu-mobile body:has(.buff-bar) .barrio-targets {
+  top: 52px;
+}

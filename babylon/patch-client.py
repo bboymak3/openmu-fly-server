@@ -580,6 +580,29 @@ type Slot = TagSlot<TagEntity, HTMLDivElement>;""",
         "    }\n",
     ),
 
+    # ...y tocar al Sabio abre el chat dirigido a el, sin preguntarle al servidor: en OpenMU el
+    # NPC 522 es Jerint (entrada al Imperial Guardian) y su ventana tapa el saludo del servidor.
+    # Solo en Lorencia (mapa 0); en el evento Jerint sigue siendo Jerint.
+    (
+        "src/ecs/systems/npcTalkSystem.ts",
+        "      if (events.useNpc(npc)) return;\n",
+        "      if (events.useNpc(npc)) return;\n"
+        "      // BarrioMU: el Sabio del Barrio (IA) abre el chat con el susurro al Sabio.\n"
+        "      if (npc.npcType === 522 && world.mapIndex === 0) {\n"
+        "        Social.addChatLine('Sabio', 'Hola pana, soy el Sabio del Barrio. Escribe tu pregunta y te respondo.', ChatLineType.Whisper);\n"
+        "        Social.setWhisperTarget('Sabio');\n"
+        "        Social.openChatInput();\n"
+        "        return;\n"
+        "      }\n",
+    ),
+    (
+        "src/ecs/systems/npcTalkSystem.ts",
+        "import { Merchant } from '../../modules/npc_shop';\n",
+        "import { Merchant } from '../../modules/npc_shop';\n"
+        "import { Social } from '../../modules/social/social';\n"
+        "import { ChatLineType } from '../../modules/chat/chat';\n",
+    ),
+
 ]
 
 for path, old, new in PATCHES:
