@@ -103,7 +103,7 @@ instalador de Windows.
   - `reset NOMBRE`, `puntos NOMBRE fuerza 100 agilidad 50` (con la cuenta fuera del juego)
   - `baul` y `vender 3 50` (el item 3 del baúl a 50 WCoinP en La Plaza)
   - `spots`, `mover 2`, `parar`: mover al personaje que farmea con `/offlevel` a un spot de
-    farmeo (las 8 **jaulas de la Arena** o los que guarde el GM). Si muere vuelve solo al
+    farmeo (las **jaulas de la Arena** o los que guarde el GM). Si muere vuelve solo al
     spot; a la 3ª muerte se queda en la ciudad y avisa.
   - `desvincular` suelta el número.
 - Los comandos de admin y de la tablet están en [docs/MANUAL.md](docs/MANUAL.md).

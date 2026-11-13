@@ -128,7 +128,7 @@ Se usa en **Termux normal** (`~ $`), **no** dentro de Ubuntu.
 | `bash ~/barriomu.sh optimizar` | Una vez: le quita a Android el límite de procesos de Termux (el que mata con `signal 9`) y saca a Termux del ahorro de batería. Usa adb por la **Depuración inalámbrica** de la misma tablet; la primera vez explica cómo vincular (`optimizar vincular PUERTO CODIGO`, `optimizar conectar PUERTO`) |
 | `bash ~/barriomu.sh limpiar` | Cierra las demás apps de la tablet (no borra nada; quedan Termux, Tailscale, WhatsApp y el teclado) y libera memoria |
 | `bash ~/barriomu.sh gmcomandos` | Prende los comandos de GM de OpenMU que vienen apagados: `/setlevel 400 Nombre`, `/setmasterlevel 100 Nombre`, `/setresets 5 Nombre`, `/setleveluppoints 500 Nombre` (sin Nombre se aplica a tu personaje; el otro tiene que estar conectado o en /offlevel). Solo cuentas GM. Reinicia OpenMU |
-| `bash ~/barriomu.sh arena` | Las **8 jaulas** de la Arena con **10 monstruos** cada una (de menos a más difíciles desde la llegada) y sus **spots de farmeo** `Jaula 1`…`Jaula 8` para mover personajes por WhatsApp. `arena 20` = 20 por jaula. Quita los otros monstruos de la Arena (no los NPC). Reinicia OpenMU |
+| `bash ~/barriomu.sh arena` | Las **30 jaulas** clásicas de la Arena con unos **10 monstruos** cada una (de Bali nivel 52 a Red Skeleton Knight nivel 119; unos 280 en total) y **27 spots de farmeo** para WhatsApp, del más fácil al más difícil y con nivel mínimo. Las 3 jaulas de jefes (Zaikan y Phoenix of Darkness) quedan en el mapa pero fuera de la lista. `arena 6` = 6 por jaula, para bajar la carga. Quita los otros monstruos de la Arena (no los NPC). Reinicia OpenMU |
 | `bash ~/barriomu.sh joyas` | Muestra con qué porcentaje caen Bless, Soul, Chaos, Life y Creation y en cuántos mapas |
 | `bash ~/barriomu.sh joyas 1` | Las hace caer con 1% por monstruo (o el número que pongas, hasta 10) en todos los mapas. ALTOBARINAS y el buff de Fortuna lo duplican. Reinicia OpenMU |
 | `bash ~/barriomu.sh reset-db` | ⚠️ **BORRA TODA LA BASE** y la crea de nuevo (pide escribir `SI`) |
@@ -340,7 +340,7 @@ El WhatsApp del servidor corre **en la tablet** (sin Railway ni Evolution): `bab
     en el juego), `admin dar wcoinc CUENTA N` (con sí), `admin resumen` (manda el resumen ya).
     Funcionan aunque el bot esté en pausa y quedan en el Registro del admin.
 - **Spots de farmeo** (`openmu-barrio/BarrioSpotsPlugIn.cs`, `data/spots.json`):
-  - Las 8 jaulas de la Arena ya vienen listas: **`bash ~/barriomu.sh arena`** (10 monstruos por jaula y spots `Jaula 1`…`Jaula 8`).
+  - Las jaulas de la Arena ya vienen listas: **`bash ~/barriomu.sh arena`** (30 jaulas y 27 spots con el nombre del monstruo: `Bali`, `Mutant`, `Hell Maine`…).
   - El GM, parado donde quiere el spot: **`/guardarspot Jaula 1`** (o `/guardarspot Jaula 3 nivel 200`
     con nivel mínimo). **`/quitarspot Jaula 1`** lo borra. **`/spots`** los lista en el juego.
   - El jugador arranca el farmeo en el juego (MU Helper + `/offlevel`) y por WhatsApp: **`spots`** y
