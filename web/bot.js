@@ -11,6 +11,8 @@
   document.querySelectorAll("[data-guide]").forEach(box => {
     box.appendChild(guia.content.cloneNode(true));
     box.querySelectorAll("[data-app]").forEach(e => (e.textContent = box.dataset.guide));
+    // Lo que es solo de una app (los avisos y el chat con el juego son solo por Telegram).
+    box.querySelectorAll("[data-only]").forEach(e => e.dataset.only !== box.dataset.guide && e.remove());
   });
 
   const telegram = String(cfg.telegramBot || "").replace(/^@/, "").replace(/[^A-Za-z0-9_]/g, "");
