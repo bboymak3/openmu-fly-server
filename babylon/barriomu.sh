@@ -31,6 +31,9 @@
 #   bash ~/barriomu.sh joyas 1     las hace caer con 1% por monstruo en todos los mapas (reinicia OpenMU)
 #   bash ~/barriomu.sh arena       las 30 jaulas de la Arena (unos 10 monstruos cada una) y 27 spots de
 #                                  farmeo para WhatsApp; arena 6 = 6 por jaula (reinicia OpenMU)
+#   bash ~/barriomu.sh monstruos   lista los mapas con monstruos clasicos (spots) y cuantos tiene cada uno
+#   bash ~/barriomu.sh monstruos aida 50   pone en Aida los monstruos clasicos al 50% (10 a 200); 'todos 50' = todos
+#   bash ~/barriomu.sh monstruos aida original   devuelve Aida a como estaba antes (reinicia OpenMU)
 #   bash ~/barriomu.sh memoria     muestra la memoria de la tablet y cuanto usa cada parte de BarrioMU
 #   bash ~/barriomu.sh optimizar   le dice a Android que no mate a Termux (una vez; necesita Depuracion inalambrica)
 #   bash ~/barriomu.sh limpiar     cierra las demas apps de la tablet y deja solo BarrioMU
@@ -687,6 +690,124 @@ JS
   echo "Listo."
 }
 
+# Monstruos clasicos por mapa (los spots y monstruos sueltos de la configuracion clasica de
+# S6): Lorencia, Dungeon, Noria, Lost Tower, Icarus, Land of Trials, Aida, Crywolf, Kanturu y
+# Raklion. La lista baja de GitHub (babylon/monstruos-mapas.tsv). Reemplaza los monstruos
+# normales del mapa (no los NPC, las trampas ni los de eventos) y guarda los de antes para
+# poder volver con 'original'. El porcentaje baja o sube la cantidad: en los spots cambia
+# cuantos hay en cada uno y de los monstruos sueltos deja solo esa parte.
+#   monstruos                 lista los mapas y cuantos monstruos tiene cada uno ahora
+#   monstruos aida            Aida al 100%
+#   monstruos aida 50         Aida a la mitad (de 10 a 200)
+#   monstruos todos 50        los 10 mapas a la mitad
+#   monstruos aida original   Aida como estaba antes de usar este comando
+MONSTRUOS_URL="https://raw.githubusercontent.com/bboymak3/openmu-fly-server/main/babylon/monstruos-mapas.tsv"
+MONSTRUOS_MAPAS="lorencia:0 dungeon:1 noria:3 losttower:4 icarus:10 trials:31 aida:33 crywolf:34 kanturu:37 raklion:57"
+monstruos() {
+  pg_ctl -D "$PGDATA" status >/dev/null 2>&1 || { echo "PostgreSQL esta apagado: bash ~/barriomu.sh prender"; return 1; }
+  local nombres; nombres=$(echo "$MONSTRUOS_MAPAS" | tr ' ' '\n' | cut -d: -f1 | tr '\n' ' ')
+  if [ -z "$1" ]; then
+    echo "Monstruos normales que tiene cada mapa ahora:"
+    local par
+    for par in $MONSTRUOS_MAPAS; do
+      printf '  %-10s %s\n' "${par%%:*}" "$(psql -U postgres -d openmu -tAq -c "SELECT coalesce(sum(s.\"Quantity\"), 0) FROM config.\"MonsterSpawnArea\" s JOIN config.\"MonsterDefinition\" m ON m.\"Id\" = s.\"MonsterDefinitionId\" JOIN config.\"GameMapDefinition\" g ON g.\"Id\" = s.\"GameMapId\" WHERE g.\"Number\" = ${par##*:} AND m.\"ObjectKind\" = 0 AND s.\"SpawnTrigger\" = 0")"
+    done
+    echo "Uso: bash ~/barriomu.sh monstruos MAPA [PORCENTAJE]   (o 'todos'; 'original' para volver)"
+    echo "Ejemplo: bash ~/barriomu.sh monstruos aida 50"
+    return 0
+  fi
+  local mapa; mapa=$(printf '%s' "$1" | tr 'A-Z' 'a-z') lista=""
+  if [ "$mapa" = todos ]; then lista=$(echo "$MONSTRUOS_MAPAS" | tr ' ' '\n' | cut -d: -f2 | tr '\n' ' ')
+  else
+    local par
+    for par in $MONSTRUOS_MAPAS; do [ "${par%%:*}" = "$mapa" ] && lista=${par##*:}; done
+  fi
+  [ -n "$lista" ] || { echo "No conozco ese mapa. Mapas: $nombres(o todos)"; return 1; }
+  local pct=${2:-100} n salida
+  if [ "$pct" = original ]; then
+    for n in $lista; do
+      salida=$(psql -U postgres -d openmu -tAq -v ON_ERROR_STOP=1 -v mapa="$n" <<'SQL'
+SET client_min_messages = warning;
+BEGIN;
+CREATE SCHEMA IF NOT EXISTS barrio;
+CREATE TABLE IF NOT EXISTS barrio.spawn_backup (LIKE config."MonsterSpawnArea");
+CREATE TEMP TABLE m AS SELECT "Id" FROM config."GameMapDefinition" WHERE "Number" = :mapa LIMIT 1;
+CREATE TEMP TABLE hay AS SELECT count(*) AS n FROM barrio.spawn_backup WHERE "GameMapId" = (SELECT "Id" FROM m);
+DELETE FROM config."MonsterSpawnArea" s USING config."MonsterDefinition" d
+WHERE (SELECT n FROM hay) > 0 AND s."MonsterDefinitionId" = d."Id" AND d."ObjectKind" = 0
+  AND s."SpawnTrigger" = 0 AND s."GameMapId" = (SELECT "Id" FROM m);
+INSERT INTO config."MonsterSpawnArea" SELECT * FROM barrio.spawn_backup WHERE "GameMapId" = (SELECT "Id" FROM m);
+DELETE FROM barrio.spawn_backup WHERE "GameMapId" = (SELECT "Id" FROM m);
+SELECT 'devueltos ' || n FROM hay;
+COMMIT;
+SQL
+) || { echo "Mapa $n: no se pudo (revisa el mensaje de arriba)."; return 1; }
+      n=$(echo "$salida" | sed -n 's/^devueltos //p')
+      if [ "$n" = 0 ]; then echo "Ese mapa no tenia nada guardado: ya esta como el original."; else echo "Mapa devuelto a como estaba ($n zonas de monstruos)."; fi
+    done
+    reiniciar_openmu
+    echo "Listo."
+    return 0
+  fi
+  if ! [[ "$pct" =~ ^[0-9]+$ ]] || [ "$pct" -lt 10 ] || [ "$pct" -gt 200 ]; then
+    echo "El porcentaje va de 10 a 200. Ejemplo: bash ~/barriomu.sh monstruos aida 50"; return 1
+  fi
+  local datos="$HOME/.barriomu-monstruos.tsv"
+  echo "Bajando la lista de monstruos..."
+  wget -qO "$datos.tmp" "$MONSTRUOS_URL" && [ "$(wc -l <"$datos.tmp")" -gt 1000 ] && mv "$datos.tmp" "$datos"
+  [ -s "$datos" ] || { echo "No se pudo bajar la lista (revisa el internet)."; return 1; }
+  for n in $lista; do
+    salida=$(psql -U postgres -d openmu -tAq -v ON_ERROR_STOP=1 -v mapa="$n" -v pct="$pct" -v datos="$datos" <<'SQL'
+SET client_min_messages = warning;
+BEGIN;
+CREATE SCHEMA IF NOT EXISTS barrio;
+CREATE TABLE IF NOT EXISTS barrio.spawn_backup (LIKE config."MonsterSpawnArea");
+CREATE TEMP TABLE todo(mapa int, num int, x1 int, y1 int, x2 int, y2 int, q int, tipo int);
+\set copia '\\copy todo FROM ' :'datos'
+:copia
+CREATE TEMP TABLE m AS SELECT "Id" FROM config."GameMapDefinition" WHERE "Number" = :mapa LIMIT 1;
+UPDATE config."GameMapDefinition" SET "IsActive" = true WHERE "Number" = :mapa AND NOT "IsActive";
+-- tipo 1 = spot (cambia la cantidad); tipo 2 = monstruo suelto (queda solo el porcentaje pedido)
+CREATE TEMP TABLE nuevos AS
+SELECT row_number() OVER () AS i, num, x1, y1, x2, y2, greatest(1, round(q * :pct / 100.0))::int AS q
+FROM (SELECT *, row_number() OVER (ORDER BY num, x1, y1) AS k FROM todo WHERE mapa = :mapa AND tipo = 2) t
+WHERE tipo = 2 AND (:pct >= 100 OR (k * :pct) / 100 > ((k - 1) * :pct) / 100)
+UNION ALL
+SELECT 100000 + row_number() OVER (), num, x1, y1, x2, y2, greatest(1, round(q * :pct / 100.0))::int
+FROM todo WHERE mapa = :mapa AND tipo = 1;
+-- Los sueltos por encima del 100% se suben como cantidad en el mismo punto.
+UPDATE nuevos SET q = greatest(1, round(:pct / 100.0))::int WHERE i < 100000 AND :pct > 100;
+-- La primera vez se guardan los monstruos que traia el mapa, para poder volver con 'original'.
+INSERT INTO barrio.spawn_backup
+SELECT s.* FROM config."MonsterSpawnArea" s JOIN config."MonsterDefinition" d ON d."Id" = s."MonsterDefinitionId"
+WHERE d."ObjectKind" = 0 AND s."SpawnTrigger" = 0 AND s."GameMapId" = (SELECT "Id" FROM m)
+  AND NOT EXISTS (SELECT 1 FROM barrio.spawn_backup b WHERE b."GameMapId" = (SELECT "Id" FROM m));
+DELETE FROM config."MonsterSpawnArea" s USING config."MonsterDefinition" d
+WHERE s."MonsterDefinitionId" = d."Id" AND d."ObjectKind" = 0 AND s."SpawnTrigger" = 0
+  AND s."GameMapId" = (SELECT "Id" FROM m);
+INSERT INTO config."MonsterSpawnArea"
+  ("Id", "GameMapId", "MonsterDefinitionId", "X1", "X2", "Y1", "Y2", "Quantity", "Direction", "SpawnTrigger", "WaveNumber")
+SELECT ('ba000000-0000-4000-8000-5' || lpad((:mapa)::text, 3, '0') || lpad(i::text, 8, '0'))::uuid,
+       (SELECT "Id" FROM m), d."Id", x1, x2, y1, y2, q, 0, 0, 0
+FROM nuevos JOIN config."MonsterDefinition" d ON d."Number" = nuevos.num AND d."ObjectKind" = 0;
+UPDATE config."MonsterDefinition" SET "IsActive" = true
+WHERE NOT "IsActive" AND "ObjectKind" = 0 AND "Number" IN (SELECT num FROM nuevos);
+SELECT 'total ' || coalesce(sum(q), 0) FROM nuevos JOIN config."MonsterDefinition" d ON d."Number" = nuevos.num AND d."ObjectKind" = 0;
+SELECT 'faltan ' || coalesce(string_agg(DISTINCT num::text, ' '), '') FROM nuevos
+WHERE NOT EXISTS (SELECT 1 FROM config."MonsterDefinition" d WHERE d."Number" = nuevos.num AND d."ObjectKind" = 0);
+COMMIT;
+SQL
+) || { echo "Mapa $n: no se pudo y quedo como estaba (revisa el mensaje de arriba)."; return 1; }
+    local nombre par faltan
+    for par in $MONSTRUOS_MAPAS; do [ "${par##*:}" = "$n" ] && nombre=${par%%:*}; done
+    echo "  $nombre: $(echo "$salida" | sed -n 's/^total //p') monstruos al $pct%"
+    faltan=$(echo "$salida" | sed -n 's/^faltan //p')
+    [ -n "$faltan" ] && echo "    OJO: estos monstruos no existen en la base y no se pusieron: $faltan"
+  done
+  reiniciar_openmu
+  echo "Listo. Para volver a como estaba: bash ~/barriomu.sh monstruos $mapa original"
+}
+
 # Joyas que caen de los monstruos: Bless (14,13), Soul (14,14), Chaos (12,15),
 # Life (14,16) y Creation (14,22). OpenMU trae un grupo con 0.1% por monstruo.
 joyas() {
@@ -977,11 +1098,12 @@ case "$1" in
   spot) spot "$2" ;;
   joyas) joyas "$2" ;;
   arena) arena "$2" ;;
+  monstruos) monstruos "$2" "$3" ;;
   extras) extras "$2" ;;
   gmcomandos) gmcomandos ;;
   memoria) memoria ;;
   optimizar) optimizar "$2" "$3" "$4" ;;
   limpiar) limpiar ;;
   vigilar) vigilar ;;
-  *) sed -n '2,37p' "$0" | sed 's/^# \{0,1\}//' ;;
+  *) sed -n '2,40p' "$0" | sed 's/^# \{0,1\}//' ;;
 esac
