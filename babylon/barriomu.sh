@@ -20,6 +20,7 @@
 #   bash ~/barriomu.sh ia          configura El Sabio del Barrio (/ia): ID de cuenta y token de Workers AI
 #   bash ~/barriomu.sh whatsapp    vincula el WhatsApp del bot (el Sabio por WhatsApp); 'whatsapp desvincular' lo suelta
 #   bash ~/barriomu.sh whatsapp pausar   el bot no contesta (sigue vinculado); 'whatsapp reanudar' vuelve
+#   bash ~/barriomu.sh telegram    conecta el Sabio a un bot de Telegram (token de BotFather); 'telegram pausar|reanudar|quitar'
 #   bash ~/barriomu.sh evolution   pasa el WhatsApp del bot a Evolution API (Railway); 'evolution estado', 'evolution quitar'
 #   bash ~/barriomu.sh npcs        lista los NPCs de las ciudades y cuantos estan apagados
 #   bash ~/barriomu.sh npcs activar  vuelve a prender todos los NPCs y monstruos (reinicia OpenMU)
@@ -496,6 +497,49 @@ SQL
   echo "Monstruos en Lorencia en total: $(echo "$salida" | sed -n 's/^total //p')"
   reiniciar_openmu
   echo "Listo. Entra a Lorencia y sal por cualquier lado de la ciudad."
+}
+
+# El Sabio por Telegram: un bot creado con @BotFather. El token se guarda en la tablet
+# (~/.barriomu-telegram, dentro de Ubuntu) y la API misma atiende los mensajes: no hace falta
+# otro programa, ni Railway, ni un numero de telefono. No se ve mientras se pega.
+#   telegram            guarda el token y prueba el bot
+#   telegram pausar     el bot deja de contestar (sigue configurado); telegram reanudar vuelve
+#   telegram quitar     borra el token de la tablet
+telegram() {
+  if [ "$1" = pausar ] || [ "$1" = reanudar ]; then
+    pg_ctl -D "$PGDATA" status >/dev/null 2>&1 || { echo "PostgreSQL esta apagado: bash ~/barriomu.sh prender"; return 1; }
+    local v=1; [ "$1" = pausar ] && v=0
+    psql -U postgres -d openmu -q -c "SET client_min_messages = warning; CREATE SCHEMA IF NOT EXISTS barrio; CREATE TABLE IF NOT EXISTS barrio.settings (key text primary key, value text not null); INSERT INTO barrio.settings (key, value) VALUES ('tg_on', '$v') ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value" \
+      && if [ "$v" = 0 ]; then echo "Listo: el bot de Telegram quedo en PAUSA. Para volver: bash ~/barriomu.sh telegram reanudar"
+         else echo "Listo: el bot de Telegram vuelve a contestar."; fi
+    return
+  fi
+  if [ "$1" = quitar ]; then
+    proot-distro login ubuntu -- bash -c 'rm -f ~/.barriomu-telegram' && echo "Listo: el token de Telegram se borro de la tablet. El bot deja de contestar en medio minuto."
+    return
+  fi
+  echo "Pega el token del bot (te lo da @BotFather) y dale Enter (no se ve mientras lo pegas):"
+  local token
+  read -rs token; echo
+  token=$(printf '%s' "$token" | tr -d '[:space:]')
+  if ! [[ "$token" =~ ^[0-9]{5,15}:[A-Za-z0-9_-]{30,60}$ ]]; then
+    echo "Eso no parece un token de Telegram (es como 123456789:AAH...). No se guardo nada."; return 1
+  fi
+  echo "Probando el bot..."
+  local r
+  r=$(printf '%s\n' "$token" | proot-distro login ubuntu -- bash -c 'cd ~ && ~/babylon/proxy/bun -e "
+      const token = require(\"fs\").readFileSync(0, \"utf8\").trim();
+      const r = await fetch(\"https://api.telegram.org/bot\" + token + \"/getMe\", { signal: AbortSignal.timeout(20000) }).then(x => x.json()).catch(e => ({ description: String(e) }));
+      console.log(r.ok ? \"TG-OK \" + r.result.username : \"TG-ERROR \" + (r.description ?? \"sin respuesta\"));
+    "' 2>&1 | grep '^TG-' | tail -n 1)
+  case "$r" in
+    TG-OK*)
+      printf '%s\n' "$token" | proot-distro login ubuntu -- bash -c 'umask 077; cat > ~/.barriomu-telegram' || { echo "No se pudo guardar."; return 1; }
+      echo "Listo: el Sabio ya esta en Telegram como @${r#TG-OK }"
+      echo "Empieza a contestar en medio minuto, sin reiniciar nada. Abrelo: https://t.me/${r#TG-OK }"
+      echo "Cada jugador vincula su cuenta en Mi cuenta > Telegram y WhatsApp > Generar codigo." ;;
+    *) echo "Telegram no acepto el token: ${r#TG-ERROR }. No se guardo nada."; return 1 ;;
+  esac
 }
 
 # WhatsApp del bot en Evolution API (Railway) en vez de en la tablet: el numero queda
@@ -1057,6 +1101,7 @@ estado() {
   show 8081 "Pagina del juego  (8081)"
   show 8082 "Pagina registro   (8082)"
   show 3400 "API de la landing (3400)"
+  if proot-distro login ubuntu -- test -s .barriomu-telegram 2>/dev/null; then echo "  [OK]  Telegram del bot  (el Sabio por Telegram)"; fi
   if proot-distro login ubuntu -- test -s .barriomu-evolution 2>/dev/null; then echo "  [OK]  WhatsApp del bot  (Evolution API en Railway: bash ~/barriomu.sh evolution estado)"
   elif pgrep -f whatsapp/bot >/dev/null; then echo "  [OK]  WhatsApp del bot"
   else echo "  [..]  WhatsApp del bot  (sin vincular: bash ~/barriomu.sh whatsapp)"; fi
@@ -1093,6 +1138,7 @@ case "$1" in
   ia) ia ;;
   whatsapp) whatsapp "$2" ;;
   evolution) evolution "$2" ;;
+  telegram) telegram "$2" ;;
   npcs) npcs "$2" ;;
   mapas) mapas ;;
   spot) spot "$2" ;;
@@ -1105,5 +1151,5 @@ case "$1" in
   optimizar) optimizar "$2" "$3" "$4" ;;
   limpiar) limpiar ;;
   vigilar) vigilar ;;
-  *) sed -n '2,40p' "$0" | sed 's/^# \{0,1\}//' ;;
+  *) sed -n '2,41p' "$0" | sed 's/^# \{0,1\}//' ;;
 esac
