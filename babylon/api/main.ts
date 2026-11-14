@@ -20,7 +20,7 @@ import { handleReferidos } from "./referidos";
 import { handleTienda } from "./tienda";
 import { handleCashShop } from "./cashshop";
 import { handleSabio } from "./sabio";
-import { handleWhatsapp } from "./whatsapp";
+import { handleWhatsapp, startTelegram } from "./whatsapp";
 import { setWaData, startWaJobs } from "./wa-extras";
 import { handleMercado } from "./mercado";
 
@@ -345,5 +345,6 @@ setWaData({
   events: () => cached("events", 60, events).then(JSON.parse),
 });
 startWaJobs(sql);
+startTelegram(sql);
 
 console.log(`BarrioMU API en http://127.0.0.1:${PORT} (CORS: ${[...ORIGINS].join(", ")})`);

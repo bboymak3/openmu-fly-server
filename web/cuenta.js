@@ -601,13 +601,15 @@
       : '<tr><td class="skeleton">Todavía no vendiste nada.</td></tr>';
   }
 
-  // ---------- WhatsApp (el Sabio del Barrio) ----------
+  // ---------- WhatsApp y Telegram (el Sabio del Barrio) ----------
+  let telegramBot = "";
   async function loadWhatsapp() {
     try {
       const w = await call("/me/whatsapp");
       $("#wa-linked").hidden = !w.linked;
       $("#wa-unlinked").hidden = w.linked;
       $("#wa-number").textContent = w.number ?? "";
+      telegramBot = w.telegram || "";
     } catch {
       $("#whatsapp").hidden = true;
     }
@@ -623,7 +625,8 @@
         <p>Tu código: <b class="wa-big">${esc(r.code)}</b> <small class="muted">(vale ${r.minutes} minutos)</small></p>
         ${bot
           ? `<a class="btn btn-gold" href="https://wa.me/${bot}?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">💬 Abrir WhatsApp y vincular</a>`
-          : `<p>Escríbele al WhatsApp de BarrioMU: <b>${esc(msg)}</b></p>`}
+          : telegramBot ? "" : `<p>Escríbele al WhatsApp de BarrioMU: <b>${esc(msg)}</b></p>`}
+        ${telegramBot ? `<a class="btn btn-gold" href="https://t.me/${encodeURIComponent(telegramBot)}?start=${encodeURIComponent(r.code)}" target="_blank" rel="noopener">✈️ Abrir Telegram y vincular</a>` : ""}
         <p class="muted small">Cuando te responda, toca <b>Ya lo vinculé</b>.</p>
         <button class="btn btn-ghost btn-small" id="wa-check" type="button">Ya lo vinculé</button>`;
       $("#wa-code").hidden = false;

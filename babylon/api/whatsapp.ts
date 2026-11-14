@@ -39,7 +39,7 @@ const CODE_MS = 15 * 60_000;
 /** Codigos equivocados por chat y por hora: frena a quien quiera adivinar codigos ajenos. */
 const MAX_BAD_CODES = 5;
 const badCodes = new Map<string, number[]>();
-const JID_RE = /^\d{5,20}@(s\.whatsapp\.net|lid)$/;
+const JID_RE = /^\d{5,20}@(s\.whatsapp\.net|lid|telegram)$/;
 
 let ready: Promise<void> | null = null;
 function ensureTables(sql: Sql): Promise<void> {
@@ -75,7 +75,7 @@ async function myLink(req: Request, sql: Sql) {
   const s = session(req);
   await ensureTables(sql);
   const [link] = await sql`select jid, linked_at as "linkedAt" from barrio.wa_link where account = ${s.accountId}`;
-  return { linked: !!link, number: link ? maskJid(link.jid) : null, linkedAt: link?.linkedAt ?? null };
+  return { linked: !!link, number: link ? maskJid(link.jid) : null, linkedAt: link?.linkedAt ?? null, telegram: await telegramBotName() };
 }
 
 async function newCode(req: Request, sql: Sql) {
@@ -104,6 +104,7 @@ async function unlink(req: Request, sql: Sql) {
 
 function maskJid(jid: string): string {
   const id = jid.split("@")[0];
+  if (jid.endsWith("@telegram")) return "Telegram vinculado";
   return jid.endsWith("@lid") ? "WhatsApp vinculado" : `+${id.slice(0, 3)}…${id.slice(-3)}`;
 }
 
@@ -493,6 +494,7 @@ function evolution(): Evolution | null {
 
 /** Manda un texto a un chat: por Evolution API si esta configurada; si no, por el bot de la tablet. */
 async function deliver(jid: string, text: string): Promise<boolean> {
+  if (jid.endsWith("@telegram")) return telegramSend(jid.split("@")[0], text);
   const evo = evolution();
   if (evo) {
     const res = await fetch(`${evo.url}/message/sendText/${evo.instance}`, {
@@ -549,6 +551,106 @@ export async function sendToJid(jid: string, text: string): Promise<boolean> {
   }
 }
 
+// ---------------------------------------------------------------- Telegram
+
+// El Sabio por Telegram: un bot de BotFather cuyo token esta en ~/.barriomu-telegram (lo guarda
+// `barriomu.sh telegram`). La API le pregunta a Telegram por mensajes nuevos (getUpdates, espera
+// larga): no hace falta abrir nada hacia afuera ni otro programa. El chat se guarda en wa_link
+// como "<id del chat>@telegram" y usa los mismos comandos, confirmaciones y avisos.
+const TELEGRAM_FILE = process.env.TELEGRAM_FILE ?? `${homedir()}/.barriomu-telegram`;
+const TELEGRAM_API = process.env.TELEGRAM_API ?? "https://api.telegram.org";
+function telegramToken(): string | null {
+  try {
+    const token = readFileSync(TELEGRAM_FILE, "utf8").split(/\r?\n/)[0].trim();
+    return /^\d{5,15}:[A-Za-z0-9_-]{30,60}$/.test(token) ? token : null;
+  } catch {
+    return null;
+  }
+}
+
+async function telegramCall(token: string, method: string, body: unknown, timeout = 15_000): Promise<{ ok?: boolean; result?: any; description?: string }> {
+  const res = await fetch(`${TELEGRAM_API}/bot${token}/${method}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(timeout),
+  });
+  return (await res.json().catch(() => ({}))) as { ok?: boolean; result?: any; description?: string };
+}
+
+/** El @usuario del bot (para el boton "Abrir Telegram" de Mi cuenta); null si no hay bot. */
+let telegramName: { token: string; name: string | null } | null = null;
+async function telegramBotName(): Promise<string | null> {
+  const token = telegramToken();
+  if (!token) return null;
+  if (telegramName?.token === token && telegramName.name) return telegramName.name;
+  const me = await telegramCall(token, "getMe", {}, 8000).catch(() => ({}) as { ok?: boolean; result?: any });
+  const name = me.ok && typeof me.result?.username === "string" && /^\w{4,40}$/.test(me.result.username) ? me.result.username : null;
+  telegramName = { token, name };
+  return name;
+}
+
+async function telegramSend(chatId: string, text: string): Promise<boolean> {
+  const token = telegramToken();
+  if (!token) return false;
+  const body = text.replace(/WhatsApp/g, "Telegram");
+  // Las *negritas* y _cursivas_ de los mensajes son las de Telegram "Markdown"; si un texto las
+  // trae sin cerrar, Telegram lo rechaza y se manda tal cual.
+  const first = await telegramCall(token, "sendMessage", { chat_id: chatId, text: body, parse_mode: "Markdown" });
+  if (first.ok) return true;
+  return !!(await telegramCall(token, "sendMessage", { chat_id: chatId, text: body })).ok;
+}
+
+/** El texto de un mensaje privado de Telegram, como lo escribiria por WhatsApp. */
+export function telegramText(message: any): { jid: string; text: string } | null {
+  if (message?.chat?.type !== "private" || typeof message.text !== "string" || message.from?.is_bot) return null;
+  const jid = `${message.chat.id}@telegram`;
+  if (!JID_RE.test(jid)) return null;
+  let text = message.text.trim().slice(0, 2000);
+  // t.me/ElBot?start=123456 manda "/start 123456": es vincular. "/ayuda", "/estado"... son los comandos.
+  const start = text.match(/^\/start(?:@\w+)?(?:\s+(\d{6}))?$/i);
+  if (start) text = start[1] ? `vincular ${start[1]}` : "ayuda";
+  else text = text.replace(/^\/(\w+)(?:@\w+)?/, "$1");
+  return text ? { jid, text } : null;
+}
+
+/** Atiende los mensajes de Telegram mientras la API este prendida. Nunca se cae. */
+export function startTelegram(sql: Sql): void {
+  let offset = 0;
+  let known = "";
+  const loop = async (): Promise<void> => {
+    for (;;) {
+      const token = telegramToken();
+      if (!token) {
+        await Bun.sleep(30_000); // sin configurar: vuelve a mirar en un rato (no hace falta reiniciar)
+        continue;
+      }
+      try {
+        if (token !== known) {
+          known = token;
+          offset = 0;
+          await telegramCall(token, "deleteWebhook", {}).catch(() => {});
+        }
+        const got = await telegramCall(token, "getUpdates", { offset, timeout: 50, allowed_updates: ["message"] }, 65_000);
+        if (!got.ok) {
+          console.error("telegram", got.description ?? "sin respuesta");
+          await Bun.sleep(15_000);
+          continue;
+        }
+        for (const update of (got.result ?? []) as any[]) {
+          offset = Math.max(offset, Number(update.update_id) + 1);
+          const incoming = telegramText(update.message);
+          if (incoming) void answerChat(sql, incoming.jid, incoming.text, "tg_on");
+        }
+      } catch (error) {
+        console.error("telegram", error instanceof Error ? error.message : error);
+        await Bun.sleep(10_000);
+      }
+    }
+  };
+  void loop();
+}
+
 // ---------------------------------------------------------------- Evolution API
 
 const EVO_PER_MINUTE = 8;
@@ -573,7 +675,7 @@ export function evolutionMessage(b: Record<string, any>, instance: string): { ji
   return { jid, text };
 }
 
-async function answerEvolution(sql: Sql, jid: string, text: string): Promise<void> {
+async function answerChat(sql: Sql, jid: string, text: string, pauseKey: "wa_on" | "tg_on" = "wa_on"): Promise<void> {
   const now = Date.now();
   const times = (evoRecent.get(jid) ?? []).filter(t => now - t < 60_000);
   times.push(now);
@@ -582,7 +684,7 @@ async function answerEvolution(sql: Sql, jid: string, text: string): Promise<voi
   evoBusy.add(jid);
   try {
     await ensureTables(sql);
-    const [paused] = await sql`select 1 from barrio.settings where key = 'wa_on' and value = '0'`;
+    const [paused] = await sql`select 1 from barrio.settings where key = ${pauseKey} and value = '0'`;
     if (paused && !/^admin\b/i.test(text)) return;
     const replies = await botMessage(sql, jid, text);
     for (const reply of replies.slice(0, 4)) await deliver(jid, reply.slice(0, 3000));
@@ -671,7 +773,7 @@ export async function handleWhatsapp(req: Request, url: URL, cors: Record<string
     }
     const incoming = evolutionMessage(b, evo.instance);
     // Se contesta de una vez a Evolution y el mensaje se atiende aparte (la IA puede tardar).
-    if (incoming) void answerEvolution(sql, incoming.jid, incoming.text);
+    if (incoming) void answerChat(sql, incoming.jid, incoming.text);
     return json({ ok: true }, 200, cors);
   }
 
