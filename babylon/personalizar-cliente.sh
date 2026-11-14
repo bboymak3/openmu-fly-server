@@ -13,6 +13,8 @@ cp $B/logo_glow.webp $C/public/ui/world_select/barriomu-glow.webp
 sed -i 's#/ui/world_select/logo.webp#/ui/world_select/barriomu-logo.webp#; s#/ui/world_select/logo_glow.webp#/ui/world_select/barriomu-glow.webp#' $P/logoLight.tsx $P/directLoad.tsx
 # El logo al 100%: sin las capas de luz que se mezclan encima.
 printf '\n.ws-logo-glow, .ws-logo-bloom, .ws-logo-surge { display: none; }\n' >> $P/style.less
+# El boton Entrar siempre a la vista (pantallas bajitas) y dorado.
+cat $B/preloader-barrio.less >> $P/style.less
 cp $B/icon-192.png $B/icon-512.png $B/icon-maskable-512.png $B/apple-touch-icon.png $C/public/icons/
 cp $B/banner.webp $B/serverlist.md $C/public/
 sed -i 's/OpenMUCB/BarrioMU/g' $C/index.html $C/public/manifest.webmanifest $C/src/modules/servers/pageTitle.ts $C/register/index.html
