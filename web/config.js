@@ -20,7 +20,7 @@ window.BARRIOMU = {
   whatsappBot: "",
   // Usuario del bot de Telegram (el Sabio por Telegram), sin @. Ej: "SabioBarrioMU_bot".
   // Vacio: la guia no muestra el boton "Abrir el bot en Telegram".
-  telegramBot: "",
+  telegramBot: "Barriomubot",
 
   // Tarjetas de caracteristicas del servidor
   features: [
