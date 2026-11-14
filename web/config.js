@@ -17,7 +17,10 @@ window.BARRIOMU = {
   whatsapp: "",
   // Numero del WhatsApp del bot (el Sabio por WhatsApp), con codigo de pais y sin +.
   // Ej: "584121234567". Vacio: Mi cuenta solo muestra el codigo para vincular.
-  whatsappBot: "584222525325",
+  whatsappBot: "",
+  // Usuario del bot de Telegram (el Sabio por Telegram), sin @. Ej: "SabioBarrioMU_bot".
+  // Vacio: la guia no muestra el boton "Abrir el bot en Telegram".
+  telegramBot: "",
 
   // Tarjetas de caracteristicas del servidor
   features: [
