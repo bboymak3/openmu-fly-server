@@ -14,7 +14,7 @@
 import type { Sql } from "postgres";
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { PanelError, offlineTransaction } from "./panel";
-import { sendToJid } from "./whatsapp";
+import { canWriteFirst, sendToJid } from "./whatsapp";
 
 type Status = { online: boolean; players: number | null; servers: { name: string; players: number | null }[] };
 type Ranked = { rank: number; name: string; level: number; resets: number; masterResets?: number };
@@ -262,9 +262,10 @@ export async function waChatFromGame(sql: Sql, b: Record<string, unknown>): Prom
   const [row] = await sql`
     select l.jid from data."Character" c join barrio.wa_link l on l.account = c."AccountId"
     where lower(c."Name") = lower(${to}) limit 1`;
-  if (!row) return { message: `${to} no tiene WhatsApp vinculado.` };
+  if (!row) return { message: `${to} no tiene Telegram vinculado.` };
+  if (!canWriteFirst(row.jid)) return { message: `${to} usa WhatsApp, y por WhatsApp el bot no escribe primero. Dile que se pase a Telegram.` };
   const sent = await sendToJid(row.jid, `💬 *${from}* te escribe desde el juego:\n${text}\n\nResponde: *@${from} tu mensaje*`);
-  return { message: sent ? `Enviado al WhatsApp de ${to}.` : "No se pudo mandar el WhatsApp ahora." };
+  return { message: sent ? `Enviado al Telegram de ${to}.` : "No se pudo mandar el mensaje ahora." };
 }
 
 // ---------------------------------------------------------------- comandos
@@ -282,6 +283,9 @@ export async function extrasCommand(sql: Sql, jid: string, linked: { account: st
   if (/^ayuda[?!.]*$/.test(lower) || lower === "comandos") return [HELP_TEXT];
 
   const alert = lower.match(/^(no )?avisar(?:me)?(?: (?:de |del )?(.+))?$/);
+  // Por WhatsApp el bot nunca escribe primero: los avisos y el resumen son solo por Telegram.
+  const ONLY_TELEGRAM = "Por WhatsApp no mando avisos ni resúmenes: aquí solo contesto cuando me escribes. Si los quieres, vincula tu cuenta por *Telegram* (barriomu.makeseo.app/bot.html). Mientras, pregúntame *eventos* cuando quieras.";
+  if ((alert && !alert[1] || /^resumen (si|sí)$/.test(lower)) && !canWriteFirst(jid)) return [ONLY_TELEGRAM];
   if (alert) {
     const off = !!alert[1];
     const what = (alert[2] ?? "todos").trim();

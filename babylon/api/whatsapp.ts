@@ -516,6 +516,14 @@ async function deliver(jid: string, text: string): Promise<boolean> {
   return res.ok;
 }
 
+/**
+ * Regla de WhatsApp: el bot NUNCA escribe primero. Por WhatsApp solo contesta, enseguida, a quien
+ * le acaba de escribir; los avisos, el resumen diario, las alertas de eventos y los mensajes desde
+ * el juego no salen (mandarlos en masa hizo que WhatsApp tomara el numero por spam y lo bloqueara).
+ * Por Telegram si se mandan: sus bots tienen permitido escribirle a quien los inicio.
+ */
+export const canWriteFirst = (jid: string): boolean => jid.endsWith("@telegram");
+
 /** Avisos por cuenta y por dia como maximo (protege el numero del bot). */
 const MAX_AVISOS_DIA = 30;
 const avisosHoy = new Map<string, { day: string; n: number }>();
@@ -529,7 +537,7 @@ export async function notifyAccount(sql: Sql, who: { accountId?: string; login?:
       : await sql`
           select l.jid, l.account::text as account from barrio.wa_link l
           join data."Account" a on a."Id" = l.account where lower(a."LoginName") = lower(${who.login ?? ""})`;
-    if (!row) return false;
+    if (!row || !canWriteFirst(row.jid)) return false;
     const day = new Date(Date.now() - 4 * 3600_000).toISOString().slice(0, 10);
     const count = avisosHoy.get(row.account);
     const n = count?.day === day ? count.n : 0;
@@ -541,10 +549,10 @@ export async function notifyAccount(sql: Sql, who: { accountId?: string; login?:
   }
 }
 
-/** Manda un mensaje a un chat de WhatsApp por el bot de la tablet. Nunca falla hacia afuera. */
+/** Manda un mensaje que nadie pidio (aviso, alerta, resumen): solo sale por Telegram. Nunca falla hacia afuera. */
 export async function sendToJid(jid: string, text: string): Promise<boolean> {
   try {
-    if (!JID_RE.test(jid)) return false;
+    if (!JID_RE.test(jid) || !canWriteFirst(jid)) return false;
     return await deliver(jid, text.slice(0, 1500));
   } catch {
     return false;
