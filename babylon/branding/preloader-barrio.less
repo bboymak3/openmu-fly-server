@@ -1,0 +1,26 @@
+
+// ---- BarrioMU: el boton Entrar siempre a la vista -----------------------------
+// En pantallas bajitas (telefono acostado, laptop chica) la columna de la izquierda
+// no cabia y "Entrar" quedaba abajo, cortado y sin poder bajar hasta el.
+// 1) Pantalla baja: los botones van arriba de la columna, y la columna se puede deslizar.
+@media (max-height: 820px) and (min-width: 761px) {
+  .ws-side { overflow-y: auto; }
+  .ws-side-actions { order: -1; margin-top: 0; padding: 0 0 14px; }
+}
+// 2) Pantalla muy baja (telefono acostado): la columna pasa a ser una tira arriba,
+//    con las pestanas y los botones en una fila, como en las pantallas angostas.
+@media (max-height: 620px) and (min-width: 761px) {
+  .ws-card { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); gap: 10px; padding: 12px; }
+  .ws-marker, .ws-headline, .ws-lead, .ws-tab-desc { display: none; }
+  .ws-side { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px; overflow: visible; }
+  .ws-tabs { flex-direction: row; }
+  .ws-side-actions { order: 0; flex-direction: row; margin: 0 0 0 auto; padding: 0; }
+  .ws-side-actions .ws-btn { width: auto; }
+}
+// El boton Entrar, dorado: es el que hay que tocar.
+.ws-page .ws-enter {
+  background: linear-gradient(180deg, #f6d27a, #e8b75c);
+  color: #1b1305;
+  font-weight: 700;
+  box-shadow: 0 0 18px rgba(232, 183, 92, 0.35);
+}
