@@ -168,6 +168,7 @@ si el secreto no coincide. Secreto: `~/openmu/data/sabio-secreto.txt`.
 | Endpoint | Para qué |
 |---|---|
 | `POST /voice/ticket` | el navegador manda el `nonce` de su sesión de juego y el nombre del personaje; se pregunta al proxy (`GET http://127.0.0.1:3001/ticket/<nonce>`) qué cuenta inició sesión y se comprueba en la base que ese personaje sea de esa cuenta; devuelve un ticket firmado (HMAC, vale 5 min) |
+| `GET /voice/ice` | servidores STUN/TURN que usa el navegador. Salen de `~/openmu/data/voz-ice.json` si existe (así se agrega un **TURN** sin recompilar el cliente) |
 | `WS /voice?ticket=…` | señalización: quién está conectado, y reenvío de ofertas/respuestas/ICE entre dos jugadores. **El audio no pasa por aquí**: va directo de un navegador al otro |
 
 - Secreto propio de la voz: `~/openmu/data/voz-secreto.txt` (se crea solo, permisos 600).
@@ -178,6 +179,9 @@ si el secreto no coincide. Secreto: `~/openmu/data/sabio-secreto.txt`.
   distancia (se oye hasta 18 tiles, la conexión se mantiene hasta 26). Así una zona con
   15+ personas no satura la tablet: cada cliente habla con sus vecinos, no con todos.
 - El ticket exige una sesión de juego viva: sin estar dentro del juego no hay voz.
+- Mientras la voz está prendida, debajo del botón se ve una línea de diagnóstico
+  (`señal ok · cerca N · audio M · estado`): sirve para saber si el problema es de
+  identidad (cerca 0), de red (`falla`) o de audio (audio 0 con `tic`).
 - La `Permissions-Policy` de `web/_headers` (landing) sigue sin micrófono; la página del
   juego (`servir.ts`) no manda esa cabecera, así que ahí el micrófono sí está permitido.
 

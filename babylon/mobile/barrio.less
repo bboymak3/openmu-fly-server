@@ -449,5 +449,26 @@
 .mu-mobile .barrio-voice-count {
   font-size: 10px;
   font-weight: bold;
-  color: #ffd700;
+  color: #7cfc7c;
+}
+
+// Cuando hay gente cerca pero todavia no se oye a nadie, el numero va en ambar.
+.mu-mobile .barrio-voice-count.is-warn {
+  color: #ffb347;
+}
+
+// Linea de diagnostico: debajo del boton, sin estorbar (no recibe toques).
+.mu-mobile .barrio-voice-state {
+  position: absolute;
+  top: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.62);
+  color: #e8e0c0;
+  font-size: 11px;
+  line-height: 15px;
+  white-space: nowrap;
+  pointer-events: none;
 }

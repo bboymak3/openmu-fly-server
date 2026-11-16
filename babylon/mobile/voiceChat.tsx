@@ -41,9 +41,30 @@ type Link = {
   source: MediaStreamAudioSourceNode | null;
   /** Para soltar un enlace que nunca paso de "new" (se perdio la oferta). */
   createdAt: number;
+  /** Ya llego el audio del otro lado (ontrack). */
+  receiving: boolean;
+  /** Ya se aplico la oferta/respuesta: desde ahi los ICE valen. */
+  hasRemote: boolean;
+  /** Candidatos que llegaron antes que la oferta: se guardan y se aplican despues. */
+  pending: RTCIceCandidateInit[];
+  /** Este lado es el que ofrece. */
+  offerer: boolean;
+  /** Ya se aviso del fallo (no repetir el aviso cada 700 ms). */
+  told: boolean;
 };
 
-export type VoiceUi = { mode: 'off' | 'on'; talking: boolean; nearby: number; error: string };
+export type VoiceUi = {
+  mode: 'off' | 'on';
+  talking: boolean;
+  nearby: number;
+  /** Cuantos jugadores se estan oyendo de verdad. */
+  audio: number;
+  /** Estado de los enlaces, para la linea de diagnostico: "tic" o "falla". */
+  links: string;
+  /** El WebSocket de senalizacion esta abierto. */
+  online: boolean;
+  error: string;
+};
 
 /** El personaje con ese nombre, si el juego lo tiene cerca y en este mapa. */
 function entityOf(name: string): Entity | null {
@@ -71,6 +92,11 @@ class VoiceEngine {
   talking = false;
   error = '';
   private nearby = 0;
+  private audio = 0;
+  private linksText = '';
+  private cooldown = new Map<string, number>();
+  /** STUN de arranque; el servidor puede mandar TURN en /voice/ice. */
+  private ice: RTCIceServer[] = [{ urls: STUN }];
   private ws: WebSocket | null = null;
   private stream: MediaStream | null = null;
   private ctx: AudioContext | null = null;
@@ -84,7 +110,15 @@ class VoiceEngine {
   private listeners = new Set<(ui: VoiceUi) => void>();
 
   ui(): VoiceUi {
-    return { mode: this.mode, talking: this.talking, nearby: this.nearby, error: this.error };
+    return {
+      mode: this.mode,
+      talking: this.talking,
+      nearby: this.nearby,
+      audio: this.audio,
+      links: this.linksText,
+      online: this.ws?.readyState === WebSocket.OPEN,
+      error: this.error,
+    };
   }
 
   subscribe(fn: (ui: VoiceUi) => void): () => void {
@@ -104,6 +138,11 @@ class VoiceEngine {
 
   async enable(): Promise<void> {
     if (this.mode === 'on') return;
+    if (typeof RTCPeerConnection === 'undefined') {
+      this.error = 'sin WebRTC';
+      addNotification('Voz: este navegador no soporta voz', 'info');
+      return;
+    }
     this.mode = 'on';
     this.error = '';
     this.emit();
@@ -116,6 +155,7 @@ class VoiceEngine {
       addNotification('Voz: el navegador no dio el microfono (hace falta HTTPS y permiso)', 'info');
       return;
     }
+    await this.loadIce();
     this.startLoops();
     await this.connect();
   }
@@ -127,6 +167,10 @@ class VoiceEngine {
     for (const id of [...this.links.keys()]) this.drop(id);
     this.peers = [];
     this.nearby = 0;
+    this.audio = 0;
+    this.linksText = '';
+    this.cooldown.clear();
+    this.ice = [{ urls: STUN }];
     try {
       this.ws?.close();
     } catch {
@@ -189,6 +233,18 @@ class VoiceEngine {
     }
     this.stream = stream;
     stream.getAudioTracks().forEach(track => (track.enabled = false));
+  }
+
+  /** Lista de servidores ICE que manda la tablet (permite agregar TURN sin recompilar). */
+  private async loadIce(): Promise<void> {
+    try {
+      const res = await fetch(`${API}/voice/ice`, { cache: 'no-store' });
+      if (!res.ok) return;
+      const body = (await res.json()) as { iceServers?: RTCIceServer[] };
+      if (Array.isArray(body.iceServers) && body.iceServers.length) this.ice = body.iceServers;
+    } catch {
+      /* se queda con STUN */
+    }
   }
 
   private startLoops(): void {
@@ -328,9 +384,12 @@ class VoiceEngine {
     found.sort((a, b) => a.distance - b.distance);
 
     const candidates = found.slice(0, MAX_PEERS);
+    const now = performance.now();
     for (const candidate of candidates) {
       if (candidate.distance > RANGE) continue;
       if (this.links.has(candidate.peer.id)) continue;
+      // Tras un fallo de red se espera: no se puede martillar la conexion.
+      if (now - (this.cooldown.get(candidate.peer.id) ?? 0) < 6000) continue;
       // El nombre menor de los dos ofrece; asi los dos no se ofrecen a la vez.
       const offerer = mine < candidate.peer.name.trim().toLowerCase();
       void this.createLink(candidate.peer, offerer);
@@ -351,20 +410,54 @@ class VoiceEngine {
     }
 
     const audible = candidates.filter(item => item.distance <= RANGE).length;
-    if (this.nearby !== audible) {
+    const links = [...this.links.values()];
+    const audio = links.filter(link => link.receiving).length;
+    const linksText = links
+      .map(link => {
+        const state = link.pc.connectionState;
+        if (link.receiving) return 'ok';
+        if (state === 'failed' || state === 'closed') return 'falla';
+        if (state === 'connected' || state === 'connecting') return 'tic';
+        return state === 'new' ? 'esp' : 'ofi';
+      })
+      .join(',');
+    if (this.nearby !== audible || this.audio !== audio || this.linksText !== linksText) {
       this.nearby = audible;
+      this.audio = audio;
+      this.linksText = linksText;
       this.emit();
     }
   }
 
   private async createLink(peer: PeerInfo, offerer: boolean): Promise<void> {
     if (this.links.has(peer.id)) return;
-    const pc = new RTCPeerConnection({ iceServers: [{ urls: STUN }] });
-    const link: Link = { info: peer, pc, gain: null, source: null, createdAt: performance.now() };
+    const pc = new RTCPeerConnection({ iceServers: this.ice, iceCandidatePoolSize: 2 });
+    const link: Link = {
+      info: peer,
+      pc,
+      gain: null,
+      source: null,
+      createdAt: performance.now(),
+      receiving: false,
+      hasRemote: false,
+      pending: [],
+      offerer,
+      told: false,
+    };
     this.links.set(peer.id, link);
+    console.info(`[voz] enlace con ${peer.name} (${offerer ? 'ofrezco' : 'espero'})`);
 
     pc.onicecandidate = ev => {
       if (ev.candidate) this.signal({ t: 'signal', to: peer.id, data: { ice: ev.candidate.toJSON() } });
+    };
+    pc.oniceconnectionstatechange = () => {
+      console.info(`[voz] ${peer.name} ice=${pc.iceConnectionState}`);
+      if (pc.iceConnectionState === 'failed') this.fail(link);
+    };
+    pc.onconnectionstatechange = () => {
+      console.info(`[voz] ${peer.name} enlace=${pc.connectionState}`);
+      if (pc.connectionState === 'failed') this.fail(link);
+      this.emit();
     };
     pc.ontrack = ev => {
       const ctx = this.ctx;
@@ -378,9 +471,10 @@ class VoiceEngine {
       } catch {
         /* el navegador no dejo armar el audio: se oye sin volumen por distancia */
       }
-    };
-    pc.onconnectionstatechange = () => {
-      if (pc.connectionState === 'failed' || pc.connectionState === 'closed') this.drop(peer.id);
+      link.receiving = true;
+      console.info(`[voz] audio de ${peer.name}`);
+      addNotification(`Voz: ya se oye a ${peer.name}`, 'info');
+      this.emit();
     };
 
     const track = this.stream?.getAudioTracks()[0];
@@ -391,9 +485,20 @@ class VoiceEngine {
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
       this.signal({ t: 'signal', to: peer.id, data: { sdp: pc.localDescription } });
-    } catch {
-      this.drop(peer.id);
+    } catch (error) {
+      console.info('[voz] no se pudo ofrecer', error);
+      this.fail(link);
     }
+  }
+
+  /** La red no dejo: se avisa UNA vez y se suelta con enfriamiento. */
+  private fail(link: Link): void {
+    if (!link.told) {
+      link.told = true;
+      addNotification(`Voz: la red no deja conectar con ${link.info.name}`, 'info');
+    }
+    this.cooldown.set(link.info.id, performance.now());
+    this.drop(link.info.id);
   }
 
   private async onSignal(peer: PeerInfo, data: { sdp?: RTCSessionDescriptionInit; ice?: RTCIceCandidateInit }): Promise<void> {
@@ -405,17 +510,33 @@ class VoiceEngine {
     }
     try {
       if (data.sdp) {
+        // Los dos ofrecieron a la vez: manda el que ofrece, el otro se calla.
+        if (data.sdp.type === 'offer' && link.offerer) return;
         await link.pc.setRemoteDescription(data.sdp);
+        link.hasRemote = true;
+        // Los candidatos que llegaron antes ya se pueden aplicar.
+        for (const ice of link.pending.splice(0)) {
+          try {
+            await link.pc.addIceCandidate(ice);
+          } catch {
+            /* candidato viejo */
+          }
+        }
         if (data.sdp.type === 'offer') {
           const answer = await link.pc.createAnswer();
           await link.pc.setLocalDescription(answer);
           this.signal({ t: 'signal', to: peer.id, data: { sdp: link.pc.localDescription } });
         }
       } else if (data.ice) {
+        if (!link.hasRemote) {
+          // Todavia no hay oferta/respuesta: sin esto el candidato se perdia.
+          if (link.pending.length < 80) link.pending.push(data.ice);
+          return;
+        }
         await link.pc.addIceCandidate(data.ice);
       }
-    } catch {
-      /* una oferta vieja o fuera de orden: la proxima vuelve a intentar */
+    } catch (error) {
+      console.info('[voz] senal ignorada', error);
     }
   }
 
@@ -519,7 +640,19 @@ export const VoiceChat = () => {
       }}
     >
       <span className="barrio-voice-icon">{label}</span>
-      {ui.mode === 'on' && ui.nearby > 0 && <span className="barrio-voice-count">{ui.nearby}</span>}
+      {ui.mode === 'on' && ui.nearby > 0 && (
+        <span className={ui.audio >= ui.nearby ? 'barrio-voice-count' : 'barrio-voice-count is-warn'}>
+          {ui.audio > 0 ? ui.audio : ui.nearby}
+        </span>
+      )}
+      {/* Diagnostico: se ve mientras la voz esta prendida. Se puede quitar cuando
+          todo funcione en la tablet y en la PC. */}
+      {ui.mode === 'on' && (
+        <span className="barrio-voice-state">
+          {ui.online ? 'señal ok' : 'sin señal'} · cerca {ui.nearby} · audio {ui.audio}
+          {ui.links ? ` · ${ui.links}` : ''}
+        </span>
+      )}
     </div>
   );
 };

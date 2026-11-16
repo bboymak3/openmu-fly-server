@@ -25,6 +25,13 @@ import type { Sql } from "postgres";
 
 const PRESENCE_URL = process.env.PRESENCE_URL ?? "http://127.0.0.1:3001";
 const SECRET_FILE = process.env.VOICE_SECRET_FILE ?? `${homedir()}/openmu/data/voz-secreto.txt`;
+/**
+ * Servidores ICE que usa el navegador. Se leen de este archivo para poder
+ * agregar un TURN (redes con NAT dificil) sin recompilar el cliente: basta
+ * escribir la lista y reiniciar la API.
+ */
+const ICE_FILE = process.env.VOICE_ICE_FILE ?? `${homedir()}/openmu/data/voz-ice.json`;
+const DEFAULT_ICE = [{ urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] }];
 /** Cuánto vale un ticket. El cliente lo pide justo antes de entrar. */
 const TICKET_MS = 5 * 60 * 1000;
 /** Tope de sockets de señalización (no de voces: cada uno es una persona). */
@@ -136,6 +143,21 @@ export async function handleVoice(
   cors: Record<string, string>,
   sql: Sql,
 ): Promise<Response | null> {
+  if (url.pathname === "/voice/ice") {
+    if (req.method !== "GET") return new Response("Method not allowed", { status: 405, headers: corsFor(cors) });
+    let servers: unknown = DEFAULT_ICE;
+    try {
+      const parsed: unknown = JSON.parse(readFileSync(ICE_FILE, "utf8"));
+      if (Array.isArray(parsed) && parsed.length) servers = parsed;
+    } catch {
+      /* sin archivo: solo STUN */
+    }
+    return new Response(JSON.stringify({ iceServers: servers }), {
+      status: 200,
+      headers: { ...corsFor(cors), "Cache-Control": "no-store" },
+    });
+  }
+
   if (url.pathname !== "/voice/ticket") return null;
   if (req.method !== "POST") return new Response("Method not allowed", { status: 405, headers: corsFor(cors) });
 
