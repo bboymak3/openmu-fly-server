@@ -51,7 +51,7 @@ fi
 
 # API de solo lectura para la landing (estado, rankings, eventos): puerto 3400
 if [ -f proxy/api/main.ts ]; then
-  (cd proxy && CORS_ORIGIN="${API_CORS_ORIGIN:-https://barriomu.makeseo.app,https://mu.makeseo.app}" exec ./bun api/main.ts) &
+  (cd proxy && CORS_ORIGIN="${API_CORS_ORIGIN:-https://barriomu.makeseo.app,https://mu.makeseo.app,http://127.0.0.1:47801,http://localhost:47801}" exec ./bun api/main.ts) &
   PIDS+=($!)
 fi
 
