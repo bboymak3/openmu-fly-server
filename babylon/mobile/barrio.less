@@ -406,14 +406,15 @@
   top: 52px;
 }
 
-// Voz por proximidad: cuadrito en la linea superior, a la derecha de B y A.
+// Voz por proximidad: cuadrito en la linea superior, DESPUES de B y A (esos
+// dos miden 108 px cada uno y empiezan en 50%+74, o sea que acaban en 50%+294).
 // Un toque lo prende (pide el microfono), mantenerlo apretado habla y otro
 // toque corto lo apaga. El numero es cuanta gente se oye en ese momento.
 .mu-mobile .barrio-voice {
   position: absolute;
   top: 4px;
-  left: calc(50% + 152px);
-  width: 38px;
+  left: calc(50% + 302px);
+  width: 40px;
   height: 30px;
   display: flex;
   align-items: center;

@@ -436,6 +436,9 @@ export const VoiceChat = () => {
 
   useEffect(() => engine.subscribe(setUi), []);
 
+  // Al salir del mundo (muerte, cambio de mapa del HUD) no se queda el microfono abierto.
+  useEffect(() => () => engine.disable(), []);
+
   useEffect(() => {
     const typing = (target: EventTarget | null) => {
       const el = target as HTMLElement | null;
@@ -476,7 +479,11 @@ export const VoiceChat = () => {
       onPointerDown={ev => {
         ev.stopPropagation();
         ev.preventDefault();
-        (ev.target as HTMLElement).setPointerCapture?.(ev.pointerId);
+        try {
+          (ev.target as HTMLElement).setPointerCapture?.(ev.pointerId);
+        } catch {
+          /* algun navegador no deja capturar: el puntero sigue funcionando */
+        }
         pressedAt.current = performance.now();
         wasTalking.current = ui.mode === 'on';
         engine.startTalk();
