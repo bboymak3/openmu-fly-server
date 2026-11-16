@@ -295,6 +295,12 @@ puntos, monedas, mapa), los precios reales de la tienda y lo que hay en La Plaza
   (secreto entre OpenMU y la API). Tablas: `barrio.sabio_uso`, `barrio.sabio_log`.
 
 ### El Sabio por WhatsApp (bot en la tablet)
+
+> ⚠️ **Estado (16/11/2026): WhatsApp está APAGADO por seguridad.** La instancia de Railway
+> (`barriomu-whatsapp`) se eliminó y el bot quedó desconectado. El canal activo es
+> **Telegram** (`bash ~/barriomu.sh telegram`). Lo de abajo queda como documentación por
+> si algún día se decide volver a vincular.
+
 El WhatsApp del servidor corre **en la tablet** (sin Railway ni Evolution): `babylon/whatsapp/bot.mjs`
 (librería Baileys 7 en Node.js, como WhatsApp Web sin pantalla; es lo mismo que usa Evolution API por dentro). Le pasa cada mensaje privado a la API
 (`/whatsapp`, solo desde la tablet, con el secreto del Sabio) y manda la respuesta.
