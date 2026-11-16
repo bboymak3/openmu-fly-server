@@ -162,15 +162,33 @@ class VoiceEngine {
   }
 
   private async openMic(): Promise<void> {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-      video: false,
-    });
+    // El AudioContext tiene que nacer DENTRO del toque (antes del await del
+    // permiso): si nace despues, Android lo deja suspendido y el audio de los
+    // demas no suena hasta que el jugador aprieta para hablar.
+    const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const ctx = new Ctx();
+    this.ctx = ctx;
+    void ctx.resume().catch(() => undefined);
+
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        video: false,
+      });
+    } catch (error) {
+      this.ctx = null;
+      void ctx.close().catch(() => undefined);
+      throw error;
+    }
+    if (this.ctx !== ctx) {
+      // Se apago mientras se esperaba el permiso.
+      stream.getTracks().forEach(track => track.stop());
+      void ctx.close().catch(() => undefined);
+      throw new Error('voz apagada');
+    }
     this.stream = stream;
     stream.getAudioTracks().forEach(track => (track.enabled = false));
-    const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    this.ctx = new Ctx();
-    void this.ctx.resume().catch(() => undefined);
   }
 
   private startLoops(): void {
