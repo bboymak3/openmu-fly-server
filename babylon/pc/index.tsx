@@ -14,7 +14,7 @@ import './voice.less';
  * - El circulo rojo de alcance alrededor del personaje mientras pelea (el mismo del celular).
  * - Teclas de camara: - / + (o RePag / AvPag, o el teclado numerico) alejan y acercan,
  *   Z la centra, Alt+Enter o F11 ponen pantalla completa. Ctrl+rueda sigue funcionando.
- * - Voz por proximidad: el boton de arriba al centro (o la tecla K para hablar).
+ * - Voz por proximidad: el boton de arriba al centro (o la tecla B para hablar).
  * En el celular no se muestra nada de esto: ahi esta el HUD tactil.
  */
 

@@ -8,8 +8,8 @@ import { addNotification } from '@/modules/chat/notify';
  * BarrioMU: voz por proximidad en el celular (y en la web).
  *
  * - Un boton en la linea de arriba: un toque lo prende, mantenerlo apretado
- *   habla (push to talk), otro toque corto lo apaga. La tecla K hace lo mismo
- *   con teclado.
+ *   habla (push to talk), otro toque corto lo apaga. La tecla B hace lo mismo
+ *   con teclado (la K ya abre la lista de habilidades).
  * - Solo se abre conexion con los jugadores que el juego tiene dibujados al
  *   lado (los que llegan en la lista de objetos del mapa): la voz no atraviesa
  *   paredes ni mapas. El volumen baja con la distancia hasta desaparecer.
@@ -586,11 +586,11 @@ export const VoiceChat = () => {
       return tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable;
     };
     const down = (ev: KeyboardEvent) => {
-      if (ev.code !== 'KeyK' || ev.repeat || typing(ev.target) || ev.ctrlKey || ev.altKey || ev.metaKey) return;
+      if (ev.code !== 'KeyB' || ev.repeat || typing(ev.target) || ev.ctrlKey || ev.altKey || ev.metaKey) return;
       engine.startTalk();
     };
     const up = (ev: KeyboardEvent) => {
-      if (ev.code !== 'KeyK') return;
+      if (ev.code !== 'KeyB') return;
       engine.stopTalk();
     };
     window.addEventListener('keydown', down);

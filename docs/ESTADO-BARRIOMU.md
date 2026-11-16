@@ -183,7 +183,8 @@ si el secreto no coincide. Secreto: `~/openmu/data/sabio-secreto.txt`.
   (`señal ok · cerca N · audio M · estado`): sirve para saber si el problema es de
   identidad (cerca 0), de red (`falla`) o de audio (audio 0 con `tic`).
 - También está en la **PC**: `babylon/pc/index.tsx` monta el mismo botón arriba al centro
-  (estilos en `babylon/pc/voice.less`); se habla manteniendo el botón o la tecla **K**.
+  (estilos en `babylon/pc/voice.less`); se habla manteniendo el botón o la tecla **B**
+  (la **K** abre la lista de habilidades y la **V** el inventario, por eso no se usan).
 - La `Permissions-Policy` de `web/_headers` (landing) sigue sin micrófono; la página del
   juego (`servir.ts`) no manda esa cabecera, así que ahí el micrófono sí está permitido.
 
