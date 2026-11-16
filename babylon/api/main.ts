@@ -28,7 +28,8 @@ import { handleVoice, voiceSocket, voiceUpgrade, type VoiceData } from "./voice"
 const PORT = Number(process.env.PORT || 3400);
 const DATABASE_URL = process.env.DATABASE_URL || "postgres://postgres:admin@127.0.0.1:5432/openmu";
 const ORIGINS = new Set(
-  (process.env.CORS_ORIGIN ?? "https://barriomu.makeseo.app,https://mu.makeseo.app")
+  (process.env.CORS_ORIGIN ??
+    "https://barriomu.makeseo.app,https://mu.makeseo.app,http://127.0.0.1:47801,http://localhost:47801")
     .split(",")
     .map(o => o.trim())
     .filter(Boolean),
