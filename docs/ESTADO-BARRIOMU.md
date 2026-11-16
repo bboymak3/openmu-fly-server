@@ -1,4 +1,4 @@
-# Estado de BarrioMU — 16/11/2026
+# Estado de BarrioMU — 16/11/2026 (voz por proximidad F1/F2)
 
 **El juego está terminado y en producción.** Este documento es la foto técnica del
 proyecto: qué corre, dónde, y el mapa completo de APIs y endpoints. El manual de uso está
@@ -163,6 +163,24 @@ si el secreto no coincide. Secreto: `~/openmu/data/sabio-secreto.txt`.
 | `POST /whatsapp` | `babylon/whatsapp/bot.mjs` | mensaje entrante del bot de WhatsApp |
 | `POST /evolution` | webhook de Evolution API | **sin uso** (Railway eliminado) |
 
+### 3.10 Voz por proximidad (WebRTC entre navegadores)
+
+| Endpoint | Para qué |
+|---|---|
+| `POST /voice/ticket` | el navegador manda el `nonce` de su sesión de juego y el nombre del personaje; se pregunta al proxy (`GET http://127.0.0.1:3001/ticket/<nonce>`) qué cuenta inició sesión y se comprueba en la base que ese personaje sea de esa cuenta; devuelve un ticket firmado (HMAC, vale 5 min) |
+| `WS /voice?ticket=…` | señalización: quién está conectado, y reenvío de ofertas/respuestas/ICE entre dos jugadores. **El audio no pasa por aquí**: va directo de un navegador al otro |
+
+- Secreto propio de la voz: `~/openmu/data/voz-secreto.txt` (se crea solo, permisos 600).
+- Una sola sala. Un socket por personaje: si se reconecta, el anterior se cierra.
+- Freno por socket: 150 mensajes cada 10 s; los mensajes de más de 24 KB se descartan.
+- El cliente (`babylon/mobile/voiceChat.tsx`) solo abre conexión con los jugadores que el
+  juego tiene **dibujados al lado** (máximo 6, los más cercanos) y el volumen baja con la
+  distancia (se oye hasta 18 tiles, la conexión se mantiene hasta 26). Así una zona con
+  15+ personas no satura la tablet: cada cliente habla con sus vecinos, no con todos.
+- El ticket exige una sesión de juego viva: sin estar dentro del juego no hay voz.
+- La `Permissions-Policy` de `web/_headers` (landing) sigue sin micrófono; la página del
+  juego (`servir.ts`) no manda esa cabecera, así que ahí el micrófono sí está permitido.
+
 ## 4. Bots
 
 | Canal | Estado | Detalle |
@@ -208,8 +226,9 @@ copiados en `babylon/personalizar-cliente.sh`. Todo lo de celular va bajo `.mu-m
 Estado actual del HUD móvil: joystick; rueda de combate (ataque grande, 3 habilidades, ✕,
 ✋ recoger, círculo de alcance, lista "Atacar objetivo"); pociones Q/W grandes; cámara con
 arrastre y pellizco (sin pan, sin botones de zoom); pantalla completa automática; botón
-`R` para centrar cámara; chat y ayuda `B`/`A` en la línea superior; timers arriba a la
-derecha; barra inferior **recortada** (sin franja de Q/W/E/R ni la del final); grupo del
+`R` para centrar cámara; chat y ayuda `B`/`A` en la línea superior; botón de **voz**
+(🎙: un toque prende, mantener habla, otro toque corto apaga; muestra cuántos se oyen);
+timers arriba a la derecha; barra inferior **recortada** (sin franja de Q/W/E/R ni la del final); grupo del
 puño pegado al borde inferior derecho; nombres siempre visibles con **presión larga 0.7 s**
 para el menú de jugador (trueque, party, susurro) y cierre al tocar fuera; descripción de
 ítems manteniendo el dedo.
@@ -229,14 +248,18 @@ auto-update desde el release `barriomu-pc`), más teclas de cámara y círculo d
   secreto del Sabio en `~/openmu/data/sabio-secreto.txt`; Telegram en
   `~/.barriomu-telegram`.
 - El bot de WhatsApp no escribe primero para no ser bloqueado.
+- La voz no abre puertos nuevos: la señalización entra por el mismo túnel (`/voice`) y el
+  audio va directo entre navegadores. Sin ticket firmado (y sin sesión de juego viva) el
+  WebSocket responde 401.
 
 ## 8. Pendientes / ideas (nada de esto está implementado)
 
-1. **Voz por proximidad** (estilo "proximity voice chat") en el cliente web: WebRTC +
-   audio por distancia con las posiciones que ya entrega el servidor. Señalización con
-   Cloudflare Workers + Durable Objects; para **más de 15 voces** hace falta un **SFU**
-   (Cloudflare Realtime o LiveKit/mediasoup). Plan por fases F1–F4; el servidor del juego
-   no procesa audio. GitHub Actions solo compilaría el cliente.
+1. **Voz por proximidad**: **F1 y F2 hechos** (señalización en la tablet, ticket con el
+   `nonce` de sesión, botón PTT en el HUD móvil —con la tecla `K` equivalente para quien
+   use teclado—; audio P2P con volumen por distancia). Falta montar el mismo botón en la
+   versión PC/Electron, y F3/F4: **TURN** propio para redes con NAT difícil
+   (Cloudflare Realtime o coturn) y un **SFU** solo si algún día hay más de ~15 personas
+   hablando a la vez en la misma zona. El servidor del juego no procesa audio.
 2. **Globalprov2 (`globalprov2.pages.dev`)**: asignar automáticamente a los técnicos las
    órdenes que llegan de "órdenes-expresas", con un switch para elegir entre automático
    (técnico GLOBAL) y manual. Falta un token de Cloudflare válido para inspeccionarlo.

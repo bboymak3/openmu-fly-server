@@ -23,11 +23,12 @@ import { handleSabio } from "./sabio";
 import { handleWhatsapp, startTelegram } from "./whatsapp";
 import { setWaData, startWaJobs } from "./wa-extras";
 import { handleMercado } from "./mercado";
+import { handleVoice, voiceSocket, voiceUpgrade, type VoiceData } from "./voice";
 
 const PORT = Number(process.env.PORT || 3400);
 const DATABASE_URL = process.env.DATABASE_URL || "postgres://postgres:admin@127.0.0.1:5432/openmu";
 const ORIGINS = new Set(
-  (process.env.CORS_ORIGIN ?? "https://barriomu.makeseo.app")
+  (process.env.CORS_ORIGIN ?? "https://barriomu.makeseo.app,https://mu.makeseo.app")
     .split(",")
     .map(o => o.trim())
     .filter(Boolean),
@@ -275,13 +276,21 @@ function limitOf(url: URL): number {
   return Number.isFinite(n) ? Math.min(Math.max(Math.trunc(n), 1), 100) : 50;
 }
 
-Bun.serve({
+Bun.serve<VoiceData>({
   port: PORT,
   hostname: "127.0.0.1",
-  async fetch(req) {
+  websocket: voiceSocket,
+  async fetch(req, server) {
     const url = new URL(req.url);
     const cors = corsHeaders(req);
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
+
+    // Voz por proximidad: el WebSocket de señalización y el ticket de entrada.
+    const upgraded = voiceUpgrade(req, server);
+    if (upgraded === "upgraded") return;
+    if (upgraded) return upgraded;
+    const voice = await handleVoice(req, url, cors, sql);
+    if (voice) return voice;
 
     const sabio = await handleSabio(req, url, cors, sql);
     if (sabio) return sabio;

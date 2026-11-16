@@ -113,7 +113,7 @@
 }
 
 // El menu del click secundario en el celular: se despliega dejando apretado
-// 1 segundo el NOMBRE de otro jugador sobre el mapa. La capa de los nombres
+// 0.7 segundos el NOMBRE de otro jugador sobre el mapa. La capa de los nombres
 // no toca el puntero de por si; solo la linea del nombre recibe el toque, y
 // con una zona invisible mas grande (el radio no cambia el dibujo del globo
 // ni el acomodo).
@@ -404,4 +404,49 @@
 
 .mu-mobile body:has(.buff-bar) .barrio-targets {
   top: 52px;
+}
+
+// Voz por proximidad: cuadrito en la linea superior, a la derecha de B y A.
+// Un toque lo prende (pide el microfono), mantenerlo apretado habla y otro
+// toque corto lo apaga. El numero es cuanta gente se oye en ese momento.
+.mu-mobile .barrio-voice {
+  position: absolute;
+  top: 4px;
+  left: calc(50% + 152px);
+  width: 38px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  box-sizing: border-box;
+  border-radius: 6px;
+  border: 1px solid #6b5b3e;
+  background: rgba(0, 0, 0, 0.55);
+  color: #e8d9b0;
+  font-size: 14px;
+  line-height: 1;
+  pointer-events: auto;
+  z-index: 175;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+.mu-mobile .barrio-voice.is-on {
+  border-color: #4c9a5f;
+  color: #b6f0c0;
+  background: rgba(10, 40, 18, 0.7);
+}
+
+.mu-mobile .barrio-voice.is-talking {
+  border-color: #ff6b6b;
+  background: rgba(120, 10, 10, 0.78);
+  box-shadow: 0 0 8px rgba(255, 60, 60, 0.55);
+}
+
+.mu-mobile .barrio-voice-count {
+  font-size: 10px;
+  font-weight: bold;
+  color: #ffd700;
 }

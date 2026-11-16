@@ -33,7 +33,7 @@ M=$C/versions/shared/ui/hud/mobile_controls
 cp babylon/mobile/chatButton.tsx babylon/mobile/cameraButton.tsx $M/
 # HUD de celular de BarrioMU: rueda de combate (ataque, 4 habilidades, soltar,
 # recoger, lista de objetivos, circulo de alcance), joystick y pociones.
-cp babylon/mobile/combatPad.tsx babylon/mobile/joystick.tsx babylon/mobile/potionButtons.tsx babylon/mobile/touchHover.ts $M/
+cp babylon/mobile/combatPad.tsx babylon/mobile/joystick.tsx babylon/mobile/potionButtons.tsx babylon/mobile/touchHover.ts babylon/mobile/voiceChat.tsx $M/
 cp babylon/mobile/barrioJoystick.ts $C/src/controllers/interface/
 # Version de PC (mouse y teclado): circulo de alcance y teclas de camara (- + Z Alt+Enter).
 mkdir -p $C/versions/shared/ui/hud/barrio_pc
@@ -43,7 +43,7 @@ cat babylon/mobile/barrio.less >> $M/style.less
 sed -i "s#^import { MoveButton } from './moveButton';#&\nimport { ChatButton } from './chatButton';\nimport { CameraButton } from './cameraButton';#; s#<MoveButton />#&\n      <ChatButton />\n      <CameraButton />#" $M/index.tsx
 grep -c ChatButton $M/index.tsx
 grep -c CameraButton $M/index.tsx
-sed -i "s#^import { SkillPad } from './skillPad';#&\nimport { CombatPad } from './combatPad';\nimport { Joystick } from './joystick';\nimport { PotionButtons } from './potionButtons';#; s#      <MoveButton />#      <CombatPad />\n&#; s#      <SkillPad />#&\n      <Joystick />\n      <PotionButtons />#" $M/index.tsx
+sed -i "s#^import { SkillPad } from './skillPad';#&\nimport { CombatPad } from './combatPad';\nimport { Joystick } from './joystick';\nimport { PotionButtons } from './potionButtons';\nimport { VoiceChat } from './voiceChat';#; s#      <MoveButton />#      <CombatPad />\n&#; s#      <SkillPad />#&\n      <Joystick />\n      <PotionButtons />\n      <VoiceChat />#" $M/index.tsx
 grep -c '<CombatPad />' $M/index.tsx
 grep -c '<Joystick />' $M/index.tsx
 grep -c '<PotionButtons />' $M/index.tsx
