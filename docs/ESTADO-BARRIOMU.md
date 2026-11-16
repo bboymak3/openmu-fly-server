@@ -182,6 +182,8 @@ si el secreto no coincide. Secreto: `~/openmu/data/sabio-secreto.txt`.
 - Mientras la voz está prendida, debajo del botón se ve una línea de diagnóstico
   (`señal ok · cerca N · audio M · estado`): sirve para saber si el problema es de
   identidad (cerca 0), de red (`falla`) o de audio (audio 0 con `tic`).
+- También está en la **PC**: `babylon/pc/index.tsx` monta el mismo botón arriba al centro
+  (estilos en `babylon/pc/voice.less`); se habla manteniendo el botón o la tecla **K**.
 - La `Permissions-Policy` de `web/_headers` (landing) sigue sin micrófono; la página del
   juego (`servir.ts`) no manda esa cabecera, así que ahí el micrófono sí está permitido.
 
@@ -207,7 +209,7 @@ Comandos del bot (Telegram y, si se reactiva, WhatsApp): `estado`, `top`, `mi pu
 | `BarrioDailyRewardPlugIn.cs` | 5.000.000 de zen por cuenta, una vez al día |
 | `BarrioMasterResetPlugIn.cs` | comando `/masterreset` |
 | `BarrioBuffNpcsPlugIn.cs` | NPCs Guerrero (+20% ataque/magia 30 min) y Fortuna (doble EXP/drop 45 min, cada 3 h) |
-| `BarrioStarterSetPlugIn.cs` | set básico gratis a cada personaje nuevo |
+| `BarrioStarterSetPlugIn.cs` | set básico en la bolsa y **alas básicas puestas** a cada personaje nuevo |
 | `BarrioTownNpcsPlugIn.cs` | repone NPCs de tiendas/baúl/misiones en Lorencia, Devias, Noria, Elbeland |
 | `BarrioSpotsPlugIn.cs` | spots de farmeo (`/guardarspot`) y viaje del personaje a un spot por el bot |
 | `BarrioSabioPlugIn.cs` | comando `/ia`: manda la pregunta a la API con el secreto |

@@ -1,0 +1,79 @@
+// BarrioMU: boton de voz en la PC (arriba al centro, fuera del HUD del juego).
+// En el celular estos mismos estilos viven en mobile/barrio.less, con la
+// posicion de la linea del HUD tactil.
+
+.barrio-voice-pc {
+  display: contents;
+}
+
+.barrio-voice-pc .barrio-voice {
+  position: fixed;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  width: 46px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  box-sizing: border-box;
+  border-radius: 6px;
+  border: 1px solid #6b5b3e;
+  background: rgba(0, 0, 0, 0.6);
+  color: #e8d9b0;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.barrio-voice-pc .barrio-voice:hover {
+  border-color: #ffd700;
+  background: rgba(20, 16, 8, 0.8);
+}
+
+.barrio-voice-pc .barrio-voice.is-on {
+  border-color: #4c9a5f;
+  color: #b6f0c0;
+  background: rgba(10, 40, 18, 0.78);
+}
+
+.barrio-voice-pc .barrio-voice.is-talking {
+  border-color: #ff6b6b;
+  background: rgba(120, 10, 10, 0.82);
+  box-shadow: 0 0 8px rgba(255, 60, 60, 0.55);
+}
+
+.barrio-voice-pc .barrio-voice-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.barrio-voice-pc .barrio-voice-count {
+  font-size: 11px;
+  font-weight: bold;
+  color: #7cfc7c;
+}
+
+.barrio-voice-pc .barrio-voice-count.is-warn {
+  color: #ffb347;
+}
+
+// Linea de diagnostico: debajo del boton, sin estorbar (no recibe clics).
+.barrio-voice-pc .barrio-voice-state {
+  position: absolute;
+  top: 34px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.62);
+  color: #e8e0c0;
+  font-size: 11px;
+  line-height: 15px;
+  white-space: nowrap;
+  pointer-events: none;
+}

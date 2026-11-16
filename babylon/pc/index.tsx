@@ -5,6 +5,8 @@ import { useIsMobile } from '@/controllers/interface/mobile';
 import { resetCamera, zoomCamera } from '@/controllers/camera';
 import { addNotification } from '@/modules/chat/notify';
 import { RangeRing, showCombatRing } from '../mobile_controls/combatPad';
+import { VoiceChat } from '../mobile_controls/voiceChat';
+import './voice.less';
 
 /**
  * BarrioMU para PC (mouse y teclado): lo del celular que tambien sirve en la computadora.
@@ -12,6 +14,7 @@ import { RangeRing, showCombatRing } from '../mobile_controls/combatPad';
  * - El circulo rojo de alcance alrededor del personaje mientras pelea (el mismo del celular).
  * - Teclas de camara: - / + (o RePag / AvPag, o el teclado numerico) alejan y acercan,
  *   Z la centra, Alt+Enter o F11 ponen pantalla completa. Ctrl+rueda sigue funcionando.
+ * - Voz por proximidad: el boton de arriba al centro (o la tecla K para hablar).
  * En el celular no se muestra nada de esto: ahi esta el HUD tactil.
  */
 
@@ -68,5 +71,12 @@ export const BarrioPc = observer(() => {
   }, [mobile, inWorld]);
 
   if (mobile || !inWorld) return null;
-  return <RangeRing />;
+  return (
+    <>
+      <RangeRing />
+      <div className="barrio-voice-pc">
+        <VoiceChat />
+      </div>
+    </>
+  );
 });

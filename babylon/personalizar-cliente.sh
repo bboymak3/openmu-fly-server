@@ -37,7 +37,7 @@ cp babylon/mobile/combatPad.tsx babylon/mobile/joystick.tsx babylon/mobile/potio
 cp babylon/mobile/barrioJoystick.ts $C/src/controllers/interface/
 # Version de PC (mouse y teclado): circulo de alcance y teclas de camara (- + Z Alt+Enter).
 mkdir -p $C/versions/shared/ui/hud/barrio_pc
-cp babylon/pc/index.tsx babylon/pc/window.ts $C/versions/shared/ui/hud/barrio_pc/
+cp babylon/pc/index.tsx babylon/pc/window.ts babylon/pc/voice.less $C/versions/shared/ui/hud/barrio_pc/
 cat babylon/mobile/chatButton.less >> $M/style.less
 cat babylon/mobile/barrio.less >> $M/style.less
 sed -i "s#^import { MoveButton } from './moveButton';#&\nimport { ChatButton } from './chatButton';\nimport { CameraButton } from './cameraButton';#; s#<MoveButton />#&\n      <ChatButton />\n      <CameraButton />#" $M/index.tsx
