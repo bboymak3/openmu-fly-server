@@ -190,8 +190,12 @@ si el secreto no coincide. Secreto: `~/openmu/data/sabio-secreto.txt`.
   15+ personas no satura la tablet: cada cliente habla con sus vecinos, no con todos.
 - El ticket exige una sesión de juego viva: sin estar dentro del juego no hay voz.
 - Mientras la voz está prendida, debajo del botón se ve una línea de diagnóstico
-  (`señal ok · cerca N · audio M · estado`): sirve para saber si el problema es de
-  identidad (cerca 0), de red (`falla`) o de audio (audio 0 con `tic`).
+  (`señal ok · cerca N · audio M · KBk · estado`): identidad (`cerca 0`), red
+  (`falla`/`tic`), enlace mudo (`audio 1` con `0k` que no sube) o audio real (`k` sube al
+  hablar). El PTT es **mantener** el botón (o **B**); un toque corto apaga la voz.
+- La reproducción de los demás va por un `<audio>` oculto y el volumen por distancia es
+  `el.volume` (no AudioContext: en Android el contexto puede quedar suspendido y el enlace
+  queda mudo aunque diga `ok`).
 - También está en la **PC**: `babylon/pc/index.tsx` monta el mismo botón arriba al centro
   (estilos en `babylon/pc/voice.less`); se habla manteniendo el botón o la tecla **B**
   (la **K** abre la lista de habilidades y la **V** el inventario, por eso no se usan).

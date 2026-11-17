@@ -37,8 +37,12 @@ type PeerInfo = { id: string; name: string };
 type Link = {
   info: PeerInfo;
   pc: RTCPeerConnection;
-  gain: GainNode | null;
-  source: MediaStreamAudioSourceNode | null;
+  /**
+   * Reproduccion del otro lado. Va por un <audio> normal y no por AudioContext:
+   * en Android el contexto se queda suspendido y el enlace dice "ok" pero no
+   * suena nada. Con el elemento, el volumen por distancia es `el.volume`.
+   */
+  el: HTMLAudioElement | null;
   /** Para soltar un enlace que nunca paso de "new" (se perdio la oferta). */
   createdAt: number;
   /** Ya llego el audio del otro lado (ontrack). */
@@ -59,6 +63,8 @@ export type VoiceUi = {
   nearby: number;
   /** Cuantos jugadores se estan oyendo de verdad. */
   audio: number;
+  /** Bytes de audio recibidos: si no sube, el enlace existe pero no pasa voz. */
+  bytes: number;
   /** Estado de los enlaces, para la linea de diagnostico: "tic" o "falla". */
   links: string;
   /** El WebSocket de senalizacion esta abierto. */
@@ -93,13 +99,16 @@ class VoiceEngine {
   error = '';
   private nearby = 0;
   private audio = 0;
+  private bytes = 0;
+  private statsAt = 0;
   private linksText = '';
   private cooldown = new Map<string, number>();
   /** STUN de arranque; el servidor puede mandar TURN en /voice/ice. */
   private ice: RTCIceServer[] = [{ urls: STUN }];
   private ws: WebSocket | null = null;
   private stream: MediaStream | null = null;
-  private ctx: AudioContext | null = null;
+  /** Cambia con cada pedido de microfono: descarta uno que llego tarde. */
+  private micGen = 0;
   private peers: PeerInfo[] = [];
   private links = new Map<string, Link>();
   private myName = '';
@@ -115,6 +124,7 @@ class VoiceEngine {
       talking: this.talking,
       nearby: this.nearby,
       audio: this.audio,
+      bytes: this.bytes,
       links: this.linksText,
       online: this.ws?.readyState === WebSocket.OPEN,
       error: this.error,
@@ -163,11 +173,13 @@ class VoiceEngine {
   disable(): void {
     this.mode = 'off';
     this.talking = false;
+    this.micGen++;
     this.stopLoops();
     for (const id of [...this.links.keys()]) this.drop(id);
     this.peers = [];
     this.nearby = 0;
     this.audio = 0;
+    this.bytes = 0;
     this.linksText = '';
     this.cooldown.clear();
     this.ice = [{ urls: STUN }];
@@ -179,8 +191,6 @@ class VoiceEngine {
     this.ws = null;
     this.stream?.getTracks().forEach(track => track.stop());
     this.stream = null;
-    void this.ctx?.close().catch(() => undefined);
-    this.ctx = null;
     this.emit();
   }
 
@@ -189,10 +199,13 @@ class VoiceEngine {
       void this.enable();
       return;
     }
-    void this.ctx?.resume().catch(() => undefined);
     if (this.talking) return;
     this.talking = true;
     this.stream?.getAudioTracks().forEach(track => (track.enabled = true));
+    // Si Android bloqueo la reproduccion por autoplay, el toque la destraba.
+    for (const link of this.links.values()) {
+      if (link.el?.paused) void link.el.play().catch(() => undefined);
+    }
     this.signal({ t: 'talk', on: true });
     this.emit();
   }
@@ -206,29 +219,16 @@ class VoiceEngine {
   }
 
   private async openMic(): Promise<void> {
-    // El AudioContext tiene que nacer DENTRO del toque (antes del await del
-    // permiso): si nace despues, Android lo deja suspendido y el audio de los
-    // demas no suena hasta que el jugador aprieta para hablar.
-    const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    const ctx = new Ctx();
-    this.ctx = ctx;
-    void ctx.resume().catch(() => undefined);
-
-    let stream: MediaStream;
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-        video: false,
-      });
-    } catch (error) {
-      this.ctx = null;
-      void ctx.close().catch(() => undefined);
-      throw error;
-    }
-    if (this.ctx !== ctx) {
+    // Sin AudioContext: el microfono es solo captura. La reproduccion del otro
+    // lado va por un <audio>, que en Android no se queda mudo.
+    const gen = ++this.micGen;
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      video: false,
+    });
+    if (gen !== this.micGen || this.mode !== 'on') {
       // Se apago mientras se esperaba el permiso.
       stream.getTracks().forEach(track => track.stop());
-      void ctx.close().catch(() => undefined);
       throw new Error('voz apagada');
     }
     this.stream = stream;
@@ -409,6 +409,8 @@ class VoiceEngine {
       this.setGain(link, still.distance);
     }
 
+    void this.pollStats();
+
     const audible = candidates.filter(item => item.distance <= RANGE).length;
     const links = [...this.links.values()];
     const audio = links.filter(link => link.receiving).length;
@@ -435,8 +437,7 @@ class VoiceEngine {
     const link: Link = {
       info: peer,
       pc,
-      gain: null,
-      source: null,
+      el: null,
       createdAt: performance.now(),
       receiving: false,
       hasRemote: false,
@@ -460,20 +461,21 @@ class VoiceEngine {
       this.emit();
     };
     pc.ontrack = ev => {
-      const ctx = this.ctx;
-      if (!ctx) return;
       const stream = ev.streams[0] ?? new MediaStream([ev.track]);
-      try {
-        link.source = ctx.createMediaStreamSource(stream);
-        link.gain = ctx.createGain();
-        link.gain.gain.value = 0;
-        link.source.connect(link.gain).connect(ctx.destination);
-      } catch {
-        /* el navegador no dejo armar el audio: se oye sin volumen por distancia */
+      let el = link.el;
+      if (!el) {
+        el = document.createElement('audio');
+        el.autoplay = true;
+        el.setAttribute('playsinline', '');
+        el.style.display = 'none';
+        document.body.appendChild(el);
+        link.el = el;
       }
+      el.srcObject = stream;
+      el.volume = 0;
+      void el.play().catch(error => console.info(`[voz] el navegador no dejo sonar a ${peer.name}`, error));
       link.receiving = true;
       console.info(`[voz] audio de ${peer.name}`);
-      addNotification(`Voz: ya se oye a ${peer.name}`, 'info');
       this.emit();
     };
 
@@ -540,11 +542,35 @@ class VoiceEngine {
     }
   }
 
+  /** Bytes de audio que de verdad llegan: si no suben, el enlace esta mudo. */
+  private async pollStats(): Promise<void> {
+    const now = performance.now();
+    if (now - this.statsAt < 2000) return;
+    this.statsAt = now;
+    let total = 0;
+    for (const link of this.links.values()) {
+      if (!link.receiving) continue;
+      try {
+        const report = await link.pc.getStats();
+        report.forEach(stat => {
+          const s = stat as { type?: string; kind?: string; bytesReceived?: number };
+          if (s.type === 'inbound-rtp' && s.kind === 'audio') total += s.bytesReceived ?? 0;
+        });
+      } catch {
+        /* sin estadisticas */
+      }
+    }
+    if (total !== this.bytes) {
+      this.bytes = total;
+      this.emit();
+    }
+  }
+
   private setGain(link: Link, distance: number): void {
-    const ctx = this.ctx;
-    if (!ctx || !link.gain) return;
+    const el = link.el;
+    if (!el) return;
     const near = Math.max(0, Math.min(1, 1 - distance / RANGE));
-    link.gain.gain.setTargetAtTime(Math.pow(near, 1.6), ctx.currentTime, 0.2);
+    el.volume = Math.max(0, Math.min(1, Math.pow(near, 1.6)));
   }
 
   private drop(id: string): void {
@@ -552,8 +578,11 @@ class VoiceEngine {
     if (!link) return;
     this.links.delete(id);
     try {
-      link.source?.disconnect();
-      link.gain?.disconnect();
+      link.el?.pause();
+      if (link.el) {
+        link.el.srcObject = null;
+        link.el.remove();
+      }
     } catch {
       /* ya desconectado */
     }
@@ -649,7 +678,7 @@ export const VoiceChat = () => {
           todo funcione en la tablet y en la PC. */}
       {ui.mode === 'on' && (
         <span className="barrio-voice-state">
-          {ui.online ? 'señal ok' : 'sin señal'} · cerca {ui.nearby} · audio {ui.audio}
+          {ui.online ? 'señal ok' : 'sin señal'} · cerca {ui.nearby} · audio {ui.audio} · {Math.round(ui.bytes / 1024)}k
           {ui.links ? ` · ${ui.links}` : ''}
         </span>
       )}
