@@ -1,4 +1,4 @@
-# Estado de BarrioMU — 16/11/2026 (voz por proximidad F1/F2)
+# Estado de BarrioMU — 17/11/2026 (voz por proximidad F1/F2 + TURN de Cloudflare)
 
 **El juego está terminado y en producción.** Este documento es la foto técnica del
 proyecto: qué corre, dónde, y el mapa completo de APIs y endpoints. El manual de uso está
@@ -168,10 +168,20 @@ si el secreto no coincide. Secreto: `~/openmu/data/sabio-secreto.txt`.
 | Endpoint | Para qué |
 |---|---|
 | `POST /voice/ticket` | el navegador manda el `nonce` de su sesión de juego y el nombre del personaje; se pregunta al proxy (`GET http://127.0.0.1:3001/ticket/<nonce>`) qué cuenta inició sesión y se comprueba en la base que ese personaje sea de esa cuenta; devuelve un ticket firmado (HMAC, vale 5 min) |
-| `GET /voice/ice` | servidores STUN/TURN que usa el navegador. Salen de `~/openmu/data/voz-ice.json` si existe (así se agrega un **TURN** sin recompilar el cliente) |
+| `GET /voice/ice` | servidores STUN/TURN que usa el navegador. Primero pide **credenciales temporales del TURN de Cloudflare** (llave en `~/openmu/data/cf-voz.json`, valen 24 h y se cachean 12 h); si no hay llave o Cloudflare falla, usa `~/openmu/data/voz-ice.json` y, si tampoco está, STUN de Google. Así se agrega o cambia un TURN **sin recompilar el cliente** |
+| `GET /voice/estado` | diagnóstico público de solo lectura: de dónde salen los ICE (`cloudflare`/`archivo`/`stun`, con `error` si falló), quiénes están en la sala (nombre, hace cuánto, mensajes) y tickets de los últimos 5 min con el motivo de cada rechazo. Con esto se sabe si el enlace va por `relay` (TURN) o directo |
 | `WS /voice?ticket=…` | señalización: quién está conectado, y reenvío de ofertas/respuestas/ICE entre dos jugadores. **El audio no pasa por aquí**: va directo de un navegador al otro |
 
 - Secreto propio de la voz: `~/openmu/data/voz-secreto.txt` (se crea solo, permisos 600).
+- TURN: llave `barriomu` de Cloudflare en `~/openmu/data/cf-voz.json`
+  (`{"keyId":"…","token":"…"}`, permisos 600). Es TURN gestionado, sin nada instalado;
+  entra en los **1 TB gratis al mes** (la voz gasta ~10 MB por hora de escucha). Si la
+  llave se filtra o se rota, se cambia el archivo y se reinicia la API: no toca el cliente.
+  Sin TURN, dos redes cerradas (datos del celular contra wifi) no logran audio aunque la
+  señal diga `ok`.
+- **El micrófono exige `https://`**: `mu.makeseo.app` sin `https` carga en claro y Chrome
+  bloquea el micrófono. En Cloudflare, `makeseo.app` → SSL/TLS → Edge Certificates →
+  **Always Use HTTPS = On** (así escribir el dominio sin `https://` redirige solo).
 - Una sola sala. Un socket por personaje: si se reconecta, el anterior se cierra.
 - Freno por socket: 150 mensajes cada 10 s; los mensajes de más de 24 KB se descartan.
 - El cliente (`babylon/mobile/voiceChat.tsx`) solo abre conexión con los jugadores que el

@@ -15,6 +15,13 @@
 //   los jugadores que VE en el mapa (los que le manda el juego), y el volumen
 //   lo pone la distancia. Así el número de conexiones no crece con la gente
 //   conectada, solo con la que está al lado.
+// - Si hay NAT difícil (datos del celular, wifi con firewall) la voz no pasa:
+//   para eso está el TURN de Cloudflare. La llave vive en
+//   ~/openmu/data/cf-voz.json y aquí se piden credenciales temporales (24 h) en
+//   /voice/ice. Sin llave, o si Cloudflare falla, se sigue con STUN sin romper
+//   nada. El costo entra en los 1 TB gratis al mes de Cloudflare.
+// - /voice/estado devuelve, sin secretos, de dónde salen los ICE, quiénes están
+//   en la sala y cómo van los tickets: sirve para diagnosticar sin adivinar.
 
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -31,6 +38,22 @@ const SECRET_FILE = process.env.VOICE_SECRET_FILE ?? `${homedir()}/openmu/data/v
  * escribir la lista y reiniciar la API.
  */
 const ICE_FILE = process.env.VOICE_ICE_FILE ?? `${homedir()}/openmu/data/voz-ice.json`;
+/**
+ * Llave TURN de Cloudflare ({keyId, token}). Con ella se piden credenciales
+ * temporales (1 h) para cada cliente: el TURN es gratis hasta 1 TB al mes y
+ * atraviesa redes cerradas (datos del celular, wifi con firewall). El archivo
+ * es secreto, solo lo lee la API en la tablet.
+ */
+const CF_FILE = process.env.VOICE_CF_FILE ?? `${homedir()}/openmu/data/cf-voz.json`;
+const CF_API = "https://rtc.live.cloudflare.com/v1/turn/keys";
+/**
+ * Credenciales de 24 h (Cloudflare las acepta) que se renuevan a las 12 h: así
+ * una partida larga no se queda sin TURN a mitad de camino.
+ */
+const CF_TTL_SEC = 86_400;
+const CF_RENEW_MS = 12 * 60 * 60 * 1000;
+/** Si Cloudflare falla no se insiste en cada visita: 1 min de espera. */
+const CF_RETRY_MS = 60_000;
 const DEFAULT_ICE = [{ urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] }];
 /** Cuánto vale un ticket. El cliente lo pide justo antes de entrar. */
 const TICKET_MS = 5 * 60 * 1000;
@@ -124,6 +147,123 @@ function corsFor(cors: Record<string, string>): Record<string, string> {
   return { "Content-Type": "application/json", "Cache-Control": "no-store", ...cors };
 }
 
+/* ------------------------------------------------------------------- ICE */
+
+type IceServer = { urls: string | string[]; username?: string; credential?: string };
+type IceState = {
+  servers: IceServer[];
+  /** De dónde salieron: credenciales de Cloudflare, archivo manual o STUN público. */
+  source: "cloudflare" | "archivo" | "stun";
+  until: number;
+  error: string;
+};
+
+let iceCache: { state: IceState } | null = null;
+
+/** La llave TURN de Cloudflare, si el dueño la guardó. Nunca sale al navegador. */
+function readCloudflareKey(): { keyId: string; token: string } | null {
+  try {
+    const parsed = JSON.parse(readFileSync(CF_FILE, "utf8")) as { keyId?: unknown; token?: unknown };
+    const keyId = typeof parsed.keyId === "string" ? parsed.keyId.trim() : "";
+    const token = typeof parsed.token === "string" ? parsed.token.trim() : "";
+    if (/^[0-9a-f]{32}$/i.test(keyId) && token.length >= 20) return { keyId, token };
+    console.error("voz: cf-voz.json existe pero no tiene keyId/token válidos");
+  } catch {
+    /* sin llave: se sigue con STUN */
+  }
+  return null;
+}
+
+/** Lista manual de ICE (escape: un TURN propio sin tocar código). */
+function readIceFile(): IceServer[] | null {
+  try {
+    const parsed: unknown = JSON.parse(readFileSync(ICE_FILE, "utf8"));
+    if (Array.isArray(parsed) && parsed.length) return parsed as IceServer[];
+  } catch {
+    /* sin archivo */
+  }
+  return null;
+}
+
+async function askCloudflare(key: { keyId: string; token: string }): Promise<IceServer[]> {
+  const res = await fetch(`${CF_API}/${key.keyId}/credentials/generate-ice-servers`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key.token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ ttl: CF_TTL_SEC }),
+    signal: AbortSignal.timeout(4000),
+  });
+  if (!res.ok) throw new Error(`Cloudflare respondió ${res.status}`);
+  const body = (await res.json()) as { iceServers?: unknown };
+  if (!Array.isArray(body.iceServers) || !body.iceServers.length) throw new Error("Cloudflare no mandó servidores");
+  return body.iceServers as IceServer[];
+}
+
+/**
+ * ICE vigente para los clientes. Cloudflare firma credenciales de 24 h: se
+ * cachean 12 h. Si falla, no se rompe la voz: se usa el archivo manual o STUN
+ * y se reintenta en un minuto.
+ */
+async function resolveIce(): Promise<IceState> {
+  const now = Date.now();
+  if (iceCache && iceCache.state.until > now) return iceCache.state;
+
+  const fallback = (error: string): IceState => {
+    const file = readIceFile();
+    const state: IceState = {
+      servers: file ?? (DEFAULT_ICE as IceServer[]),
+      source: file ? "archivo" : "stun",
+      until: Date.now() + CF_RETRY_MS,
+      error,
+    };
+    iceCache = { state };
+    return state;
+  };
+
+  const key = readCloudflareKey();
+  if (!key) return fallback("");
+  try {
+    const servers = await askCloudflare(key);
+    const state: IceState = { servers, source: "cloudflare", until: now + CF_RENEW_MS, error: "" };
+    iceCache = { state };
+    console.log(`voz: TURN de Cloudflare listo (${servers.length} entradas)`);
+    return state;
+  } catch (error) {
+    const why = error instanceof Error ? error.message : String(error);
+    console.error("voz: Cloudflare TURN falló, se sigue con STUN/archivo:", why);
+    return fallback(why);
+  }
+}
+
+/* ------------------------------------------------------- contadores de apoyo */
+
+type TicketEvent = { at: number; ok: boolean; why: string };
+const ticketEvents: TicketEvent[] = [];
+
+function noteTicket(ok: boolean, why = ""): void {
+  ticketEvents.push({ at: Date.now(), ok, why });
+  if (ticketEvents.length > 400) ticketEvents.splice(0, ticketEvents.length - 400);
+}
+
+/** Lo que pasó con los tickets en los últimos 5 minutos (para /voice/estado). */
+function ticketSummary(): { ok: number; rechazados: number; motivos: Record<string, number> } {
+  const from = Date.now() - 5 * 60 * 1000;
+  let ok = 0;
+  let rechazados = 0;
+  const motivos: Record<string, number> = {};
+  for (const ev of ticketEvents) {
+    if (ev.at < from) continue;
+    if (ev.ok) ok++;
+    else {
+      rechazados++;
+      motivos[ev.why || "otro"] = (motivos[ev.why || "otro"] ?? 0) + 1;
+    }
+  }
+  return { ok, rechazados, motivos };
+}
+
+let signalCount = 0;
+let talkCount = 0;
+
 /** Lo que la sesión del juego dice: la cuenta que inició sesión con ese nonce. */
 async function accountOfNonce(nonce: string): Promise<string | null> {
   try {
@@ -145,17 +285,49 @@ export async function handleVoice(
 ): Promise<Response | null> {
   if (url.pathname === "/voice/ice") {
     if (req.method !== "GET") return new Response("Method not allowed", { status: 405, headers: corsFor(cors) });
-    let servers: unknown = DEFAULT_ICE;
-    try {
-      const parsed: unknown = JSON.parse(readFileSync(ICE_FILE, "utf8"));
-      if (Array.isArray(parsed) && parsed.length) servers = parsed;
-    } catch {
-      /* sin archivo: solo STUN */
-    }
-    return new Response(JSON.stringify({ iceServers: servers }), {
+    const ice = await resolveIce();
+    return new Response(JSON.stringify({ iceServers: ice.servers, source: ice.source }), {
       status: 200,
       headers: { ...corsFor(cors), "Cache-Control": "no-store" },
     });
+  }
+
+  /**
+   * Diagnóstico público y de solo lectura: qué ICE se está usando, quién está en
+   * la sala y cómo van los tickets. Sirve para saber si el enlace va por `relay`
+   * (TURN) o directo, sin pedir capturas de pantalla.
+   */
+  if (url.pathname === "/voice/estado") {
+    if (req.method !== "GET") return new Response("Method not allowed", { status: 405, headers: corsFor(cors) });
+    const ice = await resolveIce();
+    const now = Date.now();
+    const estado = {
+      ok: true,
+      version: "voz-2",
+      hora: new Date(now).toISOString(),
+      apiArribaHaceSeg: Math.round(process.uptime()),
+      ice: {
+        fuente: ice.source,
+        servidores: ice.servers.map(s => s.urls),
+        renuevaEnSeg: Math.max(0, Math.round((ice.until - now) / 1000)),
+        llaveCloudflare: Boolean(readCloudflareKey()),
+        archivoManual: Boolean(readIceFile()),
+        error: ice.error || null,
+      },
+      voz: {
+        conectados: peers.size,
+        tope: MAX_SOCKETS,
+        jugadores: [...peers.values()].map(p => ({
+          nombre: p.name,
+          conectadoHaceSeg: Math.round((now - p.ws.data.since) / 1000),
+          ultimoMensajeHaceSeg: Math.round((now - p.ws.data.lastSeen) / 1000),
+          mensajes: p.ws.data.msgs,
+        })),
+      },
+      tickets: ticketSummary(),
+      contadores: { senal: signalCount, charla: talkCount },
+    };
+    return new Response(JSON.stringify(estado, null, 2), { status: 200, headers: corsFor(cors) });
   }
 
   if (url.pathname !== "/voice/ticket") return null;
@@ -163,6 +335,7 @@ export async function handleVoice(
 
   const ip = req.headers.get("cf-connecting-ip") ?? req.headers.get("x-forwarded-for") ?? "local";
   if (!ticketAllowed(ip)) {
+    noteTicket(false, "límite");
     return new Response(JSON.stringify({ error: "Demasiados intentos, espera un minuto." }), { status: 429, headers: corsFor(cors) });
   }
 
@@ -170,20 +343,24 @@ export async function handleVoice(
   try {
     body = (await req.json()) as { nonce?: unknown; name?: unknown };
   } catch {
+    noteTicket(false, "cuerpo");
     return new Response(JSON.stringify({ error: "Cuerpo inválido." }), { status: 400, headers: corsFor(cors) });
   }
 
   const nonce = typeof body.nonce === "string" ? body.nonce.trim().toLowerCase() : "";
   const name = typeof body.name === "string" ? body.name.trim() : "";
   if (!NONCE_RE.test(nonce)) {
+    noteTicket(false, "nonce");
     return new Response(JSON.stringify({ error: "Nonce inválido." }), { status: 400, headers: corsFor(cors) });
   }
   if (!NAME_RE.test(name)) {
+    noteTicket(false, "nombre");
     return new Response(JSON.stringify({ error: "Nombre de personaje inválido." }), { status: 400, headers: corsFor(cors) });
   }
 
   const account = await accountOfNonce(nonce);
   if (!account) {
+    noteTicket(false, "sin sesión");
     return new Response(JSON.stringify({ error: "Ese personaje no está en el juego." }), { status: 403, headers: corsFor(cors) });
   }
 
@@ -195,9 +372,11 @@ export async function handleVoice(
     where lower(a."LoginName") = lower(${account}) and lower(c."Name") = lower(${name})
     limit 1`;
   if (!rows.length) {
+    noteTicket(false, "personaje ajeno");
     return new Response(JSON.stringify({ error: "Ese personaje no es de esa cuenta." }), { status: 403, headers: corsFor(cors) });
   }
 
+  noteTicket(true);
   return new Response(JSON.stringify(ticketFor(name, account)), { status: 200, headers: corsFor(cors) });
 }
 
@@ -207,6 +386,10 @@ export type VoiceData = {
   id: string;
   name: string;
   account: string;
+  /** Cuándo entró a la sala (para /voice/estado). */
+  since: number;
+  /** Mensajes recibidos en total. */
+  msgs: number;
   /** Ventana del freno de mensajes. */
   windowStart: number;
   windowCount: number;
@@ -271,6 +454,8 @@ export function voiceUpgrade(req: Request, server: Server): Response | "upgraded
     id: randomBytes(6).toString("hex"),
     name: ticket.name,
     account: ticket.account,
+    since: now,
+    msgs: 0,
     windowStart: now,
     windowCount: 0,
     lastSeen: now,
@@ -297,6 +482,7 @@ export const voiceSocket = {
     const data = ws.data;
     const now = Date.now();
     data.lastSeen = now;
+    data.msgs++;
 
     if (now - data.windowStart > RATE_WINDOW_MS) {
       data.windowStart = now;
@@ -330,12 +516,14 @@ export const voiceSocket = {
       const to = typeof msg.to === "string" ? msg.to : "";
       const target = peers.get(to);
       if (!target) return;
+      signalCount++;
       send(target.ws, { t: "signal", from: data.id, data: msg.data });
       return;
     }
 
     if (msg.t === "talk") {
       const on = msg.on === true;
+      talkCount++;
       for (const peer of peers.values()) {
         if (peer.id !== data.id) send(peer.ws, { t: "talk", from: data.id, name: data.name, on });
       }
