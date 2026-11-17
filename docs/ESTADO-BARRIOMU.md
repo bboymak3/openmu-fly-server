@@ -201,6 +201,10 @@ si el secreto no coincide. Secreto: `~/openmu/data/sabio-secreto.txt`.
   (la **K** abre la lista de habilidades y la **V** el inventario, por eso no se usan).
 - La `Permissions-Policy` de `web/_headers` (landing) sigue sin micrófono; la página del
   juego (`servir.ts`) no manda esa cabecera, así que ahí el micrófono sí está permitido.
+- **Verificado en la tablet el 17/11/2026**: TURN de Cloudflare sirviendo credenciales,
+  reproducción por `<audio>` (la vía con `AudioContext` quedaba muda en Android) y
+  diagnóstico con bytes (`· Nk`). El botón es PTT: un toque prende/apaga y hay que
+  mantenerlo para hablar.
 
 ## 4. Bots
 
