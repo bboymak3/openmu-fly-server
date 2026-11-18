@@ -10,6 +10,7 @@ using System.ComponentModel.DataAnnotations;
 using System.IO;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Runtime.InteropServices;
 using System.Text.Json.Serialization;
 using MUnique.OpenMU.DataModel;
 using MUnique.OpenMU.DataModel.Entities;
@@ -58,7 +59,7 @@ public class BarrioMascotasPlugIn : IChatCommandPlugIn, IPeriodicTaskPlugIn, IPl
 
     private static readonly BarrioStore<PetState> Store = new("mascotas-sabio");
 
-    private static readonly ConcurrentDictionary<string, Runtime> Runtime = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly ConcurrentDictionary<string, PetRuntime> States = new(StringComparer.OrdinalIgnoreCase);
 
     private static readonly ConcurrentDictionary<string, DateTime> PairCooldown = new(StringComparer.OrdinalIgnoreCase);
 
@@ -162,7 +163,7 @@ public class BarrioMascotasPlugIn : IChatCommandPlugIn, IPeriodicTaskPlugIn, IPl
         }
 
         var stage = StageOf(pet.Definition?.Number ?? 0);
-        if (stage < 1 || !Runtime.TryGetValue(KeyOf(character), out var state))
+        if (stage < 1 || !States.TryGetValue(KeyOf(character), out var state))
         {
             return;
         }
@@ -228,7 +229,7 @@ public class BarrioMascotasPlugIn : IChatCommandPlugIn, IPeriodicTaskPlugIn, IPl
         if (now >= _nextFlush)
         {
             _nextFlush = now.AddSeconds(30);
-            foreach (var pair in Runtime)
+            foreach (var pair in States)
             {
                 Flush(pair.Key, pair.Value);
             }
@@ -299,7 +300,7 @@ public class BarrioMascotasPlugIn : IChatCommandPlugIn, IPeriodicTaskPlugIn, IPl
         }
     }
 
-    private static async ValueTask EvolveAsync(Player player, Runtime state)
+    private static async ValueTask EvolveAsync(Player player, PetRuntime state)
     {
         var old = player.Inventory?.GetItem(InventoryConstants.PetSlot);
         if (old is null || state.Stage >= MaxStage)
@@ -354,8 +355,8 @@ public class BarrioMascotasPlugIn : IChatCommandPlugIn, IPeriodicTaskPlugIn, IPl
 
     private static ValueTask RunBanterAsync(DateTime now)
     {
-        var ready = new List<Runtime>();
-        foreach (var state in Runtime.Values)
+        var ready = new List<PetRuntime>();
+        foreach (var state in States.Values)
         {
             if (state.Stage != MaxStage || !state.Active || now - state.EquippedSinceUtc < TimeSpan.FromMinutes(1))
             {
@@ -392,7 +393,7 @@ public class BarrioMascotasPlugIn : IChatCommandPlugIn, IPeriodicTaskPlugIn, IPl
         return ValueTask.CompletedTask;
     }
 
-    private static async Task BanterAsync(Runtime first, Runtime second)
+    private static async Task BanterAsync(PetRuntime first, PetRuntime second)
     {
         if (first.Owner?.TryGetTarget(out var ownerA) is not true || second.Owner?.TryGetTarget(out var ownerB) is not true)
         {
@@ -412,7 +413,7 @@ public class BarrioMascotasPlugIn : IChatCommandPlugIn, IPeriodicTaskPlugIn, IPl
         }
     }
 
-    private static async Task AskAndSayAsync(Player player, string kind, Runtime state, string partner = "", string message = "")
+    private static async Task AskAndSayAsync(Player player, string kind, PetRuntime state, string partner = "", string message = "")
     {
         var lines = await AskPhraseLinesAsync(player, kind, state, partner, message).ConfigureAwait(false);
         foreach (var line in lines)
@@ -421,7 +422,7 @@ public class BarrioMascotasPlugIn : IChatCommandPlugIn, IPeriodicTaskPlugIn, IPl
         }
     }
 
-    private static async ValueTask<string[]> AskPhraseLinesAsync(Player player, string kind, Runtime state, string partner = "", string message = "")
+    private static async ValueTask<string[]> AskPhraseLinesAsync(Player player, string kind, PetRuntime state, string partner = "", string message = "")
     {
         var fallback = Fallback(kind, state.Stage);
         var secret = ReadSecret();
@@ -493,14 +494,14 @@ public class BarrioMascotasPlugIn : IChatCommandPlugIn, IPeriodicTaskPlugIn, IPl
         }
     }
 
-    private static Runtime GetRuntime(Player player, MUnique.OpenMU.DataModel.Entities.Character character)
+    private static PetRuntime GetRuntime(Player player, MUnique.OpenMU.DataModel.Entities.Character character)
     {
         var key = KeyOf(character);
-        return Runtime.GetOrAdd(key, k =>
+        return States.GetOrAdd(key, k =>
         {
             var saved = Store.Get(k);
             var resets = (int)(player.Attributes?[Stats.Resets] ?? 0);
-            return new Runtime
+            return new PetRuntime
             {
                 Key = k,
                 Stage = saved?.Stage ?? 0,
@@ -516,7 +517,7 @@ public class BarrioMascotasPlugIn : IChatCommandPlugIn, IPeriodicTaskPlugIn, IPl
     private static string KeyOf(MUnique.OpenMU.DataModel.Entities.Character character) =>
         character.Id == Guid.Empty ? "name:" + character.Name : character.Id.ToString();
 
-    private static void Flush(string key, Runtime state) =>
+    private static void Flush(string key, PetRuntime state) =>
         Store.Update(key, _ => new PetState(state.Stage, state.Seconds, state.TotalResets, state.LastResets));
 
     private static int StageOf(byte number) => Array.IndexOf(StageItem, number) + 1;
@@ -539,7 +540,7 @@ public class BarrioMascotasPlugIn : IChatCommandPlugIn, IPeriodicTaskPlugIn, IPl
     /// <summary>Lo que sobrevive a un reinicio.</summary>
     public sealed record PetState(int Stage, double Seconds, int TotalResets, int LastResets);
 
-    private sealed class Runtime
+    private sealed class PetRuntime
     {
         public string Key { get; set; } = string.Empty;
 
