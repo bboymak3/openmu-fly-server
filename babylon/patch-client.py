@@ -603,6 +603,19 @@ type Slot = TagSlot<TagEntity, HTMLDivElement>;""",
         "import { ChatLineType } from '../../modules/chat/chat';\n",
     ),
 
+    # Las mascotas del Sabio llevan el nombre de su etapa. Solo cambia el texto:
+    # el item, su ranura y sus bonus (EXP en el Panda, ataque en el Dragón) siguen
+    # siendo los del juego.
+    (
+        "src/i18n/itemNames.ts",
+        "  '13/0': 'Ángel Guardián',\n",
+        "  // BarrioMU: mascotas del Sabio (el nombre del chat dice lo mismo).\n"
+        "  '13/0': 'Sabio',\n"
+        "  '13/65': 'Sabio Espíritu',\n"
+        "  '13/80': 'Sabio Panda',\n"
+        "  '13/64': 'Sabio Dragón',\n",
+    ),
+
 ]
 
 for path, old, new in PATCHES:

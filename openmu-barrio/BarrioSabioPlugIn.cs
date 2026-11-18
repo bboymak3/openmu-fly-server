@@ -4,6 +4,7 @@
 
 namespace MUnique.OpenMU.GameLogic.PlugIns;
 
+using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations;
 using System.IO;
 using System.Net.Http;
@@ -17,7 +18,10 @@ using MUnique.OpenMU.GameLogic.NPC;
 using MUnique.OpenMU.GameLogic.PlugIns.ChatCommands;
 using MUnique.OpenMU.GameLogic.Views;
 using MUnique.OpenMU.GameLogic.Views.NPC;
+using MUnique.OpenMU.GameLogic.Views.World;
+using MUnique.OpenMU.Pathfinding;
 using MUnique.OpenMU.PlugIns;
+using Nito.AsyncEx;
 
 /// <summary>
 /// BarrioMU: "El Sabio del Barrio", la IA del juego. El jugador escribe <c>/ia pregunta</c>
@@ -36,7 +40,7 @@ using MUnique.OpenMU.PlugIns;
 [PlugIn]
 [Display(Name = "BarrioMU: El Sabio del Barrio (/ia)", Description = "Comando /ia y NPC Sabio en Lorencia: preguntas a la IA del servidor, que contesta por susurro con los datos reales del personaje.")]
 [Guid("5A6B7C8D-9E0F-4A1B-8C2D-3E4F5A6B7C81")]
-public class BarrioSabioPlugIn : IChatCommandPlugIn, IObjectAddedToMapPlugIn, IPlayerTalkToNpcPlugIn
+public class BarrioSabioPlugIn : IChatCommandPlugIn, IObjectAddedToMapPlugIn, IPlayerTalkToNpcPlugIn, IPeriodicTaskPlugIn
 {
     /// <summary>
     /// El saludo del NPC. El cliente de BarrioMU lo reconoce (empieza asi) y abre el chat
@@ -57,7 +61,13 @@ public class BarrioSabioPlugIn : IChatCommandPlugIn, IObjectAddedToMapPlugIn, IP
 
     private static readonly ConditionalWeakTable<GameMap, object> SpawnedMaps = new();
 
+    private static readonly ConcurrentDictionary<GameMap, NonPlayerCharacter> Sabios = new();
+
+    private static readonly AsyncLock MoveLock = new();
+
     private static readonly SemaphoreSlim SpawnLock = new(1, 1);
+
+    private DateTime _nextMove;
 
     private const string Command = "/ia";
 
@@ -186,10 +196,51 @@ public class BarrioSabioPlugIn : IChatCommandPlugIn, IObjectAddedToMapPlugIn, IP
             OwnNpcs.AddOrUpdate(npc, new object());
             await map.AddAsync(npc).ConfigureAwait(false);
             npc.OnSpawn();
+            Sabios[map] = npc;
         }
         finally
         {
             SpawnLock.Release();
+        }
+    }
+
+    /// <inheritdoc />
+    public ValueTask ExecuteTaskAsync(GameContext gameContext)
+    {
+        var now = DateTime.UtcNow;
+        if (now < this._nextMove || Sabios.IsEmpty)
+        {
+            return ValueTask.CompletedTask;
+        }
+
+        this._nextMove = now.AddSeconds(6);
+        return MoveSabiosAsync();
+    }
+
+    /// <inheritdoc />
+    public void ForceStart()
+    {
+        this._nextMove = DateTime.MinValue;
+    }
+
+    private static async ValueTask MoveSabiosAsync()
+    {
+        var center = new Point(SabioX, SabioY);
+        foreach (var npc in Sabios.Values)
+        {
+            if (npc.CurrentMap is not { } map)
+            {
+                continue;
+            }
+
+            var target = map.Terrain.GetRandomCoordinate(center, 2);
+            if (!map.Terrain.WalkMap[target.X, target.Y])
+            {
+                continue;
+            }
+
+            // Un NPC no tiene walker: Instant lo mueve sin pathfinding, pero dentro de su zona.
+            await map.MoveAsync(npc, target, MoveLock, MoveType.Instant, true).ConfigureAwait(false);
         }
     }
 
@@ -202,8 +253,16 @@ public class BarrioSabioPlugIn : IChatCommandPlugIn, IObjectAddedToMapPlugIn, IP
         }
 
         eventArgs.HasBeenHandled = true;
-        await player.InvokeViewPlugInAsync<IShowMessageOfObjectPlugIn>(p => p.ShowMessageOfObjectAsync("Epale pana! Preguntame lo que quieras.", npc)).ConfigureAwait(false);
+        var gavePet = await BarrioMascotasPlugIn.GiveFirstPetAsync(player).ConfigureAwait(false);
+        var bubble = gavePet
+            ? "¡Epale pana! Toma, ahí va mi primera etapa. /mascota te dice cómo va."
+            : "¡Epale pana! Preguntame lo que quieras.";
+        await player.InvokeViewPlugInAsync<IShowMessageOfObjectPlugIn>(p => p.ShowMessageOfObjectAsync(bubble, npc)).ConfigureAwait(false);
         await WhisperAsync(player, Greeting).ConfigureAwait(false);
+        if (gavePet)
+        {
+            await WhisperAsync(player, "Te di al Sabio como mascota. Se pone sola, evoluciona con resets o tiempo puesto y habla en el chat del mapa. /mascota lo ves.").ConfigureAwait(false);
+        }
     }
 
     private static async Task AskAsync(Player player, SabioRequest request)

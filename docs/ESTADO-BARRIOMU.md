@@ -158,6 +158,7 @@ si el secreto no coincide. Secreto: `~/openmu/data/sabio-secreto.txt`.
 | Endpoint | Quién lo llama | Para qué |
 |---|---|---|
 | `POST /sabio` | `BarrioSabioPlugIn.cs` (comando `/ia`) | pregunta del jugador → Workers AI (Llama 3.3) |
+| `POST /sabio` con `mode:"frase"` | `BarrioMascotasPlugIn.cs` | frases cortas de las mascotas (saludo, evolución, respuesta y duelo); cupo aparte, con frases fijas si falla la IA |
 | `POST /aviso` | `BarrioAvisosPlugIn.cs` | eventos del juego → avisos por Telegram |
 | `POST /wa-chat` | `BarrioAvisosPlugIn.cs` | susurro dentro del juego a un jugador (`@Nombre mensaje`, respuesta con `/wa`) |
 | `POST /whatsapp` | `babylon/whatsapp/bot.mjs` | mensaje entrante del bot de WhatsApp |
@@ -231,7 +232,8 @@ Comandos del bot (Telegram y, si se reactiva, WhatsApp): `estado`, `top`, `mi pu
 | `BarrioStarterSetPlugIn.cs` | set básico en la bolsa y **alas básicas puestas** a cada personaje nuevo |
 | `BarrioTownNpcsPlugIn.cs` | repone NPCs de tiendas/baúl/misiones en Lorencia, Devias, Noria, Elbeland |
 | `BarrioSpotsPlugIn.cs` | spots de farmeo (`/guardarspot`) y viaje del personaje a un spot por el bot |
-| `BarrioSabioPlugIn.cs` | comando `/ia`: manda la pregunta a la API con el secreto |
+| `BarrioSabioPlugIn.cs` | comando `/ia` y NPC en Lorencia: entrega la primera mascota y pasea por su zona |
+| `BarrioMascotasPlugIn.cs` | mascotas del Sabio: 4 etapas, `/mascota`, evolución por resets/tiempo, frases en el chat del mapa y duelos entre mascotas máximas |
 | `BarrioAvisosPlugIn.cs` | cuenta a la API lo que pasa (subidas de nivel, resets, muertes farmeando, susurros) |
 | `BarrioOfflineRespawnPolicy.cs` | que un personaje en `/offlevel` siga farmeando después de morir |
 | `BarrioStore.cs` | almacén JSON de los plugins (`data/<nombre>.json`) |

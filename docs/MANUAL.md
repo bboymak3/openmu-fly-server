@@ -294,6 +294,19 @@ puntos, monedas, mapa), los precios reales de la tienda y lo que hay en La Plaza
 - Archivos: `~/.barriomu-ia` (cuenta y token, dentro de Ubuntu), `~/openmu/data/sabio-secreto.txt`
   (secreto entre OpenMU y la API). Tablas: `barrio.sabio_uso`, `barrio.sabio_log`.
 
+### Las mascotas del Sabio
+- Al hablar con el NPC Sabio en Lorencia te da **Sabio** (Guardian Angel), ya puesto en la
+  ranura de mascota. Si ya tenés otra mascota puesta, no se la cambia.
+- `/mascota` dice la etapa y cuánto falta. Evoluciona sola al cumplir **una** de estas dos:
+  **1 reset o 2 h puesta → Sabio Espíritu**; **2 resets o 4 h → Sabio Panda (+50% EXP)**;
+  **3 resets u 8 h → Sabio Dragón (+40% ataque)**. El tiempo corre solo con la mascota
+  puesta y el personaje conectado; se guarda en `~/openmu/data/mascotas-sabio.json`.
+- Habla en el **chat del mapa** (no global): al equiparla, al subir de nivel, al evolucionar y
+  si escribís "Sabio" en el chat. Cada 5 minutos, si hay **2 o más Sabios Dragón** en el mismo
+  mapa hace más de 1 minuto, se pelean con dos frases cortas de la IA (enemigos, rivalidad).
+- Las frases no gastan el cupo de `/ia`, tienen límite y, si la IA falla, salen frases fijas.
+  La IA **no puede dar items, zen ni puntos**.
+
 ### El Sabio por WhatsApp (bot en la tablet)
 
 > ⚠️ **Estado (16/11/2026): WhatsApp está APAGADO por seguridad.** La instancia de Railway
