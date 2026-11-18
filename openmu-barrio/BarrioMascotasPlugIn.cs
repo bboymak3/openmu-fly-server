@@ -47,7 +47,7 @@ public class BarrioMascotasPlugIn : IChatCommandPlugIn, IPeriodicTaskPlugIn, IPl
     private const int MaxStage = 4;
 
     /// <summary>Ítems existentes del grupo 13, en orden de evolución.</summary>
-    private static readonly byte[] StageItem = [0, 65, 80, 64];
+    private static readonly short[] StageItem = [0, 65, 80, 64];
 
     private static readonly string[] StageNameValue = ["Sabio", "Sabio Espíritu", "Sabio Panda", "Sabio Dragón"];
 
@@ -216,7 +216,7 @@ public class BarrioMascotasPlugIn : IChatCommandPlugIn, IPeriodicTaskPlugIn, IPl
         return pet?.Definition is { Group: PetGroup } && StageOf(pet.Definition.Number) > 0 ? pet : null;
     }
 
-    private static async ValueTask ProcessAsync(GameContext gameContext, DateTime now)
+    private async ValueTask ProcessAsync(GameContext gameContext, DateTime now)
     {
         await gameContext.ForEachPlayerAsync(async player => await TickPlayerAsync(player, now).ConfigureAwait(false)).ConfigureAwait(false);
 
@@ -329,7 +329,7 @@ public class BarrioMascotasPlugIn : IChatCommandPlugIn, IPeriodicTaskPlugIn, IPl
         _ = AskAndSayAsync(player, "evolucion", state);
     }
 
-    private static async ValueTask<Item?> CreatePetAsync(Player player, byte number)
+    private static async ValueTask<Item?> CreatePetAsync(Player player, short number)
     {
         var definition = player.GameContext.Configuration.Items.FirstOrDefault(d => d.Group == PetGroup && d.Number == number);
         if (definition is null || player.Inventory is not { } inventory)
@@ -353,7 +353,7 @@ public class BarrioMascotasPlugIn : IChatCommandPlugIn, IPeriodicTaskPlugIn, IPl
         return item;
     }
 
-    private static ValueTask RunBanterAsync(DateTime now)
+    private ValueTask RunBanterAsync(DateTime now)
     {
         var ready = new List<PetRuntime>();
         foreach (var state in States.Values)
@@ -520,7 +520,7 @@ public class BarrioMascotasPlugIn : IChatCommandPlugIn, IPeriodicTaskPlugIn, IPl
     private static void Flush(string key, PetRuntime state) =>
         Store.Update(key, _ => new PetState(state.Stage, state.Seconds, state.TotalResets, state.LastResets));
 
-    private static int StageOf(byte number) => Array.IndexOf(StageItem, number) + 1;
+    private static int StageOf(short number) => Array.IndexOf(StageItem, number) + 1;
 
     private static string StageName(int stage) => stage >= 1 && stage <= MaxStage ? StageNameValue[stage - 1] : SabioName;
 
