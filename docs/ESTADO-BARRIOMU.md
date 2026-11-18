@@ -1,4 +1,4 @@
-# Estado de BarrioMU — 17/11/2026 (voz por proximidad F1/F2 + TURN de Cloudflare)
+# Estado de BarrioMU — 18/11/2026 (voz por proximidad + mascotas del Sabio)
 
 **El juego está terminado y en producción.** Este documento es la foto técnica del
 proyecto: qué corre, dónde, y el mapa completo de APIs y endpoints. El manual de uso está
@@ -6,12 +6,11 @@ en `docs/MANUAL.md`; la presentación del servidor, en `README.md`.
 
 | Dato | Valor |
 |---|---|
-| Rama | `main` |
-| Último commit revisado | `27bac4f` — *Merge PR #83: botón del bot de Telegram* (14/11/2026) |
+| Rama | `main` (18/11/2026: mascotas del Sabio) |
 | Cliente Babylon fijado | `26c0921c1bed65b1aab4762022f24021a5318130` |
-| Release cliente tablet | `babylon-arm64` (14/11/2026 14:08) |
-| Release servidor | `openmu-arm64` (11/11/2026 22:53) |
-| Release PC | `barriomu-pc` (14/11/2026 05:29) |
+| Release cliente tablet | `babylon-arm64` (18/11/2026 05:06 UTC) |
+| Release servidor | `openmu-arm64` (18/11/2026 05:03 UTC) |
+| Release PC | `barriomu-pc` (18/11/2026 04:55 UTC, installer 1.0.44) |
 
 ## 1. Dónde vive cada cosa
 

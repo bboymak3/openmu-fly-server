@@ -440,7 +440,8 @@ public class BarrioMascotasPlugIn : IChatCommandPlugIn, IPeriodicTaskPlugIn, IPl
             StageName(state.Stage),
             state.Stage,
             partner,
-            message);
+            // Si la tablet todavía tiene la API vieja, que no responda "no te entendí".
+            message.Length == 0 ? "frase corta" : message);
 
         try
         {
