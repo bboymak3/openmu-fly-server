@@ -273,7 +273,7 @@ Se guarda en `~/openmu/data/premio-diario.json`.
 
 ### El Sabio del Barrio (IA, comando /ia)
 En el juego hay dos formas:
-- **El NPC "Sabio del Barrio"** en Lorencia, al lado del herrero Hanzo, hacia la salida (cerca de 119, 141): al hacerle
+- **El NPC "Sabio del Barrio"** en Lorencia, **junto a la fuente** (cerca de 133, 128): al hacerle
   clic saluda y **se abre el chat dirigido al Sabio**; se escribe la pregunta normal, sin `/ia`
   (el cliente la manda como `/ia`). Mientras el susurro siga apuntando al Sabio, cada mensaje
   es otra pregunta; para hablar con otros, se cambia el destinatario del susurro.
@@ -295,8 +295,9 @@ puntos, monedas, mapa), los precios reales de la tienda y lo que hay en La Plaza
   (secreto entre OpenMU y la API). Tablas: `barrio.sabio_uso`, `barrio.sabio_log`.
 
 ### Las mascotas del Sabio
-- Al hablar con el NPC Sabio en Lorencia te da **Sabio** (Guardian Angel), ya puesto en la
-  ranura de mascota. Si ya tenés otra mascota puesta, no se la cambia.
+- Podés conseguir **Sabio** (Guardian Angel) comprándolo en las tiendas de **Amy** y **Lumen**
+  en Lorencia, o hablando con el NPC Sabio junto a la fuente (te lo da ya puesto si tenés la
+  ranura de mascota libre). Si ya tenés otra mascota puesta, no se la cambia.
 - `/mascota` dice la etapa y cuánto falta. Evoluciona sola al cumplir **una** de estas dos:
   **1 reset o 2 h puesta → Sabio Espíritu**; **2 resets o 4 h → Sabio Panda (+50% EXP)**;
   **3 resets u 8 h → Sabio Dragón (+40% ataque)**. El tiempo corre solo con la mascota

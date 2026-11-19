@@ -91,7 +91,7 @@ instalador de Windows.
   por país y caché (Cloudflare), descargas del instalador y botón para purgar la caché.
 
 **El Sabio del Barrio: Telegram y WhatsApp** (guía para jugadores: https://barriomu.makeseo.app/bot.html)
-- **En el juego**: el NPC **Sabio del Barrio** al lado del herrero de Lorencia; al hablarle
+- **En el juego**: el NPC **Sabio del Barrio** junto a la fuente de Lorencia; al hablarle
   abre el chat. También `/ia pregunta`. Con `/wa Nombre mensaje` le llega a ese jugador por WhatsApp.
 - **Por WhatsApp** (se vincula en Mi cuenta → 📱 WhatsApp → Generar código, y se manda
   `vincular 123456` al bot). Se le puede hablar normal; lo que cambia algo pide un **sí**.

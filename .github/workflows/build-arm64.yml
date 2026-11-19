@@ -49,7 +49,7 @@ jobs:
              openmu-barrio/BarrioPointsPlugIn.cs openmu-barrio/BarrioOnlineNpcPlugIn.cs \
              openmu-barrio/BarrioSabioPlugIn.cs openmu-barrio/BarrioAvisosPlugIn.cs \
              openmu-barrio/BarrioSpotsPlugIn.cs openmu-barrio/BarrioOfflineRespawnPolicy.cs \
-             openmu-barrio/BarrioMascotasPlugIn.cs $S/GameLogic/PlugIns/
+             openmu-barrio/BarrioMascotasPlugIn.cs openmu-barrio/BarrioSabioShopPlugIn.cs $S/GameLogic/PlugIns/
           # Spots de farmeo: quien farmea con /offlevel en un spot sigue al revivir (BarrioSpots decide)
           sed -i 's/public virtual bool RespawnAndContinue => false;/public virtual bool RespawnAndContinue => OfflineRespawnPolicy.ShouldContinue?.Invoke(this) ?? false;/' $S/GameLogic/Offline/OfflinePlayer.cs
           # 2 game servers con nombre propio

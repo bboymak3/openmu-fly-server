@@ -48,14 +48,15 @@ public class BarrioSabioPlugIn : IChatCommandPlugIn, IObjectAddedToMapPlugIn, IP
     /// </summary>
     public const string Greeting = "Hola pana, soy el Sabio del Barrio. Escribe tu pregunta en el chat y te respondo.";
 
-    /// <summary>Adviser Jerinteu: en el cliente de BarrioMU se llama "Sabio del Barrio". Va al lado del herrero Hanzo (116, 141).</summary>
+    /// <summary>Adviser Jerinteu: en el cliente de BarrioMU se llama "Sabio del Barrio". Está junto a la fuente de Lorencia (128, 128).</summary>
     private const short SabioNpcNumber = 522;
 
     private const short LorenciaMapNumber = 0;
 
-    private const byte SabioX = 119;
+    /// <summary>Junto a la fuente de Lorencia.</summary>
+    private const byte SabioX = 133;
 
-    private const byte SabioY = 141;
+    private const byte SabioY = 128;
 
     private static readonly ConditionalWeakTable<NonPlayerCharacter, object> OwnNpcs = new();
 
@@ -175,10 +176,10 @@ public class BarrioSabioPlugIn : IChatCommandPlugIn, IObjectAddedToMapPlugIn, IP
             {
                 GameMap = map.Definition,
                 MonsterDefinition = definition,
-                X1 = (byte)(SabioX - 2),
-                Y1 = (byte)(SabioY - 2),
-                X2 = (byte)(SabioX + 2),
-                Y2 = (byte)(SabioY + 2),
+                X1 = (byte)(SabioX - 1),
+                Y1 = (byte)(SabioY - 1),
+                X2 = (byte)(SabioX + 1),
+                Y2 = (byte)(SabioY + 1),
                 Quantity = 1,
                 Direction = Direction.South,
             };
@@ -233,7 +234,7 @@ public class BarrioSabioPlugIn : IChatCommandPlugIn, IObjectAddedToMapPlugIn, IP
                 continue;
             }
 
-            var target = map.Terrain.GetRandomCoordinate(center, 2);
+            var target = map.Terrain.GetRandomCoordinate(center, 1);
             if (!map.Terrain.WalkMap[target.X, target.Y])
             {
                 continue;
