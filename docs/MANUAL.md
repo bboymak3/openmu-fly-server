@@ -294,10 +294,11 @@ puntos, monedas, mapa), los precios reales de la tienda y lo que hay en La Plaza
 - Archivos: `~/.barriomu-ia` (cuenta y token, dentro de Ubuntu), `~/openmu/data/sabio-secreto.txt`
   (secreto entre OpenMU y la API). Tablas: `barrio.sabio_uso`, `barrio.sabio_log`.
 
-### Las mascotas del Sabio
-- Podés conseguir **Sabio** (Guardian Angel) comprándolo en las tiendas de **Amy** y **Lumen**
-  en Lorencia, o hablando con el NPC Sabio junto a la fuente (te lo da ya puesto si tenés la
-  ranura de mascota libre). Si ya tenés otra mascota puesta, no se la cambia.
+### El Sabio (mascota)
+- Cada personaje recibe el **Sabio** (Guardian Angel) al crearse, ya en la ranura de mascota.
+  No se puede tirar ni guardar en el baúl, y es la **única** forma de hablar con el Sabio (`/ia`
+  o chat con el NPC): si no lo tenés puesto, no responde. El NPC de la fuente (133,128) sigue
+  ahí para orientarte.
 - `/mascota` dice la etapa y cuánto falta. Evoluciona sola al cumplir **una** de estas dos:
   **1 reset o 2 h puesta → Sabio Espíritu**; **2 resets o 4 h → Sabio Panda (+50% EXP)**;
   **3 resets u 8 h → Sabio Dragón (+40% ataque)**. El tiempo corre solo con la mascota

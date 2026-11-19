@@ -13,19 +13,14 @@ using MUnique.OpenMU.GameLogic.Views.Inventory;
 using MUnique.OpenMU.PlugIns;
 
 /// <summary>
-/// BarrioMU: entrega (o reemplaza) la mascota del Sabio a las cuentas de prueba
-/// barrio01-barrio05 para validar que funciona.
+/// BarrioMU: entrega la mascota del Sabio a todos los personajes que no la tengan.
+/// No reemplaza etapas ya evolucionadas para no perder progreso.
 /// </summary>
 [PlugIn]
-[Display(Name = "BarrioMU: dar mascota del Sabio a cuentas barrio01-05", Description = "Entrega Guardian Angel (Sabio) a barrio01-barrio05 al entrar al juego.")]
+[Display(Name = "BarrioMU: dar mascota del Sabio a todos los personajes", Description = "Entrega Guardian Angel (Sabio) a los personajes que no tengan ninguna etapa.")]
 [Guid("E6F7A8B9-C0D1-4E2F-B3A4-5C6D7E8F9012")]
 public class BarrioGrantSabioPlugIn : IPlayerStateChangedPlugIn
 {
-    private static readonly HashSet<string> TargetLogins = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "barrio01", "barrio02", "barrio03", "barrio04", "barrio05",
-    };
-
     private static readonly short[] SabioNumbers = [0, 65, 80, 64];
 
     private static readonly BarrioStore<string> Store = new("mascotas-sabio-grant");
@@ -34,29 +29,33 @@ public class BarrioGrantSabioPlugIn : IPlayerStateChangedPlugIn
     public async ValueTask PlayerStateChangedAsync(Player player, State previousState, State currentState)
     {
         if (previousState != PlayerState.CharacterSelection || currentState != PlayerState.EnteredWorld
-            || player.Account?.LoginName is not { } login
-            || player.SelectedCharacter is not { } character
-            || !TargetLogins.Contains(login))
+            || player.SelectedCharacter is not { } character)
         {
             return;
         }
 
-        var key = "v2:" + (character.Id == Guid.Empty ? login + ":" + character.Name : character.Id.ToString());
+        var key = "v3:" + (character.Id == Guid.Empty ? (player.Account?.LoginName ?? "?") + ":" + character.Name : character.Id.ToString());
         if (Store.Get(key) == "done")
         {
             return;
         }
 
-        var definition = player.GameContext.Configuration.Items.FirstOrDefault(i => i.Group == 13 && i.Number == 0);
-        if (definition is null || player.Inventory is null)
+        if (player.Inventory is null)
         {
             return;
         }
 
-        // Quita cualquier etapa del Sabio que ya tenga (equipada o en la bolsa).
-        foreach (var old in player.Inventory.Items.Where(i => IsSabioPet(i)).ToList())
+        // Si ya tiene alguna etapa del Sabio (incluso evolucionada), no se toca.
+        if (player.Inventory.Items.Any(IsSabioPet))
         {
-            await player.DestroyInventoryItemAsync(old).ConfigureAwait(false);
+            Store.Update(key, _ => "done");
+            return;
+        }
+
+        var definition = player.GameContext.Configuration.Items.FirstOrDefault(i => i.Group == 13 && i.Number == 0);
+        if (definition is null)
+        {
+            return;
         }
 
         var item = player.PersistenceContext.CreateNew<Item>();
@@ -77,8 +76,11 @@ public class BarrioGrantSabioPlugIn : IPlayerStateChangedPlugIn
 
         try
         {
-            await player.InvokeViewPlugInAsync<MUnique.OpenMU.GameLogic.Views.IChatViewPlugIn>(
-                p => p.ChatMessageAsync("Te dejé al Sabio (mascota) en tu inventario. Si no está puesta, equípala en la ranura de mascota.", "Sabio", ChatMessageType.Whisper)).ConfigureAwait(false);
+            var msg = item.ItemSlot == InventoryConstants.PetSlot
+                ? "Recibiste al Sabio como mascota. Para hablar conmigo debes tenerlo puesto. /mascota te dice cómo va."
+                : "Recibiste al Sabio en tu inventario. Póntelo en la ranura de mascota para hablar conmigo y que evolucione.";
+            await player.InvokeViewPlugInAsync<IChatViewPlugIn>(
+                p => p.ChatMessageAsync(msg, "Sabio", ChatMessageType.Whisper)).ConfigureAwait(false);
         }
         catch
         {

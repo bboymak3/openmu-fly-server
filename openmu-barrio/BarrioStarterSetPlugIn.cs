@@ -73,6 +73,9 @@ public class BarrioStarterSetPlugIn : ICharacterCreatedPlugIn
         [24] = (12, 49), // Rage Fighter: Cape of the Fighter
     };
 
+    /// <summary>Pet slot (Guardian Angel / Sabio).</summary>
+    private const byte PetSlot = 8;
+
     /// <inheritdoc />
     public void CharacterCreated(Account account, Character createdCharacter, IContext persistenceContext, GameConfiguration gameConfiguration, ILogger logger)
     {
@@ -100,6 +103,12 @@ public class BarrioStarterSetPlugIn : ICharacterCreatedPlugIn
             && !inventory.Items.Any(i => i.ItemSlot == WingSlot))
         {
             Give(persistenceContext, gameConfiguration, logger, inventory.Items, wing.Group, wing.Number, WingSlot);
+        }
+
+        // Todos nacen con el Sabio (Guardian Angel). Es la única forma de hablar con él.
+        if (!inventory.Items.Any(i => i.ItemSlot == PetSlot))
+        {
+            Give(persistenceContext, gameConfiguration, logger, inventory.Items, 13, 0, PetSlot);
         }
     }
 

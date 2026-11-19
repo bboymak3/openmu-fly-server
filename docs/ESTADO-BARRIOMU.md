@@ -233,7 +233,7 @@ Comandos del bot (Telegram y, si se reactiva, WhatsApp): `estado`, `top`, `mi pu
 | `BarrioSpotsPlugIn.cs` | spots de farmeo (`/guardarspot`) y viaje del personaje a un spot por el bot |
 | `BarrioSabioPlugIn.cs` | comando `/ia` y NPC en Lorencia: entrega la primera mascota y pasea por su zona |
 | `BarrioMascotasPlugIn.cs` | mascotas del Sabio: 4 etapas, `/mascota`, evolución por resets/tiempo, frases en el chat del mapa y duelos entre mascotas máximas |
-| `BarrioSabioShopPlugIn.cs` | vende Guardian Angel (Sabio) en las tiendas de Amy y Lumen en Lorencia |
+| `BarrioGrantSabioPlugIn.cs` | entrega el Sabio a personajes existentes que no lo tengan (una vez) |
 | `BarrioAvisosPlugIn.cs` | cuenta a la API lo que pasa (subidas de nivel, resets, muertes farmeando, susurros) |
 | `BarrioOfflineRespawnPolicy.cs` | que un personaje en `/offlevel` siga farmeando después de morir |
 | `BarrioStore.cs` | almacén JSON de los plugins (`data/<nombre>.json`) |

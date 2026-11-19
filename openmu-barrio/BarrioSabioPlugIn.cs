@@ -102,6 +102,12 @@ public class BarrioSabioPlugIn : IChatCommandPlugIn, IObjectAddedToMapPlugIn, IP
             return;
         }
 
+        if (!HasEquippedSabioPet(player))
+        {
+            await WhisperAsync(player, "Para hablar conmigo tienes que tener puesto al Sabio en la ranura de mascota.").ConfigureAwait(false);
+            return;
+        }
+
         var question = command.Length > Command.Length ? command[Command.Length..].Trim() : string.Empty;
         if (question.Length == 0)
         {
@@ -264,25 +270,25 @@ public class BarrioSabioPlugIn : IChatCommandPlugIn, IObjectAddedToMapPlugIn, IP
         {
             bubble = "¡Epale pana! No pude darte la mascota (bolsa llena). Haz espacio y vuelve.";
         }
-        else if (hadSabio)
+        else if (equipped)
         {
-            bubble = "¡Epale pana! Ya tienes al Sabio contigo. /mascota te dice cómo va.";
+            bubble = hadSabio
+                ? "¡Epale pana! Ya te acompaño. Pregúntame lo que quieras. /mascota te dice cómo voy."
+                : "¡Epale pana! Ya te acompaño. Pregúntame lo que quieras. /mascota te dice cómo voy.";
         }
         else
         {
-            bubble = equipped
-                ? "¡Epale pana! Toma, ahí va mi primera etapa. /mascota te dice cómo va."
-                : "¡Epale pana! Te dejé al Sabio en la bolsa. Póntelo en la mascota.";
+            bubble = "¡Epale pana! Pónteme en la ranura de mascota para poder hablar contigo.";
         }
 
         await player.InvokeViewPlugInAsync<IShowMessageOfObjectPlugIn>(p => p.ShowMessageOfObjectAsync(bubble, npc)).ConfigureAwait(false);
-        await WhisperAsync(player, Greeting).ConfigureAwait(false);
-        if (gavePet && !hadSabio)
+        if (equipped)
         {
-            var msg = equipped
-                ? "Te di al Sabio como mascota. Evoluciona con resets o tiempo puesto y habla en el chat del mapa. /mascota lo ves."
-                : "Te dejé al Sabio en tu inventario (bolsa). Equípalo en la ranura de mascota para que evolucione y hable. /mascota lo ves.";
-            await WhisperAsync(player, msg).ConfigureAwait(false);
+            await WhisperAsync(player, Greeting).ConfigureAwait(false);
+        }
+        else
+        {
+            await WhisperAsync(player, "Para hablar conmigo tienes que tener puesto al Sabio en la ranura de mascota.").ConfigureAwait(false);
         }
     }
 
