@@ -180,12 +180,20 @@ public class BarrioMascotasPlugIn : IChatCommandPlugIn, IPeriodicTaskPlugIn, IPl
 
     /// <summary>
     /// El Sabio entrega la primera etapa. Lo llama <see cref="BarrioSabioPlugIn"/> al hablarle.
+    /// Si la ranura de mascota está ocupada, lo deja en la bolsa.
     /// </summary>
     public static async ValueTask<bool> GiveFirstPetAsync(Player player)
     {
-        if (player.Inventory?.GetItem(InventoryConstants.PetSlot) is { } current)
+        if (player.Inventory?.GetItem(InventoryConstants.PetSlot) is { } current
+            && StageOf(current.Definition?.Number ?? 0) > 0)
         {
-            return StageOf(current.Definition?.Number ?? 0) > 0;
+            return true;
+        }
+
+        // Si ya tiene una etapa del Sabio en la bolsa, no se duplica.
+        if (player.Inventory?.Items.Any(i => i.Definition is { Group: PetGroup } && StageOf(i.Definition.Number) > 0) == true)
+        {
+            return true;
         }
 
         if (player.SelectedCharacter is not { } character)
@@ -193,7 +201,8 @@ public class BarrioMascotasPlugIn : IChatCommandPlugIn, IPeriodicTaskPlugIn, IPl
             return false;
         }
 
-        if (await CreatePetAsync(player, StageItem[0]).ConfigureAwait(false) is null)
+        var inPetSlot = player.Inventory?.GetItem(InventoryConstants.PetSlot) is null;
+        if (await CreatePetAsync(player, StageItem[0], inPetSlot).ConfigureAwait(false) is null)
         {
             return false;
         }
@@ -201,12 +210,16 @@ public class BarrioMascotasPlugIn : IChatCommandPlugIn, IPeriodicTaskPlugIn, IPl
         var state = GetRuntime(player, character);
         state.Stage = 1;
         state.Seconds = 0;
-        state.Active = true;
+        state.Active = inPetSlot;
         state.EquippedSinceUtc = DateTime.UtcNow;
         state.LastTickUtc = DateTime.UtcNow;
         state.Owner = new WeakReference<Player>(player);
         Flush(KeyOf(character), state);
-        _ = AskAndSayAsync(player, "saludo", state);
+        if (inPetSlot)
+        {
+            _ = AskAndSayAsync(player, "saludo", state);
+        }
+
         return true;
     }
 
@@ -329,7 +342,7 @@ public class BarrioMascotasPlugIn : IChatCommandPlugIn, IPeriodicTaskPlugIn, IPl
         _ = AskAndSayAsync(player, "evolucion", state);
     }
 
-    private static async ValueTask<Item?> CreatePetAsync(Player player, short number)
+    private static async ValueTask<Item?> CreatePetAsync(Player player, short number, bool inPetSlot = true)
     {
         var definition = player.GameContext.Configuration.Items.FirstOrDefault(d => d.Group == PetGroup && d.Number == number);
         if (definition is null || player.Inventory is not { } inventory)
@@ -341,9 +354,12 @@ public class BarrioMascotasPlugIn : IChatCommandPlugIn, IPeriodicTaskPlugIn, IPl
         item.Definition = definition;
         item.Durability = definition.Durability;
         item.Level = 0;
-        item.ItemSlot = InventoryConstants.PetSlot;
 
-        if (!await inventory.AddItemAsync(InventoryConstants.PetSlot, item).ConfigureAwait(false))
+        var ok = inPetSlot
+            ? await inventory.AddItemAsync(InventoryConstants.PetSlot, item).ConfigureAwait(false)
+            : await inventory.AddItemAsync(item).ConfigureAwait(false);
+
+        if (!ok)
         {
             player.PersistenceContext.Detach(item);
             return null;

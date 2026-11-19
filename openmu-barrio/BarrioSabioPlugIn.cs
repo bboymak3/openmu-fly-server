@@ -13,6 +13,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text.Json.Serialization;
 using System.Threading;
+using MUnique.OpenMU.DataModel;
 using MUnique.OpenMU.GameLogic.Attributes;
 using MUnique.OpenMU.GameLogic.NPC;
 using MUnique.OpenMU.GameLogic.PlugIns.ChatCommands;
@@ -254,15 +255,34 @@ public class BarrioSabioPlugIn : IChatCommandPlugIn, IObjectAddedToMapPlugIn, IP
         }
 
         eventArgs.HasBeenHandled = true;
+        var hadSabio = HasSabioPet(player);
         var gavePet = await BarrioMascotasPlugIn.GiveFirstPetAsync(player).ConfigureAwait(false);
-        var bubble = gavePet
-            ? "¡Epale pana! Toma, ahí va mi primera etapa. /mascota te dice cómo va."
-            : "¡Epale pana! Preguntame lo que quieras.";
+        var equipped = HasEquippedSabioPet(player);
+
+        string bubble;
+        if (!gavePet)
+        {
+            bubble = "¡Epale pana! No pude darte la mascota (bolsa llena). Haz espacio y vuelve.";
+        }
+        else if (hadSabio)
+        {
+            bubble = "¡Epale pana! Ya tienes al Sabio contigo. /mascota te dice cómo va.";
+        }
+        else
+        {
+            bubble = equipped
+                ? "¡Epale pana! Toma, ahí va mi primera etapa. /mascota te dice cómo va."
+                : "¡Epale pana! Te dejé al Sabio en la bolsa. Póntelo en la mascota.";
+        }
+
         await player.InvokeViewPlugInAsync<IShowMessageOfObjectPlugIn>(p => p.ShowMessageOfObjectAsync(bubble, npc)).ConfigureAwait(false);
         await WhisperAsync(player, Greeting).ConfigureAwait(false);
-        if (gavePet)
+        if (gavePet && !hadSabio)
         {
-            await WhisperAsync(player, "Te di al Sabio como mascota. Se pone sola, evoluciona con resets o tiempo puesto y habla en el chat del mapa. /mascota lo ves.").ConfigureAwait(false);
+            var msg = equipped
+                ? "Te di al Sabio como mascota. Evoluciona con resets o tiempo puesto y habla en el chat del mapa. /mascota lo ves."
+                : "Te dejé al Sabio en tu inventario (bolsa). Equípalo en la ranura de mascota para que evolucione y hable. /mascota lo ves.";
+            await WhisperAsync(player, msg).ConfigureAwait(false);
         }
     }
 
@@ -289,6 +309,17 @@ public class BarrioSabioPlugIn : IChatCommandPlugIn, IObjectAddedToMapPlugIn, IP
                 Waiting.Remove(request.Character);
             }
         }
+    }
+
+    private static bool HasSabioPet(Player player)
+    {
+        return player.Inventory?.Items.Any(i => i.Definition is { Group: 13 } && i.Definition.Number is 0 or 65 or 80 or 64) == true;
+    }
+
+    private static bool HasEquippedSabioPet(Player player)
+    {
+        var pet = player.Inventory?.GetItem(InventoryConstants.PetSlot);
+        return pet?.Definition is { Group: 13 } && pet.Definition.Number is 0 or 65 or 80 or 64;
     }
 
     private static async ValueTask WhisperAsync(Player player, string text)
