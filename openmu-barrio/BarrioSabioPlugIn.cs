@@ -19,7 +19,7 @@ using MUnique.OpenMU.PlugIns;
 
 /// <summary>
 /// BarrioMU: "El Sabio del Barrio", la IA del juego. El jugador escribe <c>/ia pregunta</c>
-/// con el Sabio activo (en su espacio) y la respuesta le llega como susurro.
+/// con la mascota del Sabio equipada y la respuesta le llega como susurro.
 /// </summary>
 /// <remarks>
 /// El servidor de juego no habla con la IA: le pasa la pregunta y los datos reales del
@@ -29,7 +29,7 @@ using MUnique.OpenMU.PlugIns;
 /// La IA no tiene ninguna herramienta que de items, puntos ni monedas.
 /// </remarks>
 [PlugIn]
-[Display(Name = "BarrioMU: El Sabio del Barrio (/ia)", Description = "Comando /ia: preguntas a la IA del servidor con el Sabio activo en su espacio.")]
+[Display(Name = "BarrioMU: El Sabio del Barrio (/ia)", Description = "Comando /ia: preguntas a la IA del servidor con la mascota del Sabio equipada.")]
 [Guid("5A6B7C8D-9E0F-4A1B-8C2D-3E4F5A6B7C81")]
 public class BarrioSabioPlugIn : IChatCommandPlugIn
 {
@@ -69,9 +69,9 @@ public class BarrioSabioPlugIn : IChatCommandPlugIn
             return;
         }
 
-        if (BarrioMascotasPlugIn.GetSabioItem(player) is null)
+        if (!HasEquippedSabioPet(player))
         {
-            await WhisperAsync(player, "Para hablar conmigo tienes que tener al Sabio contigo en su espacio.").ConfigureAwait(false);
+            await WhisperAsync(player, "Para hablar conmigo tienes que tener puesto al Sabio en la ranura de mascota.").ConfigureAwait(false);
             return;
         }
 
@@ -121,6 +121,12 @@ public class BarrioSabioPlugIn : IChatCommandPlugIn
 
         await WhisperAsync(player, "Dejame pensar...").ConfigureAwait(false);
         _ = Task.Run(() => AskAsync(player, request));
+    }
+
+    private static bool HasEquippedSabioPet(Player player)
+    {
+        var pet = player.Inventory?.GetItem(InventoryConstants.PetSlot);
+        return pet?.Definition is { Group: 13 } && pet.Definition.Number is 0 or 65 or 80 or 64;
     }
 
     private static async Task AskAsync(Player player, SabioRequest request)

@@ -231,7 +231,7 @@ Comandos del bot (Telegram y, si se reactiva, WhatsApp): `estado`, `top`, `mi pu
 | `BarrioStarterSetPlugIn.cs` | set básico en la bolsa y **alas básicas puestas** a cada personaje nuevo |
 | `BarrioTownNpcsPlugIn.cs` | repone NPCs de tiendas/baúl/misiones en Lorencia, Devias, Noria, Elbeland |
 | `BarrioSpotsPlugIn.cs` | spots de farmeo (`/guardarspot`) y viaje del personaje a un spot por el bot |
-| `BarrioSabioPlugIn.cs` | comando `/ia`: responde solo si el Sabio está activo en su propio espacio |
+| `BarrioSabioPlugIn.cs` | comando `/ia`: responde solo si la mascota del Sabio está equipada |
 | `BarrioMascotasPlugIn.cs` | mascotas del Sabio: 4 etapas, `/mascota`, evolución por resets/tiempo, frases en el chat del mapa y duelos entre mascotas máximas |
 | `BarrioGrantSabioPlugIn.cs` | entrega el Sabio a personajes existentes que no lo tengan (una vez) |
 | `BarrioAvisosPlugIn.cs` | cuenta a la API lo que pasa (subidas de nivel, resets, muertes farmeando, susurros) |

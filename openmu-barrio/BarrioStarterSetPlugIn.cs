@@ -31,9 +31,6 @@ public class BarrioStarterSetPlugIn : ICharacterCreatedPlugIn
     /// <summary>Where the wings go: the back, the same slot wings and capes use.</summary>
     private const byte WingSlot = 7;
 
-    /// <summary>Espacio del Sabio: primer slot del inventario (bag), visible y separado de la ranura de mascota.</summary>
-    private const byte SabioSpaceSlot = 12;
-
     /// <summary>
     /// Where each piece goes in the bag (12 + row * 8 + column), from row 2 on,
     /// so the starting rings (slots 12 and 13) stay where they are.
@@ -76,6 +73,9 @@ public class BarrioStarterSetPlugIn : ICharacterCreatedPlugIn
         [24] = (12, 49), // Rage Fighter: Cape of the Fighter
     };
 
+    /// <summary>Pet slot (Guardian Angel / Sabio).</summary>
+    private const byte PetSlot = 8;
+
     /// <inheritdoc />
     public void CharacterCreated(Account account, Character createdCharacter, IContext persistenceContext, GameConfiguration gameConfiguration, ILogger logger)
     {
@@ -105,11 +105,10 @@ public class BarrioStarterSetPlugIn : ICharacterCreatedPlugIn
             Give(persistenceContext, gameConfiguration, logger, inventory.Items, wing.Group, wing.Number, WingSlot);
         }
 
-        // Todos nacen con el Sabio en su propio espacio (no en la ranura de mascota),
-        // así pueden llevar otra mascota y el Sabio se ve activo.
-        if (!inventory.Items.Any(i => i.Definition is { Group: 13 } && i.Definition.Number is 0 or 65 or 80 or 64))
+        // Todos nacen con el Sabio (Guardian Angel). Es la única forma de hablar con él.
+        if (!inventory.Items.Any(i => i.ItemSlot == PetSlot))
         {
-            Give(persistenceContext, gameConfiguration, logger, inventory.Items, 13, 0, SabioSpaceSlot);
+            Give(persistenceContext, gameConfiguration, logger, inventory.Items, 13, 0, PetSlot);
         }
     }
 

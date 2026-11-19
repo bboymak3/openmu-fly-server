@@ -17,7 +17,7 @@ using MUnique.OpenMU.PlugIns;
 /// No reemplaza etapas ya evolucionadas para no perder progreso.
 /// </summary>
 [PlugIn]
-[Display(Name = "BarrioMU: dar mascota del Sabio a todos los personajes", Description = "Entrega Sabio a los personajes que no tengan ninguna etapa, en su propio espacio.")]
+[Display(Name = "BarrioMU: dar mascota del Sabio a todos los personajes", Description = "Entrega Guardian Angel (Sabio) a los personajes que no tengan ninguna etapa.")]
 [Guid("E6F7A8B9-C0D1-4E2F-B3A4-5C6D7E8F9012")]
 public class BarrioGrantSabioPlugIn : IPlayerStateChangedPlugIn
 {
@@ -34,11 +34,9 @@ public class BarrioGrantSabioPlugIn : IPlayerStateChangedPlugIn
             return;
         }
 
-        var key = "v4:" + (character.Id == Guid.Empty ? (player.Account?.LoginName ?? "?") + ":" + character.Name : character.Id.ToString());
+        var key = "v3:" + (character.Id == Guid.Empty ? (player.Account?.LoginName ?? "?") + ":" + character.Name : character.Id.ToString());
         if (Store.Get(key) == "done")
         {
-            // Aun así, migra si por alguna razón quedó en la ranura de mascota.
-            await BarrioMascotasPlugIn.EnsureSabioInOwnSpaceAsync(player).ConfigureAwait(false);
             return;
         }
 
@@ -50,7 +48,6 @@ public class BarrioGrantSabioPlugIn : IPlayerStateChangedPlugIn
         // Si ya tiene alguna etapa del Sabio (incluso evolucionada), no se toca.
         if (player.Inventory.Items.Any(IsSabioPet))
         {
-            await BarrioMascotasPlugIn.EnsureSabioInOwnSpaceAsync(player).ConfigureAwait(false);
             Store.Update(key, _ => "done");
             return;
         }
@@ -66,10 +63,8 @@ public class BarrioGrantSabioPlugIn : IPlayerStateChangedPlugIn
         item.Durability = definition.Durability;
         item.Level = 0;
 
-        var preferred = (byte)(InventoryConstants.LastEquippableItemSlotIndex + 1);
-        var ok = player.Inventory.GetItem(preferred) is null
-            ? await player.Inventory.AddItemAsync(preferred, item).ConfigureAwait(false)
-            : await player.Inventory.AddItemAsync(item).ConfigureAwait(false);
+        var ok = await player.Inventory.AddItemAsync(InventoryConstants.PetSlot, item).ConfigureAwait(false)
+                 || await player.Inventory.AddItemAsync(item).ConfigureAwait(false);
         if (!ok)
         {
             player.PersistenceContext.Detach(item);
@@ -81,7 +76,9 @@ public class BarrioGrantSabioPlugIn : IPlayerStateChangedPlugIn
 
         try
         {
-            var msg = "Recibiste al Sabio en su espacio. Te acompaña activo y puedes llevar otra mascota en la ranura de mascota. /ia para hablar, /mascota para ver su progreso.";
+            var msg = item.ItemSlot == InventoryConstants.PetSlot
+                ? "Recibiste al Sabio como mascota. Para hablar conmigo debes tenerlo puesto. /mascota te dice cómo va."
+                : "Recibiste al Sabio en tu inventario. Póntelo en la ranura de mascota para hablar conmigo y que evolucione.";
             await player.InvokeViewPlugInAsync<IChatViewPlugIn>(
                 p => p.ChatMessageAsync(msg, "Sabio", ChatMessageType.Whisper)).ConfigureAwait(false);
         }
