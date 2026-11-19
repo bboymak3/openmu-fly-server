@@ -5,6 +5,7 @@
 namespace MUnique.OpenMU.GameLogic.PlugIns;
 
 using System.ComponentModel.DataAnnotations;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
 using MUnique.OpenMU.DataModel;
