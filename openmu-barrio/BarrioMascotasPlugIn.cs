@@ -4,9 +4,8 @@
 
 namespace MUnique.OpenMU.GameLogic.PlugIns;
 
-using System.Collections.Concurrent;
-using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using System.Collections.Concurrent;
 using System.IO;
 using System.Net.Http;
 using System.Net.Http.Json;
@@ -23,9 +22,10 @@ using MUnique.OpenMU.PlugIns;
 /// <summary>
 /// BarrioMU: las mascotas del Sabio. Una cadena de 4 cuerpos que ya existen en el
 /// juego (grupo 13): Sabio, Sabio Espíritu, Sabio Panda (+50% EXP) y Sabio Dragón
-/// (+40% ataque). El Sabio del Barrio entrega el primero; evolucionan con resets
-/// o con tiempo puesta. Las frases salen en el chat del MAPA, nunca global, y
-/// dos mascotas máximas del mismo mapa se cargan entre sí cada 5 minutos.
+/// (+40% ataque). Cada personaje recibe el Sabio en su propio espacio (no en la ranura
+/// de mascota, que queda libre para otra mascota). Evoluciona con resets o con tiempo
+/// activo. Las frases salen en el chat del MAPA, nunca global, y dos mascotas máximas
+/// del mismo mapa se cargan entre sí cada 5 minutos.
 /// </summary>
 /// <remarks>
 /// El progreso se guarda en data/mascotas-sabio.json con <see cref="BarrioStore{TValue}"/>.
@@ -34,7 +34,7 @@ using MUnique.OpenMU.PlugIns;
 /// fijas. El jugador no puede pedir items ni puntos: la IA solo escribe texto.
 /// </remarks>
 [PlugIn]
-[Display(Name = "BarrioMU: mascotas del Sabio", Description = "El Sabio entrega una mascota que evoluciona con resets o tiempo, habla en el chat del mapa y, al llegar a nivel máximo, conversa con otras mascotas.")]
+[Display(Name = "BarrioMU: mascotas del Sabio", Description = "El Sabio acompaña en su propio espacio, evoluciona con resets o tiempo, habla en el chat del mapa y puede ir junto a otra mascota.")]
 [Guid("C4F5A6B7-8D9E-4F1A-B2C3-D4E5F6A7B8C9")]
 public class BarrioMascotasPlugIn : IChatCommandPlugIn, IPeriodicTaskPlugIn, IPlayerStateChangedPlugIn, IChatMessageSentPlugIn
 {
@@ -54,7 +54,7 @@ public class BarrioMascotasPlugIn : IChatCommandPlugIn, IPeriodicTaskPlugIn, IPl
     /// <summary>Resets totales para pasar a la etapa siguiente.</summary>
     private static readonly int[] ResetsNeeded = [1, 2, 3];
 
-    /// <summary>Segundos con la mascota puesta para pasar a la etapa siguiente.</summary>
+    /// <summary>Segundos con el Sabio activo para pasar a la etapa siguiente.</summary>
     private static readonly double[] SecondsNeeded = [2 * 3600, 4 * 3600, 8 * 3600];
 
     private static readonly BarrioStore<PetState> Store = new("mascotas-sabio");
@@ -83,6 +83,12 @@ public class BarrioMascotasPlugIn : IChatCommandPlugIn, IPeriodicTaskPlugIn, IPl
     /// <inheritdoc />
     public CharacterStatus MinCharacterStatusRequirement => CharacterStatus.Normal;
 
+    /// <summary>Obtiene el ítem del Sabio que lleva el personaje (en su espacio/inventario), si existe.</summary>
+    public static Item? GetSabioItem(Player player)
+    {
+        return player.Inventory?.Items.FirstOrDefault(i => i.Definition is { Group: PetGroup } def && StageOf(def.Number) > 0);
+    }
+
     /// <inheritdoc />
     public async ValueTask HandleCommandAsync(Player player, string command)
     {
@@ -92,11 +98,17 @@ public class BarrioMascotasPlugIn : IChatCommandPlugIn, IPeriodicTaskPlugIn, IPl
         }
 
         var state = GetRuntime(player, character);
+        var sabio = GetSabioItem(player);
+        if (sabio is not null)
+        {
+            state.Stage = StageOf(sabio.Definition!.Number);
+        }
+
         var message = state.Stage switch
         {
-            0 => "Todavía no tengo cuerpo. Háblame en Lorencia y te doy mi primera etapa.",
+            0 => "Todavía no te acompaño. Entra al juego y recibirás al Sabio en su espacio.",
             MaxStage => $"Estoy en {StageName(MaxStage)}, la etapa máxima. +40% de ataque y ya puedo pelear con otros Sabios del mapa.",
-            _ => $"Estoy en {StageName(state.Stage)} ({state.Stage}/{MaxStage}). Para evolucionar te faltan {Math.Max(0, ResetsNeeded[state.Stage - 1] - state.TotalResets)} resets o {Math.Max(0, (int)((SecondsNeeded[state.Stage - 1] - state.Seconds) / 3600))} horas puesta.",
+            _ => $"Estoy en {StageName(state.Stage)} ({state.Stage}/{MaxStage}). Para evolucionar te faltan {Math.Max(0, ResetsNeeded[state.Stage - 1] - state.TotalResets)} resets o {FormatRemaining(SecondsNeeded[state.Stage - 1] - state.Seconds)} conmigo activo.",
         };
 
         await WhisperAsync(player, message).ConfigureAwait(false);
@@ -131,23 +143,34 @@ public class BarrioMascotasPlugIn : IChatCommandPlugIn, IPeriodicTaskPlugIn, IPl
             return;
         }
 
+        // Migración: si el Sabio estaba en la ranura de mascota, pasa a su propio espacio para liberar la ranura.
+        await EnsureSabioInOwnSpaceAsync(player).ConfigureAwait(false);
+
+        var sabio = GetSabioItem(player);
         var state = GetRuntime(player, character);
         state.LastTickUtc = DateTime.UtcNow;
         state.Owner = new WeakReference<Player>(player);
 
-        if (player.Inventory?.GetItem(InventoryConstants.PetSlot) is not { } pet
-            || pet.Definition is not { Group: PetGroup } || StageOf(pet.Definition.Number) != state.Stage
-            || state.Stage == 0)
+        if (sabio?.Definition is not { Group: PetGroup } def || StageOf(def.Number) != state.Stage || state.Stage == 0)
         {
+            // Si tiene el ítem pero el estado no coincide, sincroniza etapa.
+            if (sabio?.Definition is { Group: PetGroup } d && StageOf(d.Number) is > 0 and var st)
+            {
+                state.Stage = st;
+            }
+
             return;
         }
 
-        // Un compañero no se gasta: se repara al entrar, aunque haya recibido golpes.
-        var max = pet.GetMaximumDurabilityOfOnePiece();
-        if (pet.Durability < max)
+        state.Active = true;
+        state.EquippedSinceUtc = DateTime.UtcNow;
+
+        // Un compañero no se gasta: se repara al entrar.
+        var max = sabio.GetMaximumDurabilityOfOnePiece();
+        if (sabio.Durability < max)
         {
-            pet.Durability = max;
-            await player.InvokeViewPlugInAsync<IItemDurabilityChangedPlugIn>(p => p.ItemDurabilityChangedAsync(pet, false)).ConfigureAwait(false);
+            sabio.Durability = max;
+            await player.InvokeViewPlugInAsync<IItemDurabilityChangedPlugIn>(p => p.ItemDurabilityChangedAsync(sabio, false)).ConfigureAwait(false);
         }
     }
 
@@ -156,13 +179,18 @@ public class BarrioMascotasPlugIn : IChatCommandPlugIn, IPeriodicTaskPlugIn, IPl
     {
         if (messageType != ChatMessageType.Normal
             || sender.SelectedCharacter is not { } character
-            || !message.Contains(SabioName, StringComparison.OrdinalIgnoreCase)
-            || playerHasOurPet(sender) is not { } pet)
+            || !message.Contains(SabioName, StringComparison.OrdinalIgnoreCase))
         {
             return;
         }
 
-        var stage = StageOf(pet.Definition?.Number ?? 0);
+        var sabio = GetSabioItem(sender);
+        if (sabio?.Definition is not { Group: PetGroup } def)
+        {
+            return;
+        }
+
+        var stage = StageOf(def.Number);
         if (stage < 1 || !States.TryGetValue(KeyOf(character), out var state))
         {
             return;
@@ -179,30 +207,23 @@ public class BarrioMascotasPlugIn : IChatCommandPlugIn, IPeriodicTaskPlugIn, IPl
     }
 
     /// <summary>
-    /// El Sabio entrega la primera etapa. Lo llama <see cref="BarrioSabioPlugIn"/> al hablarle.
-    /// Si la ranura de mascota está ocupada, lo deja en la bolsa.
+    /// Entrega la primera etapa del Sabio en su propio espacio (inventario), liberando la ranura de mascota.
     /// </summary>
     public static async ValueTask<bool> GiveFirstPetAsync(Player player)
     {
-        if (player.Inventory?.GetItem(InventoryConstants.PetSlot) is { } current
-            && StageOf(current.Definition?.Number ?? 0) > 0)
-        {
-            return true;
-        }
-
-        // Si ya tiene una etapa del Sabio en la bolsa, no se duplica.
-        if (player.Inventory?.Items.Any(i => i.Definition is { Group: PetGroup } && StageOf(i.Definition.Number) > 0) == true)
-        {
-            return true;
-        }
-
-        if (player.SelectedCharacter is not { } character)
+        if (player.SelectedCharacter is not { } character || player.Inventory is null)
         {
             return false;
         }
 
-        var inPetSlot = player.Inventory?.GetItem(InventoryConstants.PetSlot) is null;
-        if (await CreatePetAsync(player, StageItem[0], inPetSlot).ConfigureAwait(false) is null)
+        // Si ya tiene alguna etapa del Sabio, solo asegura que no esté en la ranura de mascota.
+        if (GetSabioItem(player) is not null)
+        {
+            await EnsureSabioInOwnSpaceAsync(player).ConfigureAwait(false);
+            return true;
+        }
+
+        if (await CreatePetAsync(player, StageItem[0]).ConfigureAwait(false) is null)
         {
             return false;
         }
@@ -210,23 +231,90 @@ public class BarrioMascotasPlugIn : IChatCommandPlugIn, IPeriodicTaskPlugIn, IPl
         var state = GetRuntime(player, character);
         state.Stage = 1;
         state.Seconds = 0;
-        state.Active = inPetSlot;
+        state.Active = true;
         state.EquippedSinceUtc = DateTime.UtcNow;
         state.LastTickUtc = DateTime.UtcNow;
         state.Owner = new WeakReference<Player>(player);
         Flush(KeyOf(character), state);
-        if (inPetSlot)
-        {
-            _ = AskAndSayAsync(player, "saludo", state);
-        }
+        _ = AskAndSayAsync(player, "saludo", state);
 
         return true;
     }
 
-    private static Item? playerHasOurPet(Player player)
+    /// <summary>Garantiza que el Sabio no ocupe la ranura de mascota y quede en su propio espacio.</summary>
+    public static async ValueTask EnsureSabioInOwnSpaceAsync(Player player)
     {
-        var pet = player.Inventory?.GetItem(InventoryConstants.PetSlot);
-        return pet?.Definition is { Group: PetGroup } && StageOf(pet.Definition.Number) > 0 ? pet : null;
+        if (player.Inventory is not { } inventory)
+        {
+            return;
+        }
+
+        var petSlotItem = inventory.GetItem(InventoryConstants.PetSlot);
+        if (petSlotItem?.Definition is { Group: PetGroup } def && StageOf(def.Number) > 0)
+        {
+            var targetSlot = FindSabioSpaceSlot(inventory);
+            if (targetSlot >= 0)
+            {
+                await inventory.RemoveItemAsync(petSlotItem).ConfigureAwait(false);
+                try
+                {
+                    await player.InvokeViewPlugInAsync<IItemRemovedPlugIn>(p => p.RemoveItemAsync((byte)InventoryConstants.PetSlot)).ConfigureAwait(false);
+                }
+                catch
+                {
+                    // vista opcional
+                }
+
+                petSlotItem.ItemSlot = (byte)targetSlot;
+                if (await inventory.AddItemAsync((byte)targetSlot, petSlotItem).ConfigureAwait(false))
+                {
+                    await player.InvokeViewPlugInAsync<IItemAppearPlugIn>(p => p.ItemAppearAsync(petSlotItem)).ConfigureAwait(false);
+                }
+                else
+                {
+                    // Fallback: intentar en cualquier espacio libre del inventario.
+                    if (await inventory.AddItemAsync(petSlotItem).ConfigureAwait(false))
+                    {
+                        await player.InvokeViewPlugInAsync<IItemAppearPlugIn>(p => p.ItemAppearAsync(petSlotItem)).ConfigureAwait(false);
+                    }
+                    else
+                    {
+                        // Último recurso: devolver a ranura de mascota para no perderlo.
+                        petSlotItem.ItemSlot = InventoryConstants.PetSlot;
+                        await inventory.AddItemAsync(InventoryConstants.PetSlot, petSlotItem).ConfigureAwait(false);
+                        await player.InvokeViewPlugInAsync<IItemAppearPlugIn>(p => p.ItemAppearAsync(petSlotItem)).ConfigureAwait(false);
+                    }
+                }
+            }
+        }
+    }
+
+    private static int FindSabioSpaceSlot(MUnique.OpenMU.GameLogic.IStorage inventory)
+    {
+        // Espacio preferido del Sabio: primer slot del inventario (bag).
+        var preferred = InventoryConstants.LastEquippableItemSlotIndex + 1;
+        if (inventory.GetItem((byte)preferred) is null)
+        {
+            return preferred;
+        }
+
+        // Buscar cualquier espacio libre en el inventario.
+        for (var slot = InventoryConstants.LastEquippableItemSlotIndex + 1; slot < InventoryConstants.LastEquippableItemSlotIndex + 1 + 8 * 8 * 4; slot++)
+        {
+            try
+            {
+                if (inventory.GetItem((byte)slot) is null)
+                {
+                    return slot;
+                }
+            }
+            catch
+            {
+                break;
+            }
+        }
+
+        return -1;
     }
 
     private async ValueTask ProcessAsync(GameContext gameContext, DateTime now)
@@ -256,8 +344,8 @@ public class BarrioMascotasPlugIn : IChatCommandPlugIn, IPeriodicTaskPlugIn, IPl
             return;
         }
 
-        var pet = player.Inventory?.GetItem(InventoryConstants.PetSlot);
-        var stage = pet?.Definition is { Group: PetGroup, Number: var number } ? StageOf(number) : 0;
+        var sabio = GetSabioItem(player);
+        var stage = sabio?.Definition is { Group: PetGroup, Number: var number } ? StageOf(number) : 0;
         var state = GetRuntime(player, character);
         state.Owner = new WeakReference<Player>(player);
         state.MapNumber = player.CurrentMap?.Definition.Number ?? -1;
@@ -315,18 +403,19 @@ public class BarrioMascotasPlugIn : IChatCommandPlugIn, IPeriodicTaskPlugIn, IPl
 
     private static async ValueTask EvolveAsync(Player player, PetRuntime state)
     {
-        var old = player.Inventory?.GetItem(InventoryConstants.PetSlot);
+        var old = GetSabioItem(player);
         if (old is null || state.Stage >= MaxStage)
         {
             return;
         }
 
+        var oldSlot = old.ItemSlot;
         await player.DestroyInventoryItemAsync(old).ConfigureAwait(false);
         var next = state.Stage + 1;
-        if (await CreatePetAsync(player, StageItem[next - 1]).ConfigureAwait(false) is null)
+        if (await CreatePetAsync(player, StageItem[next - 1], oldSlot).ConfigureAwait(false) is null)
         {
             // No se puede dejar al jugador sin compañero: se intenta devolver el anterior.
-            await CreatePetAsync(player, StageItem[state.Stage - 1]).ConfigureAwait(false);
+            await CreatePetAsync(player, StageItem[state.Stage - 1], oldSlot).ConfigureAwait(false);
             return;
         }
 
@@ -342,7 +431,7 @@ public class BarrioMascotasPlugIn : IChatCommandPlugIn, IPeriodicTaskPlugIn, IPl
         _ = AskAndSayAsync(player, "evolucion", state);
     }
 
-    private static async ValueTask<Item?> CreatePetAsync(Player player, short number, bool inPetSlot = true)
+    private static async ValueTask<Item?> CreatePetAsync(Player player, short number, byte? preferredSlot = null)
     {
         var definition = player.GameContext.Configuration.Items.FirstOrDefault(d => d.Group == PetGroup && d.Number == number);
         if (definition is null || player.Inventory is not { } inventory)
@@ -355,9 +444,27 @@ public class BarrioMascotasPlugIn : IChatCommandPlugIn, IPeriodicTaskPlugIn, IPl
         item.Durability = definition.Durability;
         item.Level = 0;
 
-        var ok = inPetSlot
-            ? await inventory.AddItemAsync(InventoryConstants.PetSlot, item).ConfigureAwait(false)
-            : await inventory.AddItemAsync(item).ConfigureAwait(false);
+        var target = preferredSlot
+            ?? (byte)Math.Max(InventoryConstants.LastEquippableItemSlotIndex + 1, 0);
+
+        // Nunca en la ranura de mascota: es el espacio de otra mascota.
+        if (target == InventoryConstants.PetSlot)
+        {
+            target = (byte)(InventoryConstants.LastEquippableItemSlotIndex + 1);
+        }
+
+        bool ok;
+        if (inventory.GetItem(target) is null)
+        {
+            ok = await inventory.AddItemAsync(target, item).ConfigureAwait(false);
+        }
+        else
+        {
+            var alt = FindSabioSpaceSlot(inventory);
+            ok = alt >= 0
+                ? await inventory.AddItemAsync((byte)alt, item).ConfigureAwait(false)
+                : await inventory.AddItemAsync(item).ConfigureAwait(false);
+        }
 
         if (!ok)
         {
@@ -507,7 +614,7 @@ public class BarrioMascotasPlugIn : IChatCommandPlugIn, IPeriodicTaskPlugIn, IPl
         }
         catch
         {
-            // El jugador pudo salir mientras se Calculaba.
+            // El jugador pudo salir mientras se calculaba.
         }
     }
 
@@ -540,6 +647,17 @@ public class BarrioMascotasPlugIn : IChatCommandPlugIn, IPeriodicTaskPlugIn, IPl
     private static int StageOf(short number) => Array.IndexOf(StageItem, number) + 1;
 
     private static string StageName(int stage) => stage >= 1 && stage <= MaxStage ? StageNameValue[stage - 1] : SabioName;
+
+    private static string FormatRemaining(double seconds)
+    {
+        if (seconds <= 0)
+        {
+            return "0 horas";
+        }
+
+        var hours = Math.Max(1, (int)Math.Ceiling(seconds / 3600d));
+        return hours == 1 ? "1 hora" : $"{hours} horas";
+    }
 
     private static string? ReadSecret()
     {

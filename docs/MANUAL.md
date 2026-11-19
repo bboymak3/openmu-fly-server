@@ -295,9 +295,11 @@ puntos, monedas, mapa), los precios reales de la tienda y lo que hay en La Plaza
   (secreto entre OpenMU y la API). Tablas: `barrio.sabio_uso`, `barrio.sabio_log`.
 
 ### El Sabio (mascota)
-- Cada personaje recibe el **Sabio** (Guardian Angel) al crearse, ya en la ranura de mascota.
-  No se puede tirar ni guardar en el baúl, y es la **única** forma de hablar con el Sabio: si no
-  lo tenés puesto, no responde. Para hablarle escribe **`/ia tu pregunta`** (con la mascota puesta).
+- Cada personaje recibe el **Sabio** al crearse en su **propio espacio** (separado de la ranura de mascota).
+  Así puedes llevar **otra mascota/montura** (Fenrir, caballo, etc.) en la ranura de mascota y al Sabio al mismo tiempo.
+  El Sabio se ve activo acompañándote. No se puede tirar, vender, comerciar ni guardar en el baúl, y no se pierde.
+  Para hablarle debe estar contigo/activo: escribe **`/ia tu pregunta`**. Con **`/mascota`** ves su etapa y progreso.
+  Evoluciona con resets o tiempo activo/online (con el Sabio contigo).
 - `/mascota` dice la etapa y cuánto falta. Evoluciona sola al cumplir **una** de estas dos:
   **1 reset o 2 h puesta → Sabio Espíritu**; **2 resets o 4 h → Sabio Panda (+50% EXP)**;
   **3 resets u 8 h → Sabio Dragón (+40% ataque)**. El tiempo corre solo con la mascota
