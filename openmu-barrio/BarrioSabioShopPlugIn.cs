@@ -24,13 +24,11 @@ using MUnique.OpenMU.PlugIns;
 public class BarrioSabioShopPlugIn : IObjectAddedToMapPlugIn
 {
     private const short Lorencia = 0;
-    private const short Amy = 253;
-    private const short Lumen = 255;
 
     private static readonly (short Npc, byte X, byte Y)[] Shops =
     [
-        (Amy, 127, 86),
-        (Lumen, 123, 135),
+        (253, 127, 86), // Amy
+        (255, 123, 135), // Lumen
     ];
 
     private static readonly ConditionalWeakTable<GameMap, object> Done = new();
@@ -61,34 +59,45 @@ public class BarrioSabioShopPlugIn : IObjectAddedToMapPlugIn
 
             foreach (var shop in Shops)
             {
-                var merchant = map.GetNpcsInRange(new Point(shop.X, shop.Y), 4)
-                    .OfType<MerchantNpc>()
-                    .FirstOrDefault(n => n.Definition.Number == shop.Npc);
-                if (merchant is null)
+                try
                 {
-                    continue;
+                    // Busca cerca de su lugar y, si no, en todo Lorencia.
+                    var merchant = map.GetNpcsInRange(new Point(shop.X, shop.Y), 12)
+                        .OfType<MerchantNpc>()
+                        .FirstOrDefault(n => n.Definition.Number == shop.Npc)
+                        ?? map.GetNpcsInRange(new Point(128, 128), 128)
+                            .OfType<MerchantNpc>()
+                            .FirstOrDefault(n => n.Definition.Number == shop.Npc);
+                    if (merchant is null)
+                    {
+                        continue;
+                    }
+
+                    if (merchant.MerchantStorage.Items.Any(i => i.Definition?.Group == 13 && i.Definition?.Number == 0))
+                    {
+                        continue;
+                    }
+
+                    var item = player.PersistenceContext.CreateNew<Item>();
+                    item.Definition = definition;
+                    item.Durability = definition.Durability;
+                    item.Level = 0;
+
+                    var slot = merchant.MerchantStorage.CheckInvSpace(item);
+                    if (slot is null)
+                    {
+                        player.PersistenceContext.Detach(item);
+                        continue;
+                    }
+
+                    if (!await merchant.MerchantStorage.AddItemAsync(slot.Value, item).ConfigureAwait(false))
+                    {
+                        player.PersistenceContext.Detach(item);
+                    }
                 }
-
-                if (merchant.MerchantStorage.Items.Any(i => i.Definition?.Group == 13 && i.Definition?.Number == 0))
+                catch
                 {
-                    continue;
-                }
-
-                var item = player.PersistenceContext.CreateNew<Item>();
-                item.Definition = definition;
-                item.Durability = definition.Durability;
-                item.Level = 0;
-
-                var slot = merchant.MerchantStorage.CheckInvSpace(item);
-                if (slot is null)
-                {
-                    player.PersistenceContext.Detach(item);
-                    continue;
-                }
-
-                if (!await merchant.MerchantStorage.AddItemAsync(slot.Value, item).ConfigureAwait(false))
-                {
-                    player.PersistenceContext.Detach(item);
+                    // No hay que romper la entrada al mapa por una tienda.
                 }
             }
         }
