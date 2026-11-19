@@ -296,9 +296,8 @@ puntos, monedas, mapa), los precios reales de la tienda y lo que hay en La Plaza
 
 ### El Sabio (mascota)
 - Cada personaje recibe el **Sabio** (Guardian Angel) al crearse, ya en la ranura de mascota.
-  No se puede tirar ni guardar en el baúl, y es la **única** forma de hablar con el Sabio (`/ia`
-  o chat con el NPC): si no lo tenés puesto, no responde. El NPC de la fuente (133,128) sigue
-  ahí para orientarte.
+  No se puede tirar ni guardar en el baúl, y es la **única** forma de hablar con el Sabio: si no
+  lo tenés puesto, no responde. Para hablarle escribe **`/ia tu pregunta`** (con la mascota puesta).
 - `/mascota` dice la etapa y cuánto falta. Evoluciona sola al cumplir **una** de estas dos:
   **1 reset o 2 h puesta → Sabio Espíritu**; **2 resets o 4 h → Sabio Panda (+50% EXP)**;
   **3 resets u 8 h → Sabio Dragón (+40% ataque)**. El tiempo corre solo con la mascota

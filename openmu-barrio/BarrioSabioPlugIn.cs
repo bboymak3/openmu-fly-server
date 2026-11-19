@@ -4,29 +4,21 @@
 
 namespace MUnique.OpenMU.GameLogic.PlugIns;
 
-using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations;
 using System.IO;
 using System.Net.Http;
 using System.Net.Http.Json;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text.Json.Serialization;
-using System.Threading;
 using MUnique.OpenMU.DataModel;
 using MUnique.OpenMU.GameLogic.Attributes;
-using MUnique.OpenMU.GameLogic.NPC;
 using MUnique.OpenMU.GameLogic.PlugIns.ChatCommands;
 using MUnique.OpenMU.GameLogic.Views;
-using MUnique.OpenMU.GameLogic.Views.NPC;
-using MUnique.OpenMU.GameLogic.Views.World;
-using MUnique.OpenMU.Pathfinding;
 using MUnique.OpenMU.PlugIns;
-using Nito.AsyncEx;
 
 /// <summary>
 /// BarrioMU: "El Sabio del Barrio", la IA del juego. El jugador escribe <c>/ia pregunta</c>
-/// y la respuesta le llega como susurro del Sabio.
+/// con la mascota del Sabio equipada y la respuesta le llega como susurro.
 /// </summary>
 /// <remarks>
 /// El servidor de juego no habla con la IA: le pasa la pregunta y los datos reales del
@@ -34,42 +26,16 @@ using Nito.AsyncEx;
 /// en la tablet (http://127.0.0.1:3400/sabio), que lleva la personalidad, el limite diario y
 /// la llamada al modelo. Se hace en segundo plano: el juego nunca espera a la IA.
 /// La IA no tiene ninguna herramienta que de items, puntos ni monedas.
-/// Ademas pone al Sabio como NPC en Lorencia (junto al Cambista): al hablarle saluda por
-/// susurro y el cliente de BarrioMU abre el chat dirigido al Sabio, asi la pregunta se
-/// escribe sin /ia (el cliente la manda como /ia).
 /// </remarks>
 [PlugIn]
-[Display(Name = "BarrioMU: El Sabio del Barrio (/ia)", Description = "Comando /ia y NPC Sabio en Lorencia: preguntas a la IA del servidor, que contesta por susurro con los datos reales del personaje.")]
+[Display(Name = "BarrioMU: El Sabio del Barrio (/ia)", Description = "Comando /ia: preguntas a la IA del servidor con la mascota del Sabio equipada.")]
 [Guid("5A6B7C8D-9E0F-4A1B-8C2D-3E4F5A6B7C81")]
-public class BarrioSabioPlugIn : IChatCommandPlugIn, IObjectAddedToMapPlugIn, IPlayerTalkToNpcPlugIn, IPeriodicTaskPlugIn
+public class BarrioSabioPlugIn : IChatCommandPlugIn
 {
     /// <summary>
-    /// El saludo del NPC. El cliente de BarrioMU lo reconoce (empieza asi) y abre el chat
-    /// dirigido al Sabio: no cambiar sin cambiar tambien babylon/patch-client.py.
+    /// Saludo reconocido por el cliente de BarrioMU para abrir el chat dirigido al Sabio.
     /// </summary>
     public const string Greeting = "Hola pana, soy el Sabio del Barrio. Escribe tu pregunta en el chat y te respondo.";
-
-    /// <summary>Adviser Jerinteu: en el cliente de BarrioMU se llama "Sabio del Barrio". Está junto a la fuente de Lorencia (128, 128).</summary>
-    private const short SabioNpcNumber = 522;
-
-    private const short LorenciaMapNumber = 0;
-
-    /// <summary>Junto a la fuente de Lorencia.</summary>
-    private const byte SabioX = 133;
-
-    private const byte SabioY = 128;
-
-    private static readonly ConditionalWeakTable<NonPlayerCharacter, object> OwnNpcs = new();
-
-    private static readonly ConditionalWeakTable<GameMap, object> SpawnedMaps = new();
-
-    private static readonly ConcurrentDictionary<GameMap, NonPlayerCharacter> Sabios = new();
-
-    private static readonly AsyncLock MoveLock = new();
-
-    private static readonly SemaphoreSlim SpawnLock = new(1, 1);
-
-    private DateTime _nextMove;
 
     private const string Command = "/ia";
 
@@ -156,140 +122,10 @@ public class BarrioSabioPlugIn : IChatCommandPlugIn, IObjectAddedToMapPlugIn, IP
         _ = Task.Run(() => AskAsync(player, request));
     }
 
-    /// <inheritdoc />
-    public async ValueTask ObjectAddedToMapAsync(GameMap map, ILocateable addedObject)
+    private static bool HasEquippedSabioPet(Player player)
     {
-        if (addedObject is not Player player || map.Definition.Number != LorenciaMapNumber || SpawnedMaps.TryGetValue(map, out _))
-        {
-            return;
-        }
-
-        await SpawnLock.WaitAsync().ConfigureAwait(false);
-        try
-        {
-            if (SpawnedMaps.TryGetValue(map, out _))
-            {
-                return;
-            }
-
-            SpawnedMaps.Add(map, new object());
-            var definition = player.GameContext.Configuration.Monsters.FirstOrDefault(m => m.Number == SabioNpcNumber);
-            if (definition is null)
-            {
-                return;
-            }
-
-            var area = new MonsterSpawnArea
-            {
-                GameMap = map.Definition,
-                MonsterDefinition = definition,
-                X1 = (byte)(SabioX - 1),
-                Y1 = (byte)(SabioY - 1),
-                X2 = (byte)(SabioX + 1),
-                Y2 = (byte)(SabioY + 1),
-                Quantity = 1,
-                Direction = Direction.South,
-            };
-            var npc = new NonPlayerCharacter(area, definition, map);
-            try
-            {
-                npc.Initialize();
-            }
-            catch (InvalidOperationException)
-            {
-                await npc.DisposeAsync().ConfigureAwait(false);
-                return;
-            }
-
-            OwnNpcs.AddOrUpdate(npc, new object());
-            await map.AddAsync(npc).ConfigureAwait(false);
-            npc.OnSpawn();
-            Sabios[map] = npc;
-        }
-        finally
-        {
-            SpawnLock.Release();
-        }
-    }
-
-    /// <inheritdoc />
-    public ValueTask ExecuteTaskAsync(GameContext gameContext)
-    {
-        var now = DateTime.UtcNow;
-        if (now < this._nextMove || Sabios.IsEmpty)
-        {
-            return ValueTask.CompletedTask;
-        }
-
-        this._nextMove = now.AddSeconds(6);
-        return MoveSabiosAsync();
-    }
-
-    /// <inheritdoc />
-    public void ForceStart()
-    {
-        this._nextMove = DateTime.MinValue;
-    }
-
-    private static async ValueTask MoveSabiosAsync()
-    {
-        var center = new Point(SabioX, SabioY);
-        foreach (var npc in Sabios.Values)
-        {
-            if (npc.CurrentMap is not { } map)
-            {
-                continue;
-            }
-
-            var target = map.Terrain.GetRandomCoordinate(center, 1);
-            if (!map.Terrain.WalkMap[target.X, target.Y])
-            {
-                continue;
-            }
-
-            // Un NPC no tiene walker: Instant lo mueve sin pathfinding, pero dentro de su zona.
-            await map.MoveAsync(npc, target, MoveLock, MoveType.Instant, true).ConfigureAwait(false);
-        }
-    }
-
-    /// <inheritdoc />
-    public async ValueTask PlayerTalksToNpcAsync(Player player, NonPlayerCharacter npc, NpcTalkEventArgs eventArgs)
-    {
-        if (!OwnNpcs.TryGetValue(npc, out _))
-        {
-            return;
-        }
-
-        eventArgs.HasBeenHandled = true;
-        var hadSabio = HasSabioPet(player);
-        var gavePet = await BarrioMascotasPlugIn.GiveFirstPetAsync(player).ConfigureAwait(false);
-        var equipped = HasEquippedSabioPet(player);
-
-        string bubble;
-        if (!gavePet)
-        {
-            bubble = "¡Epale pana! No pude darte la mascota (bolsa llena). Haz espacio y vuelve.";
-        }
-        else if (equipped)
-        {
-            bubble = hadSabio
-                ? "¡Epale pana! Ya te acompaño. Pregúntame lo que quieras. /mascota te dice cómo voy."
-                : "¡Epale pana! Ya te acompaño. Pregúntame lo que quieras. /mascota te dice cómo voy.";
-        }
-        else
-        {
-            bubble = "¡Epale pana! Pónteme en la ranura de mascota para poder hablar contigo.";
-        }
-
-        await player.InvokeViewPlugInAsync<IShowMessageOfObjectPlugIn>(p => p.ShowMessageOfObjectAsync(bubble, npc)).ConfigureAwait(false);
-        if (equipped)
-        {
-            await WhisperAsync(player, Greeting).ConfigureAwait(false);
-        }
-        else
-        {
-            await WhisperAsync(player, "Para hablar conmigo tienes que tener puesto al Sabio en la ranura de mascota.").ConfigureAwait(false);
-        }
+        var pet = player.Inventory?.GetItem(InventoryConstants.PetSlot);
+        return pet?.Definition is { Group: 13 } && pet.Definition.Number is 0 or 65 or 80 or 64;
     }
 
     private static async Task AskAsync(Player player, SabioRequest request)
@@ -315,17 +151,6 @@ public class BarrioSabioPlugIn : IChatCommandPlugIn, IObjectAddedToMapPlugIn, IP
                 Waiting.Remove(request.Character);
             }
         }
-    }
-
-    private static bool HasSabioPet(Player player)
-    {
-        return player.Inventory?.Items.Any(i => i.Definition is { Group: 13 } && i.Definition.Number is 0 or 65 or 80 or 64) == true;
-    }
-
-    private static bool HasEquippedSabioPet(Player player)
-    {
-        var pet = player.Inventory?.GetItem(InventoryConstants.PetSlot);
-        return pet?.Definition is { Group: 13 } && pet.Definition.Number is 0 or 65 or 80 or 64;
     }
 
     private static async ValueTask WhisperAsync(Player player, string text)

@@ -616,6 +616,40 @@ type Slot = TagSlot<TagEntity, HTMLDivElement>;""",
         "  '13/64': 'Sabio Dragón',\n",
     ),
 
+    # Descripción del Sabio en el tooltip del ítem (comando para hablarle).
+    (
+        "versions/shared/ui/components/item_tooltip/index.tsx",
+        " * item's fields and the hero's stats.\n */\nexport const ItemTooltip = observer(\n",
+        " * item's fields and the hero's stats.\n */\n"
+        "function sabioLines(item: Item): TooltipLine[] {\n"
+        "  if (item.group !== 13) return [];\n"
+        "  const info: Record<number, { stage: string }> = {\n"
+        "    0: { stage: 'Etapa 1/4. Evoluciona con resets o tiempo puesto.' },\n"
+        "    65: { stage: 'Etapa 2/4. Evoluciona con resets o tiempo puesto.' },\n"
+        "    80: { stage: 'Etapa 3/4. +50% EXP. Evoluciona con resets o tiempo puesto.' },\n"
+        "    64: { stage: 'Etapa 4/4 (máxima). +40% ataque. Pelea con otros Sabios del mapa.' },\n"
+        "  };\n"
+        "  const s = info[item.num];\n"
+        "  if (!s) return [];\n"
+        "  return [\n"
+        "    { text: '', color: 'white', bold: false, blank: true },\n"
+        "    { text: 'Tu compañero Sabio (IA de BarrioMU).', color: 'yellow', bold: false },\n"
+        "    { text: s.stage, color: 'blue', bold: false },\n"
+        "    { text: 'Para hablarle: /ia tu pregunta', color: 'white', bold: true },\n"
+        "    { text: '(debes tenerlo equipado)', color: 'gray', bold: false },\n"
+        "    { text: '/mascota: ver etapa y progreso.', color: 'gray', bold: false },\n"
+        "  ];\n"
+        "}\n\n"
+        "export const ItemTooltip = observer(\n",
+    ),
+    (
+        "versions/shared/ui/components/item_tooltip/index.tsx",
+        "      if (pet !== undefined && petSlot >= 0) all.push(...petLines(pet, petSlot));\n      return all;\n",
+        "      if (pet !== undefined && petSlot >= 0) all.push(...petLines(pet, petSlot));\n"
+        "      all.push(...sabioLines(item));\n"
+        "      return all;\n",
+    ),
+
 ]
 
 for path, old, new in PATCHES:
