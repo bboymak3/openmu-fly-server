@@ -49,6 +49,8 @@ instalador de Windows.
   cuántos tienes y en **Mi cuenta → Tienda de puntos** se cambian por Bless, Soul, Chaos y
   lo que el admin prenda (alas de 1ra y 2da, plumas, mascotas, armas +15…), que llega al
   baúl. También dan **5 puntos por cada hora jugada** (desde nivel 50).
+- **Cash Shop** (https://barriomu.makeseo.app/cashshop.html): alas, ítems de misión y cofre sorpresa con WCoinC, con límite diario por cuenta; llegan al baúl.
+- **Voz por proximidad**: botón de hablar en el celular (tecla `K` en teclado); el audio va directo entre navegadores y el volumen baja con la distancia.
 - **Monedas**: 🪙 puntos (del juego), 💎 **WCoinC** (la da el admin; sirve en la tienda) y
   🔷 **WCoinP** (para comerciar entre jugadores; se obtiene cambiando WCoinC en Mi cuenta,
   por defecto 1 WCoinC = 2 WCoinP).
@@ -90,26 +92,33 @@ instalador de Windows.
   dar puntos), jugadores en línea, cuentas y personajes por día, visitas
   por país y caché (Cloudflare), descargas del instalador y botón para purgar la caché.
 
-**El Sabio del Barrio: Telegram y WhatsApp** (guía para jugadores: https://barriomu.makeseo.app/bot.html)
-- **En el juego**: el NPC **Sabio del Barrio** junto a la fuente de Lorencia; al hablarle
-  abre el chat. También `/ia pregunta`. Con `/wa Nombre mensaje` le llega a ese jugador por WhatsApp.
-- **Por WhatsApp** (se vincula en Mi cuenta → 📱 WhatsApp → Generar código, y se manda
-  `vincular 123456` al bot). Se le puede hablar normal; lo que cambia algo pide un **sí**.
+**El Sabio del Barrio** (guía para jugadores: https://barriomu.makeseo.app/bot.html)
+- **En el juego**: cada personaje lleva al **Sabio** como mascota (Guardian Angel). Tiene 4 etapas
+  (Sabio, Espíritu, Panda con +50 % EXP y Dragón con +40 % ataque) y evoluciona con resets o con
+  tiempo puesto. Con el Sabio **puesto en la ranura de mascota**, **`/ia tu pregunta`** habla con la
+  IA y **`/mascota`** dice la etapa y lo que falta; la ficha del ítem lo explica todo. Habla en el
+  chat del mapa. Ya no hay NPC del Sabio en Lorencia.
+- **Por Telegram** (bot **@Barriomubot**): se vincula en Mi cuenta → Telegram y WhatsApp → Generar
+  código → "Abrir Telegram y vincular" (o escribiendo `vincular 123456` al bot). Se le puede hablar
+  normal; lo que cambia algo pide un **sí**. Los comandos también sirven con barra (`/estado`).
   Comandos de los jugadores (no gastan preguntas):
   - `estado`, `top`, `mi puesto`, `eventos`, `ayuda`
   - `avisar todos` / `avisar blood castle` / `no avisar todos` (10 min antes de cada evento)
   - `resumen si` / `resumen no` (resumen de tus personajes a las 8:00)
-  - `@Nombre mensaje` (le llega dentro del juego como susurro)
+  - `@Nombre mensaje` (le llega dentro del juego como susurro); en el juego, `/wa Nombre mensaje`
+    le llega a ese jugador por Telegram
   - `reset NOMBRE`, `puntos NOMBRE fuerza 100 agilidad 50` (con la cuenta fuera del juego)
   - `baul` y `vender 3 50` (el item 3 del baúl a 50 WCoinP en La Plaza)
   - `spots`, `mover 2`, `parar`: mover al personaje que farmea con `/offlevel` a un spot de
     farmeo (las **jaulas de la Arena** o los que guarde el GM). Si muere vuelve solo al
     spot; a la 3ª muerte se queda en la ciudad y avisa.
-  - `desvincular` suelta el número.
+  - `desvincular` suelta la cuenta.
+- **WhatsApp está retirado**: el número fue bloqueado y se eliminó la instancia de Railway. Si
+  algún día vuelve, el bot **nunca escribe primero** (solo contesta a quien le escribe).
 - Los comandos de admin y de la tablet están en [docs/MANUAL.md](docs/MANUAL.md).
 
 **Vigilancia**
-- **Vigilante**: cada hora GitHub entra al juego como un jugador (cuenta `VIGIA_USUARIO`),
+- **Vigilante**: cada hora (GitHub a veces lo atrasa varias horas) entra al juego como un jugador (cuenta `VIGIA_USUARIO`),
   camina por Lorencia y, si algo falla, abre un aviso (issue) que llega a la app de GitHub.
   Cuando vuelve a funcionar, lo cierra.
 - **Vigilante de la tablet**: cada 5 minutos revisa que todo siga prendido y prende lo
@@ -135,7 +144,7 @@ comando mismo entra a Ubuntu con `proot-distro login ubuntu`. Pega **uno a la ve
 espera a que termine.
 
 ### Entrar a la tablet desde Termius
-- En la casa: host = IP de la tablet en el WiFi, puerto **8022**, usuario **u0_a208**.
+- En la casa: host = IP de la tablet en el WiFi, puerto **8022**, usuario de Termux (se ve con `whoami`).
 - Desde cualquier lugar: el mismo, pero con la IP de **Tailscale** de la tablet
   (empieza con **100.**). Tailscale debe estar prendido en la tablet y en el teléfono.
 - Si Termius dice "connection refused", en la tablet abre Termux y escribe:
@@ -167,8 +176,11 @@ empieza apagando y termina prendiendo:
 bash ~/barriomu.sh apagar
 ```
 
-**Servidor del juego (OpenMU)**: cuando cambian los plugins de `openmu-barrio/`. Debe
-terminar diciendo `OPENMU OK`:
+**Servidor del juego (OpenMU)**: cuando cambian los plugins de `openmu-barrio/`. Lo más seguro es
+`bash ~/barriomu.sh openmu actualizar`: saca un respaldo, comprueba la descarga antes de apagar
+nada y, si la versión nueva no prende en 5 minutos, **vuelve sola a la anterior**
+(`openmu actualizar prueba` baja la versión de prueba; `openmu volver` deja la anterior).
+A mano, debe terminar diciendo `OPENMU OK`:
 ```bash
 proot-distro login ubuntu -- bash -c 'cd ~ && wget -O openmu.zip https://github.com/bboymak3/openmu-fly-server/releases/download/openmu-arm64/openmu-linux-arm64.zip && unzip -oq openmu.zip -d openmu && echo OPENMU OK'
 ```
@@ -210,6 +222,14 @@ bash ~/barriomu.sh spot quitar    # quita solo el spot del sur
 bash ~/barriomu.sh joyas          # muestra con qué porcentaje caen las joyas
 bash ~/barriomu.sh joyas 1        # joyas al 1% por monstruo en todos los mapas (hasta 10)
 bash ~/barriomu.sh cloudflare     # guarda en la tablet el token de Cloudflare del panel admin
+bash ~/barriomu.sh arena          # las 30 jaulas de la Arena y 27 spots de farmeo (arena 6 = 6 por jaula; reinicia OpenMU)
+bash ~/barriomu.sh monstruos      # monstruos clásicos por mapa: lista; 'monstruos aida 50' = Aida al 50 %, 'todos 50', 'aida original'
+bash ~/barriomu.sh gmcomandos     # prende /setlevel, /setmasterlevel, /setresets y /setleveluppoints (solo GM; reinicia OpenMU)
+bash ~/barriomu.sh memoria        # memoria de la tablet y cuánto usa cada parte
+bash ~/barriomu.sh optimizar      # una vez: que Android no mate a Termux (Depuración inalámbrica)
+bash ~/barriomu.sh limpiar        # cierra las demás apps de la tablet y libera memoria
+bash ~/barriomu.sh ia             # configura El Sabio (token de Workers AI)
+bash ~/barriomu.sh telegram       # conecta el bot de Telegram (token de BotFather); 'telegram pausar|reanudar|quitar'
 ```
 
 ### Ver los puntos por monstruo (se editan en el panel admin)
@@ -258,13 +278,13 @@ allá no rompa el servidor.
 
 | Workflow | Qué hace | Release |
 |---|---|---|
-| `build-arm64.yml` | OpenMU para linux-arm64, con los cambios de `openmu-barrio/` | `openmu-arm64` |
+| `build-arm64.yml` | OpenMU para linux-arm64, con los cambios de `openmu-barrio/`. Desde `main` publica producción; desde cualquier otra rama, solo la de prueba | `openmu-arm64` (main) · `openmu-arm64-test` (ramas) |
 | `build-babylon.yml` | Cliente, proxy, registro y API, con lo de `babylon/`. Publica el paquete completo (`instalar-babylon.sh`) y el corto solo con el código (`actualizar-babylon.sh`, que exige la misma huella de gráficos `DATA_VERSION`) | `babylon-arm64` |
 | `build-pc.yml` | Instalador de Windows (`desktop/`) con el cliente y los gráficos completos | `barriomu-pc` |
 | `vigilante.yml` | Cada hora (minuto 17) entra al juego con `scripts/vigilante.js`; abre o cierra un issue `vigilante`. Secretos `VIGIA_USUARIO` y `VIGIA_CLAVE` | - |
 
 Cambios sobre OpenMU (`openmu-barrio/`):
-- Cuentas `barrio01` a `barrio10` (clave igual al usuario), con un personaje nivel 400
+- Cuentas de prueba `barrio01` a `barrio10` (con clave de fábrica: cámbiala o bórralas antes de abrir al público), con un personaje nivel 400
   de tercera clase, set +15 y alas de tercera. Se crean con `reset-db`.
 - Dos game servers: MIJAGUA (PvP) y ALTOBARINAS (sin PvP, doble drop).
 - Sin límite de conexiones por IP: todos los jugadores llegan por el proxy desde 127.0.0.1.
@@ -291,7 +311,7 @@ Cambios sobre el cliente (`babylon/personalizar-cliente.sh` y `babylon/patch-cli
 | `babylon/barriomu.sh` | Prender, apagar, vigilar y configurar todo |
 | `babylon/iniciar-cliente.sh` | Arranca proxy, página, registro y API (lo usa barriomu.sh) |
 | `babylon/servir.ts` | Servidor web mínimo de la página y el registro |
-| `babylon/api/` | API de la página: estado, rankings, Mi cuenta (`panel.ts`), admin (`admin.ts`), referidos (`referidos.ts`), tienda (`tienda.ts`), mercado (`mercado.ts`), economía (`economia.ts`) |
+| `babylon/api/` | API de la página: estado, rankings, Mi cuenta (`panel.ts`), admin (`admin.ts`), referidos (`referidos.ts`), tienda (`tienda.ts`), Cash Shop (`cashshop.ts`), mercado (`mercado.ts`), economía (`economia.ts`), Sabio (`sabio.ts`), bots de Telegram/WhatsApp (`whatsapp.ts`, `wa-extras.ts`), Master Reset (`masterReset.ts`) y voz por proximidad (`voice.ts`) |
 | `babylon/mobile/` | Controles del celular: joystick, rueda de combate, pociones, dedo como cursor (`touchHover.ts`) |
 | `babylon/personalizar-cliente.sh`, `babylon/patch-client.py` | Cambios de BarrioMU sobre el cliente (web y PC) |
 | `babylon/branding/` | Logo, iconos y lista de servidores |

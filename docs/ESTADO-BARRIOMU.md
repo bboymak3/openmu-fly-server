@@ -6,11 +6,11 @@ en `docs/MANUAL.md`; la presentación del servidor, en `README.md`.
 
 | Dato | Valor |
 |---|---|
-| Rama | `main` (19/11/2026: el código del Sabio es idéntico a `cc038b3`, ver §9) |
+| Rama | `main` (20/11/2026: el Sabio sigue idéntico a `cc038b3`, ver §9; red de seguridad de OpenMU al final) |
 | Cliente Babylon fijado | `26c0921c1bed65b1aab4762022f24021a5318130` |
-| Release cliente tablet | `babylon-arm64` (19/11/2026 22:19 UTC, build de la reversión) |
-| Release servidor | `openmu-arm64` (19/11/2026 22:05 UTC, build de la reversión) |
-| Release PC | `barriomu-pc` (19/11/2026 22:09 UTC, build de la reversión) |
+| Release cliente tablet | `babylon-arm64` |
+| Release servidor | `openmu-arm64` (producción, solo desde `main`) · `openmu-arm64-test` (pruebas, ramas) |
+| Release PC | `barriomu-pc` |
 
 ## 1. Dónde vive cada cosa
 
