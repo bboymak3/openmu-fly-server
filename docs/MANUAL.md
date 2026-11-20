@@ -88,7 +88,7 @@ ALTOBARINAS **45903/45904**. Registro interno **3100**, presencia del proxy **30
 ### En la misma red (WiFi de la casa)
 1. En la tablet, Termux debe tener `sshd` prendido (se prende con `sshd`). `bash ~/barriomu.sh prender` y el vigilante lo prenden solos; con `bash ~/barriomu.sh arranque` + Termux:Boot tambien al encender la tablet. Si Termux se cierra con `[Process completed (signal 9)]`, es Android matandolo: quitale el ahorro de bateria a Termux y, en Opciones de desarrollador, activa "Inhabilitar restricciones de procesos secundarios".
 2. En **Termius**: host = IP de la tablet en la casa (ej. `192.168.20.x`), puerto **8022**,
-   usuario **u0_a208**.
+   usuario de Termux (se ve escribiendo `whoami`).
 
 ### Desde cualquier lugar: Tailscale (gratis)
 1. Instala **Tailscale** en la tablet y en tu teléfono, con **la misma cuenta**.
@@ -250,7 +250,7 @@ la de un personaje recién creado: se lo pone a los pocos niveles.
 Solo para personajes nuevos: los que ya existen no lo reciben.
 
 ### Cuentas de prueba
-`barrio01` a `barrio10` (clave igual al usuario). Cada una con un personaje nivel 400 de tercera
+`barrio01` a `barrio10` (con clave de fábrica: cámbiala o bórralas antes de abrir al público). Cada una con un personaje nivel 400 de tercera
 clase, set +15 y alas de tercera. Se crean al hacer `reset-db`.
 
 ### Premio diario
@@ -275,12 +275,7 @@ Se guarda en `~/openmu/data/premio-diario.json`.
 - Se guarda en `~/openmu/data/master-reset.json` (por id de personaje).
 
 ### El Sabio del Barrio (IA, comando /ia)
-En el juego hay dos formas:
-- **El NPC "Sabio del Barrio"** en Lorencia, **junto a la fuente** (cerca de 133, 128): al hacerle
-  clic saluda y **se abre el chat dirigido al Sabio**; se escribe la pregunta normal, sin `/ia`
-  (el cliente la manda como `/ia`). Mientras el susurro siga apuntando al Sabio, cada mensaje
-  es otra pregunta; para hablar con otros, se cambia el destinatario del susurro.
-- **`/ia` y una pregunta** (ej. `/ia cuanto me falta para el reset?`), desde cualquier mapa.
+En el juego se escribe **`/ia` y una pregunta** (ej. `/ia cuanto me falta para el reset?`), desde cualquier mapa, **con el Sabio puesto en la ranura de mascota** (ver «El Sabio (mascota)»). Ya no hay NPC del Sabio en Lorencia; el cliente también manda como `/ia` lo que se susurre al «Sabio».
 
 Preguntas de hasta 56 letras (el chat de MU deja 60). Contesta por
 **susurro** del "Sabio" en 1 a 5 segundos, con los datos reales del personaje (nivel, resets, zen,
@@ -796,7 +791,7 @@ Si alguien consigue la clave GM, igual no entra sin tu correo.
 
 - **Nunca compartas** el token del túnel (`~/.barriomu-token`), el token de Cloudflare del panel admin
   (`~/.barriomu-cloudflare`), contraseñas de SSH ni la clave de la base de datos.
-- Las cuentas de prueba `barrio01`…`barrio10` tienen la clave igual al usuario: cámbiales la clave
+- Las cuentas de prueba `barrio01`…`barrio10` tienen una clave de fábrica: cámbiales la clave
   o bórralas antes de abrir el servidor al público.
 - El panel de admin (8080) solo se abre en la tablet; no lo pongas en el túnel.
 - Haz respaldos (sección 11) antes de `reset-db` o de cambios grandes.
