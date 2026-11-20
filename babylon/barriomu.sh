@@ -38,6 +38,7 @@
 #   bash ~/barriomu.sh memoria     muestra la memoria de la tablet y cuanto usa cada parte de BarrioMU
 #   bash ~/barriomu.sh optimizar   le dice a Android que no mate a Termux (una vez; necesita Depuracion inalambrica)
 #   bash ~/barriomu.sh limpiar     cierra las demas apps de la tablet y deja solo BarrioMU
+#   bash ~/barriomu.sh openmu actualizar   actualiza OpenMU con respaldo y vuelta atras si no prende ('prueba' = version de prueba; 'volver' = la anterior)
 #
 # Al prender tambien arranca un vigilante que cada 5 minutos revisa que todo
 # siga prendido y vuelve a prender lo que se haya caido.
@@ -79,6 +80,8 @@ in_ubuntu() {
 panel_arg() { [ "$(cat "$PANEL_STATE" 2>/dev/null)" = on ] || echo "-adminpanel:disabled"; }
 
 start_openmu() {
+  # Cada arranque borraba el registro del anterior: si OpenMU fallaba, se perdia el motivo.
+  [ -s "$LOGS/openmu.log" ] && mv -f "$LOGS/openmu.log" "$LOGS/openmu.log.prev"
   in_ubuntu openmu.log "cd ~/openmu && $DOTNET_MEM exec ./iniciar.sh -autostart -deamon -resolveIP:loopback $(panel_arg) $1"
 }
 
@@ -103,14 +106,45 @@ panel() {
   start_watchdog
 }
 
+# PostgreSQL: "prendido" es que ATIENDE conexiones. pg_ctl status solo mira el archivo
+# postmaster.pid y si ese proceso existe: un PostgreSQL colgado a medio apagar (proceso vivo
+# que no contesta) parecia prendido y OpenMU se quedaba esperando una base que no atendia.
+pg_atiende() { pg_isready -q -h 127.0.0.1 -p 5432; }
+
+postgres_prender() {
+  if pg_atiende; then echo "   ya estaba prendido"; return 0; fi
+  if pg_ctl -D "$PGDATA" status >/dev/null 2>&1; then
+    # Hay proceso: puede estar arrancando (recuperandose) o colgado. isready: 1 = arrancando,
+    # 2 = no responde. Se espera mientras arranca; 20 s seguidos sin respuesta = colgado.
+    printf '   hay un PostgreSQL que aun no atiende, esperando'
+    local i sin=0 rc
+    for ((i = 0; i < 150; i++)); do
+      pg_isready -q -h 127.0.0.1 -p 5432; rc=$?
+      [ "$rc" -eq 0 ] && { echo " listo"; return 0; }
+      if [ "$rc" -eq 1 ]; then sin=0; else sin=$((sin + 1)); fi
+      [ "$sin" -ge 20 ] && break
+      printf '.'; sleep 1
+    done
+    echo " sigue sin atender: se reinicia"
+    local pid; pid=$(head -n1 "$PGDATA/postmaster.pid" 2>/dev/null)
+    if [[ "$pid" =~ ^[0-9]+$ ]]; then
+      kill "$pid" 2>/dev/null; sleep 3
+      kill -0 "$pid" 2>/dev/null && kill -9 "$pid" 2>/dev/null
+      sleep 1
+    fi
+    rm -f "$PGDATA/postmaster.pid"
+  fi
+  if pg_ctl -D "$PGDATA" -l "$PGDATA/log.txt" -w -t 120 start >/dev/null; then echo "   prendido"
+  else echo "   NO prendio (revisa: tail -n 30 $PGDATA/log.txt)"; return 1; fi
+}
+
 prender() {
   termux-wake-lock 2>/dev/null
   # SSH para entrar desde afuera: si no esta prendido, se prende (tambien lo revisa el vigilante).
   command -v sshd >/dev/null && { pgrep -x sshd >/dev/null || sshd 2>/dev/null; }
 
   echo "1) PostgreSQL"
-  if pg_ctl -D "$PGDATA" status >/dev/null 2>&1; then echo "   ya estaba prendido"
-  else pg_ctl -D "$PGDATA" -l "$PGDATA/log.txt" -w start >/dev/null && echo "   prendido"; fi
+  postgres_prender
 
   echo "2) OpenMU"
   if pgrep -f MUnique.OpenMU.Startup >/dev/null; then echo "   ya estaba prendido"
@@ -1067,6 +1101,74 @@ limpiar() {
   echo "(Las apps cerradas no avisan ni reciben mensajes hasta que las abras de nuevo.)"
 }
 
+# Actualizar OpenMU sin riesgo: respaldo de la base, descarga comprobada ANTES de apagar nada,
+# copia de la version actual (~/openmu.prev) y, si la nueva no prende, vuelve sola a la anterior.
+#   openmu actualizar          version estable (release openmu-arm64)
+#   openmu actualizar prueba   version de prueba (release openmu-arm64-test, ramas sin fusionar)
+#   openmu volver              deja la version anterior (~/openmu.prev)
+OPENMU_RELEASES="https://github.com/bboymak3/openmu-fly-server/releases/download"
+en_ubuntu() { proot-distro login ubuntu -- bash -c "$1"; }
+
+openmu_volver_a_prev() {
+  en_ubuntu 'cd ~ && [ -d openmu.prev ] && rm -rf openmu && mv openmu.prev openmu'
+}
+
+openmu_actualizar() {
+  local tag=openmu-arm64 stamp
+  [ "$1" = prueba ] && tag=openmu-arm64-test
+  stamp=$(date +%F-%H%M)
+  echo "Actualizando OpenMU desde el release $tag"
+  echo "1) PostgreSQL y respaldo"
+  postgres_prender || return 1
+  pg_atiende || { echo "PostgreSQL no atiende: no se actualiza nada."; return 1; }
+  local respaldo="$HOME/respaldo-openmu-$stamp.sql.gz"
+  pg_dump -U postgres openmu | gzip >"$respaldo"
+  if [ "${PIPESTATUS[0]}" -ne 0 ] || [ ! -s "$respaldo" ]; then
+    rm -f "$respaldo"; echo "No se pudo sacar el respaldo: no se actualiza nada."; return 1
+  fi
+  echo "   respaldo: $respaldo"
+  echo "2) Descargando (se comprueba que quede completo antes de apagar)"
+  if ! en_ubuntu "cd ~ && rm -f openmu.zip.part && wget -q --show-progress -O openmu.zip.part '$OPENMU_RELEASES/$tag/openmu-linux-arm64.zip' && unzip -tq openmu.zip.part >/dev/null"; then
+    en_ubuntu 'rm -f ~/openmu.zip.part'
+    echo "La descarga no quedo completa o el release no existe. No se toco nada: OpenMU sigue como estaba."
+    return 1
+  fi
+  echo "3) Guardando la version actual y poniendo la nueva"
+  stop_watchdog
+  stop_openmu
+  en_ubuntu 'cd ~ && rm -rf openmu.prev && cp -a openmu openmu.prev' || { echo "No se pudo guardar la version actual: no se actualiza."; start_openmu ""; start_watchdog; return 1; }
+  en_ubuntu 'cd ~ && mv -f openmu.zip.part openmu.zip && unzip -oq openmu.zip -d openmu' || { echo "No se pudo descomprimir: se vuelve a la anterior."; openmu_volver_a_prev; start_openmu ""; start_watchdog; return 1; }
+  echo "4) Prendiendo OpenMU"
+  start_openmu ""
+  if wait_port 44405 OpenMU 300; then
+    start_watchdog
+    echo "OPENMU OK ($tag). La version anterior queda en ~/openmu.prev (bash ~/barriomu.sh openmu volver)."
+    return 0
+  fi
+  echo "OpenMU NO prendio con la version nueva: volviendo a la anterior..."
+  stop_openmu
+  cp "$LOGS/openmu.log" "$LOGS/openmu.log.fallo-$stamp" 2>/dev/null
+  openmu_volver_a_prev
+  start_openmu ""
+  if wait_port 44405 OpenMU 300; then echo "Listo: quedo la version anterior funcionando."
+  else echo "OJO: tampoco prendio la anterior. Revisa: tail -n 60 $LOGS/openmu.log.prev"; fi
+  start_watchdog
+  echo "Lo que dijo la version nueva al fallar: $LOGS/openmu.log.fallo-$stamp (mandaselo a Claude)."
+  return 1
+}
+
+openmu() {
+  case "$1" in
+    actualizar) openmu_actualizar "$2" ;;
+    volver)
+      en_ubuntu '[ -d ~/openmu.prev ]' || { echo "No hay version anterior guardada (~/openmu.prev)."; return 1; }
+      stop_watchdog; stop_openmu
+      openmu_volver_a_prev && start_openmu "" && wait_port 44405 OpenMU 300 && echo "Listo: version anterior."
+      start_watchdog ;;
+    *) echo "Uso: bash ~/barriomu.sh openmu actualizar | openmu actualizar prueba | openmu volver"; return 1 ;;
+  esac
+}
+
 arranque() {
   mkdir -p "$HOME/.termux/boot"
   cat >"$HOME/.termux/boot/barriomu" <<'BOOT'
@@ -1086,7 +1188,14 @@ apagar() {
   pkill -f "cloudflared tunnel run"
   pkill -f proxy/main.ts; pkill -f register/server/main.ts; pkill -f api/main.ts; pkill -f mu-servir; pkill -f whatsapp/bot
   stop_openmu
-  pg_ctl -D "$PGDATA" -w stop >/dev/null 2>&1
+  pg_ctl -D "$PGDATA" -m fast -w -t 30 stop >/dev/null 2>&1
+  # Si el proceso sigue vivo tras apagarse (quedo colgado otra vez), se mata y se borra el archivo.
+  local pgpid; pgpid=$(head -n1 "$PGDATA/postmaster.pid" 2>/dev/null)
+  if [[ "$pgpid" =~ ^[0-9]+$ ]] && kill -0 "$pgpid" 2>/dev/null; then
+    kill "$pgpid" 2>/dev/null; sleep 3
+    kill -0 "$pgpid" 2>/dev/null && kill -9 "$pgpid" 2>/dev/null
+    rm -f "$PGDATA/postmaster.pid"
+  fi
   termux-wake-unlock 2>/dev/null
   echo "Todo apagado."
 }
@@ -1150,6 +1259,7 @@ case "$1" in
   memoria) memoria ;;
   optimizar) optimizar "$2" "$3" "$4" ;;
   limpiar) limpiar ;;
+  openmu) openmu "$2" "$3" ;;
   vigilar) vigilar ;;
-  *) sed -n '2,41p' "$0" | sed 's/^# \{0,1\}//' ;;
+  *) sed -n '2,42p' "$0" | sed 's/^# \{0,1\}//' ;;
 esac
