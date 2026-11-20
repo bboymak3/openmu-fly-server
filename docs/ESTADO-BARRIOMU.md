@@ -1,4 +1,4 @@
-# Estado de BarrioMU — 18/11/2026 (voz por proximidad + mascotas del Sabio)
+# Estado de BarrioMU — 20/11/2026 (voz por proximidad + mascotas del Sabio; Sabio revertido a `cc038b3`)
 
 **El juego está terminado y en producción.** Este documento es la foto técnica del
 proyecto: qué corre, dónde, y el mapa completo de APIs y endpoints. El manual de uso está
@@ -6,11 +6,11 @@ en `docs/MANUAL.md`; la presentación del servidor, en `README.md`.
 
 | Dato | Valor |
 |---|---|
-| Rama | `main` (18/11/2026: mascotas del Sabio) |
+| Rama | `main` (19/11/2026: el código del Sabio es idéntico a `cc038b3`, ver §9) |
 | Cliente Babylon fijado | `26c0921c1bed65b1aab4762022f24021a5318130` |
-| Release cliente tablet | `babylon-arm64` (18/11/2026 05:06 UTC) |
-| Release servidor | `openmu-arm64` (18/11/2026 05:03 UTC) |
-| Release PC | `barriomu-pc` (18/11/2026 04:55 UTC, installer 1.0.44) |
+| Release cliente tablet | `babylon-arm64` (19/11/2026 22:19 UTC, build de la reversión) |
+| Release servidor | `openmu-arm64` (19/11/2026 22:05 UTC, build de la reversión) |
+| Release PC | `barriomu-pc` (19/11/2026 22:09 UTC, build de la reversión) |
 
 ## 1. Dónde vive cada cosa
 
@@ -234,6 +234,7 @@ Comandos del bot (Telegram y, si se reactiva, WhatsApp): `estado`, `top`, `mi pu
 | `BarrioSabioPlugIn.cs` | comando `/ia`: responde solo si la mascota del Sabio está equipada |
 | `BarrioMascotasPlugIn.cs` | mascotas del Sabio: 4 etapas, `/mascota`, evolución por resets/tiempo, frases en el chat del mapa y duelos entre mascotas máximas |
 | `BarrioGrantSabioPlugIn.cs` | entrega el Sabio a personajes existentes que no lo tengan (una vez) |
+| `BarrioSabioProteccionPlugIn.cs` | el Sabio no se puede tirar, mover al baúl ni dropear |
 | `BarrioAvisosPlugIn.cs` | cuenta a la API lo que pasa (subidas de nivel, resets, muertes farmeando, susurros) |
 | `BarrioOfflineRespawnPolicy.cs` | que un personaje en `/offlevel` siga farmeando después de morir |
 | `BarrioStore.cs` | almacén JSON de los plugins (`data/<nombre>.json`) |
@@ -293,3 +294,33 @@ auto-update desde el release `barriomu-pc`), más teclas de cámara y círculo d
 3. **Inventario de dominios de Cloudflare** (todos los proyectos: dominios propios +
    `*.pages.dev` + `*.workers.dev`). El token `cfat_…` que se probó el 16/11 respondió
    *Invalid access token* (9109): hay que crear uno con permisos de lectura.
+
+## 9. Sabio: reversión del 19/11/2026 (qué corre y qué se quitó)
+
+El 19/11 los últimos commits del Sabio compilaron en GitHub Actions pero **OpenMU dejó de
+prender en la tablet**. Se revirtió con `1051261` y `main` quedó con el código del Sabio
+**idéntico a `cc038b3`** (`git diff cc038b3 main` sale vacío). Los tres builds de la
+reversión terminaron en success: servidor `44624848105`, cliente tablet `44624847996` y PC
+`44624848124`; el release `openmu-arm64` se republicó con esa versión (22:05 UTC).
+
+| Commit | Qué hace | Build servidor | Estado |
+|---|---|---|---|
+| `748ddaf` | Sabio: regalo al crear, para todos, solo equipado y sin baúl/drop (`BarrioSabioProteccionPlugIn`) | success | **vigente** |
+| `d91d9ae` | Quita el NPC Sabio; exige la mascota equipada; comandos en el ítem | **failure** (faltaba `using System.Threading`) | **vigente** (lo arregla `cc038b3`) |
+| `cc038b3` | Agrega el `using System.Threading` | success | **último estado estable** |
+| `7c10a8e` | Sabio en un espacio propio del inventario (compatible con otra mascota), ficha completa, toque largo | success | **revertido** |
+| `b83d7a8` | Cliente: slot visible del Sabio, verde y doble clic para equipar | (solo cliente) | **revertido** |
+| `1051261` | Reversión a `cc038b3` | success | **en producción** |
+
+- Los commits revertidos siguen en el historial (`git show 7c10a8e`, `git show b83d7a8`) por
+  si se quiere retomar la idea; **no se han vuelto a subir**.
+- La causa exacta de que OpenMU no prendiera **no está confirmada**: no se pudo ejecutar
+  OpenMU fuera de la tablet. Lo que más cambiaba en `7c10a8e` era `BarrioMascotasPlugIn.cs`
+  (mueve el ítem del Sabio fuera de la ranura de mascota al entrar al mundo).
+- **Que compile no prueba que prenda.** Antes de volver a subir un cambio de plugins: probarlo
+  en la tablet (apagar, bajar el zip, `prender`, mirar `bash ~/barriomu.sh logs`), no solo
+  esperar el check verde de Actions.
+- `openmu-barrio/BarrioSabioShopPlugIn.cs` quedó en el repo pero **no se copia ni se compila**
+  (no está en la lista de `build-arm64.yml`): es código muerto de la tienda del Sabio.
+- Revisión estática del 20/11: ningún `[Guid]` repetido entre los 14 plugins y todos los
+  `.cs` activos están en la lista de copia del workflow.
