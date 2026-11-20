@@ -1,7 +1,8 @@
 name: Compilar OpenMU para ARM64 (tablet Android)
 
 # Compila OpenMU para linux-arm64 (Ubuntu dentro de Termux/proot-distro)
-# y publica el zip en Releases con el tag "openmu-arm64".
+# y publica el zip en Releases: tag "openmu-arm64" desde main y "openmu-arm64-test" desde
+# cualquier otra rama (se prueba en la tablet antes de fusionar).
 # Es self-contained: en la tablet no hace falta instalar .NET.
 
 on:
@@ -113,8 +114,14 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           OPENMU_COMMIT=$(git -C openmu rev-parse --short HEAD)
-          gh release view openmu-arm64 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
-            gh release create openmu-arm64 --repo "$GITHUB_REPOSITORY" --target main \
-              --title "OpenMU linux-arm64" \
+          # main publica la version de PRODUCCION (openmu-arm64). Cualquier otra rama publica solo
+          # la de PRUEBA (openmu-arm64-test): un cambio sin probar en la tablet nunca pisa lo que
+          # baja `barriomu.sh openmu actualizar`. Para probarla: `barriomu.sh openmu actualizar prueba`.
+          if [ "$GITHUB_REF_NAME" = main ]; then TAG=openmu-arm64; PRE=""; else TAG=openmu-arm64-test; PRE="--prerelease"; fi
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" $PRE \
+              --title "OpenMU linux-arm64 ($TAG)" \
               --notes "Compilado desde MUnique/OpenMU commit ${OPENMU_COMMIT}."
-          gh release upload openmu-arm64 openmu-linux-arm64.zip --repo "$GITHUB_REPOSITORY" --clobber
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" \
+            --notes "Compilado desde MUnique/OpenMU commit ${OPENMU_COMMIT}. Rama ${GITHUB_REF_NAME}, commit ${GITHUB_SHA::7}."
+          gh release upload "$TAG" openmu-linux-arm64.zip --repo "$GITHUB_REPOSITORY" --clobber

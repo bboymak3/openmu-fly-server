@@ -324,3 +324,10 @@ reversión terminaron en success: servidor `44624848105`, cliente tablet `446248
   (no está en la lista de `build-arm64.yml`): es código muerto de la tienda del Sabio.
 - Revisión estática del 20/11: ningún `[Guid]` repetido entre los 14 plugins y todos los
   `.cs` activos están en la lista de copia del workflow.
+
+### Publicación de OpenMU (desde el 20/11/2026)
+`build-arm64.yml` publica en `openmu-arm64` **solo desde `main`**; cualquier otra rama publica en
+`openmu-arm64-test` (prerelease). Flujo: rama → `bash ~/barriomu.sh openmu actualizar prueba` en la
+tablet → si prende, fusionar a `main` → `openmu actualizar`. `prender` ya no se fía de
+`pg_ctl status`: usa `pg_isready` y reinicia un PostgreSQL colgado (el 19/11 quedó vivo a medio
+apagar y OpenMU esperaba una base que no atendía).

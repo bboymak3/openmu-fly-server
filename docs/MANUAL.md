@@ -129,6 +129,9 @@ Se usa en **Termux normal** (`~ $`), **no** dentro de Ubuntu.
 | `bash ~/barriomu.sh monstruos` | Lista los 10 mapas con monstruos clásicos (lorencia, dungeon, noria, losttower, icarus, trials, aida, crywolf, kanturu, raklion) y cuántos monstruos tiene cada uno ahora |
 | `bash ~/barriomu.sh monstruos aida 50` | Pone en ese mapa los monstruos clásicos de S6 (spots de 5 a 10 monstruos + monstruos sueltos, `babylon/monstruos-mapas.tsv`) al porcentaje pedido (10 a 200; sin número = 100). `monstruos todos 50` = los 10 mapas. No toca NPC, trampas ni monstruos de eventos. Al 100% son unos 3.350 en total: en la tablet conviene 40-50. Reinicia OpenMU |
 | `bash ~/barriomu.sh monstruos aida original` | Devuelve el mapa a como estaba antes de usar el comando (lo guarda la primera vez). Reinicia OpenMU |
+| `bash ~/barriomu.sh openmu actualizar` | **Actualizar OpenMU con red de seguridad**: sube PostgreSQL si hace falta, saca un respaldo (`~/respaldo-openmu-FECHA.sql.gz`), baja el zip y **comprueba que esté completo antes de apagar nada**, guarda la versión actual en `~/openmu.prev`, instala la nueva y la prende. Si no prende en 5 minutos, **vuelve sola a la anterior** y deja el motivo en `~/barriomu-logs/openmu.log.fallo-FECHA` |
+| `bash ~/barriomu.sh openmu actualizar prueba` | Lo mismo con la versión de **prueba** (release `openmu-arm64-test`, que publica cualquier rama sin fusionar). Así un cambio de plugins se prueba en la tablet antes de llegar a producción |
+| `bash ~/barriomu.sh openmu volver` | Deja la versión anterior (`~/openmu.prev`) |
 | `bash ~/barriomu.sh memoria` | Memoria de la tablet, cuánto usa cada parte de BarrioMU y cuántos procesos tiene Termux |
 | `bash ~/barriomu.sh optimizar` | Una vez: le quita a Android el límite de procesos de Termux (el que mata con `signal 9`) y saca a Termux del ahorro de batería. Usa adb por la **Depuración inalámbrica** de la misma tablet; la primera vez explica cómo vincular (`optimizar vincular PUERTO CODIGO`, `optimizar conectar PUERTO`) |
 | `bash ~/barriomu.sh limpiar` | Cierra las demás apps de la tablet (no borra nada; quedan Termux, Tailscale, WhatsApp y el teclado) y libera memoria |
@@ -175,7 +178,7 @@ Cuando haya cambios (nuevas funciones, arreglos), primero espera a que GitHub te
 bash ~/barriomu.sh apagar
 ```
 
-**2. Actualizar OpenMU** (el servidor del juego). Debe terminar diciendo `OPENMU OK`:
+**2. Actualizar OpenMU** (el servidor del juego). Lo más seguro es `bash ~/barriomu.sh openmu actualizar` (con respaldo y vuelta atrás automática; reemplaza este paso y el de prender). A mano, debe terminar diciendo `OPENMU OK`:
 ```bash
 proot-distro login ubuntu -- bash -c 'cd ~ && wget -O openmu.zip https://github.com/bboymak3/openmu-fly-server/releases/download/openmu-arm64/openmu-linux-arm64.zip && unzip -oq openmu.zip -d openmu && echo OPENMU OK'
 ```
